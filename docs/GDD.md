@@ -5,8 +5,8 @@
 - Genre: Minimalist puzzle, speed-clearing, competitive PvP (planned)
 - Platform(s): Mobile first, desktop supported during development
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
-- Status: Draft v0.5
-- Last Updated: 2026-02-26
+- Status: Draft v0.6
+- Last Updated: 2026-02-28
 
 ## High Concept
 - One-sentence pitch: Clear winding grid-based arrows as fast as possible, then weaponize your speed against opponents by sending garbage.
@@ -96,7 +96,8 @@
   - Layout density
 - Generation direction (initial):
   - Arrow lengths sampled from a distribution centered on shorter lengths.
-  - Minimum length 2, maximum length 20.
+  - Minimum length is 2; no fixed design-level maximum length is required.
+  - Practical upper bounds can be set per mode/profile for tuning and performance.
   - Distribution shape and exact parameters are tuning variables.
   - Initial arrow-count baseline is deferred until generator playtesting.
 - Mode ideas:
@@ -219,3 +220,4 @@
 - 2026-02-25: Revised to v0.3 with finalized interaction rules, mobile-first input, ray obstruction logic, camera controls, and decoupled architecture direction.
 - 2026-02-25: Revised to v0.4 with concrete generation targets, top-out garbage insertion rule, precise timing/replay direction, and discrete collision-check clarifications.
 - 2026-02-25: Revised to v0.5 with JSON replay format, tie-allowed policy, and generator-playtest-driven arrow-count decision.
+- 2026-02-28: Revised to v0.6 with updated generation bounds language (minimum-only rule with mode-specific practical caps).

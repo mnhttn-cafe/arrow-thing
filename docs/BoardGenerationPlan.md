@@ -1,11 +1,17 @@
-# Board Generation Algorithm Plan (Head-First Naive v2)
+# Board Generation Algorithm Notes (Head-First Naive v2)
 
 ## Purpose
 Define a generator that supports both:
 - Full board generation.
 - Single-arrow generation (needed for garbage insertion).
 
-The algorithm prioritizes correctness and pruning over packing optimality.
+These are high-level design notes used to explain the approach.
+
+The algorithm prioritizes correctness and pruning over packing optimality, and may evolve as optimization work continues.
+
+## Status
+- Updated to match current implementation in `Assets/Scripts/Models/BoardGenerator.cs`.
+- This document is explanatory, not a strict API contract.
 
 ## Core Rule Clarifications
 - Minimum arrow length is `2`.
@@ -30,56 +36,52 @@ public sealed class BoardGenerator
 {
     public BoardGenerator(int? seed = null);
 
-    public BoardModel GenerateBoard(
-        int width,
-        int height,
-        int arrowCount,
-        int minLength,
-        int maxLength,
-        int maxPlacementAttemptsPerArrow = 128);
-
     public int FillBoard(
         BoardModel board,
         int arrowCount,
         int minLength,
-        int maxLength,
-        int maxPlacementAttemptsPerArrow = 128);
+        int maxLength);
 
     public bool TryGenerateSingleArrow(
         BoardModel board,
         int minLength,
         int maxLength,
-        out ArrowModel arrow,
-        int maxAttempts = 128);
+        out ArrowModel arrow);
 }
 ```
 
 Notes:
 - `TryGenerateSingleArrow` is the primary garbage-facing API.
 - Board fill should call the single-arrow API repeatedly.
+- There is currently no explicit max-attempts parameter in the public API.
 
 ## High-Level Flow
-For each arrow attempt:
-1. Choose target length.
-2. Build a candidate set of valid head pairs `(headCell, secondCell)`.
-3. Pick one candidate head pair.
-4. Grow the tail with DFS from `secondCell` until target length.
-5. Build arrow with derived head direction.
-6. Validate/commit via board placement checks.
+`FillBoard`:
+1. Validate inputs.
+2. Loop until `arrowCount` arrows are placed.
+3. Call `TryGenerateSingleArrow(...)`.
+4. On success, place with `TryAddArrow(...)` and increment placed count.
+5. On failure, stop early and return partial count.
 
-If any step fails, retry until budget is exhausted.
+`TryGenerateSingleArrow`:
+1. Build a candidate set of valid minimal arrows (length 2).
+2. Randomly pick one candidate.
+3. Build its head-ray set.
+4. Try to grow that candidate with DFS at sampled lengths, backing off max length when growth fails.
+5. Return first valid grown arrow or fallback length-2 arrow.
+6. If all lengths fail, remove that candidate and try another.
+7. Return false if no candidates remain.
 
 ## Step 1: Candidate Head Pair Pruning
 A head pair is `(h, n)` where:
 - `h` is intended `Cells[0]` (head cell).
 - `n` is intended `Cells[1]` (first body cell).
 
-Pruning rules:
-1. `h` must be free.
-2. `n` must be orthogonally adjacent to `h`.
-3. `n` must be in bounds and free.
-4. Build minimal arrow `[h, n]`, derive head direction from `h -> n`, then call `CanPlaceArrow`.
-5. If minimal arrow is invalid, prune this head pair entirely.
+Current implementation shape:
+1. Enumerate `h` from `board.GetFreeBoardCells()`.
+2. Enumerate orthogonal neighbors of `h` as `n`.
+3. Build minimal arrow `[h, n]`.
+4. Keep it only if `board.CanPlaceArrow(...)` succeeds.
 
 Rationale:
 - If `(h, n)` fails for length `2`, any longer arrow sharing the same `(h, n)` also fails.
@@ -128,25 +130,28 @@ Equivalent direct mapping from `(head -> second)`:
 - Down segment => head faces Up
 - Left segment => head faces Right
 
-## Single Arrow Generation Pseudocode
+## Single Arrow Generation Pseudocode (Current Shape)
 ```text
 TryGenerateSingleArrow(board, minLength, maxLength):
-  repeat maxAttempts:
-    L <- sample length in [max(2,minLength), maxLength]
-    heads <- all valid head pairs after minimal-arrow pruning
-    if heads empty: return false
+  heads <- all valid minimal arrows
 
-    pick (h,n) from heads
-    path <- [h,n]
+  while heads not empty:
+    pick candidate from heads
+    headRaySet <- forward ray from candidate head
+    currentMax <- maxLength
 
-    if L == 2:
-      arrow <- BuildArrow(path) // derive head direction
-      if board.CanPlaceArrow(arrow): return arrow
-      continue
+    while currentMax >= minLength:
+      L <- sample length in [max(2,minLength), currentMax]
+      if L == 2:
+        return candidate
 
-    if DFS_Grow(path, L, headRaySet):
-      arrow <- BuildArrow(path)
-      if board.CanPlaceArrow(arrow): return arrow
+      path <- copy(candidate.Cells)
+      if DFS_Grow(path, L, headRaySet):
+        return BuildArrow(path)
+      else:
+        currentMax <- currentMax - 1
+
+    remove candidate from heads
 
   return false
 ```
@@ -177,7 +182,7 @@ Note:
 1. Loop `arrowCount` times.
 2. Call `TryGenerateSingleArrow`.
 3. On success, `TryAddArrow`.
-4. On repeated failure, stop early and return placed count.
+4. On failure, stop early and return placed count.
 
 This gives one shared path for initial generation and garbage insertion logic.
 
@@ -188,7 +193,7 @@ This gives one shared path for initial generation and garbage insertion logic.
 
 ## Failure Handling
 - If no valid head pairs exist, fail fast.
-- If length `L` is too large for current free-space structure, retries naturally fall back through randomization.
+- If candidate growth fails at longer lengths, the current length ceiling backs off and retries.
 - Return partial results for board-fill requests.
 
 ## Test Plan
