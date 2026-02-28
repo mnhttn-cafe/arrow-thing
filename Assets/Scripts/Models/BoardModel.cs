@@ -76,8 +76,7 @@ public sealed class BoardModel
         {
             return false;
         }
-
-        Dictionary<BoardCell, ArrowModel> occupancy = CreateOccupancySnapshot();
+        HashSet<BoardCell> candidateCells = new(arrow.Cells);
 
         foreach (BoardCell cell in arrow.Cells)
         {
@@ -86,33 +85,34 @@ public sealed class BoardModel
                 return false;
             }
 
-            if (occupancy.ContainsKey(cell))
+            if (_occupancy.ContainsKey(cell))
             {
                 return false;
             }
         }
-
-        foreach (BoardCell cell in arrow.Cells)
-        {
-            occupancy[cell] = arrow;
-        }
-
-        ArrowModel currentArrow = arrow;
+        BoardCell currentHead = arrow.HeadCell;
+        ArrowDirection currentDirection = arrow.HeadDirection;
+        HashSet<ArrowModel> visitedExistingArrows = new();
 
         while (true)
         {
-            ArrowModel blockingArrow = FindFirstArrowInHeadDirection(currentArrow, occupancy);
-            if (blockingArrow == null)
+            if (!TryFindFirstBlockingArrow(currentHead, currentDirection, candidateCells, out ArrowModel blockingArrow, out bool blocksByCandidate))
             {
                 return true;
             }
 
-            if (ReferenceEquals(blockingArrow, arrow))
+            if (blocksByCandidate)
             {
                 return false;
             }
 
-            currentArrow = blockingArrow;
+            if (!visitedExistingArrows.Add(blockingArrow))
+            {
+                return false;
+            }
+
+            currentHead = blockingArrow.HeadCell;
+            currentDirection = blockingArrow.HeadDirection;
         }
     }
 
@@ -138,9 +138,39 @@ public sealed class BoardModel
         }
     }
 
-    private Dictionary<BoardCell, ArrowModel> CreateOccupancySnapshot()
+    private bool TryFindFirstBlockingArrow(
+        BoardCell head,
+        ArrowDirection direction,
+        HashSet<BoardCell> candidateCells,
+        out ArrowModel blockingArrow,
+        out bool blocksByCandidate)
     {
-        return new Dictionary<BoardCell, ArrowModel>(_occupancy);
+        (int dx, int dy) = ArrowModel.GetDirectionStep(direction);
+        BoardCell cell = head;
+
+        while (true)
+        {
+            cell = new BoardCell(cell.X + dx, cell.Y + dy);
+            if (!Contains(cell))
+            {
+                blockingArrow = null;
+                blocksByCandidate = false;
+                return false;
+            }
+
+            if (candidateCells.Contains(cell))
+            {
+                blockingArrow = null;
+                blocksByCandidate = true;
+                return true;
+            }
+
+            if (_occupancy.TryGetValue(cell, out blockingArrow))
+            {
+                blocksByCandidate = false;
+                return true;
+            }
+        }
     }
 
     private ArrowModel FindFirstArrowInHeadDirection(ArrowModel arrow, Dictionary<BoardCell, ArrowModel> occupancy)
