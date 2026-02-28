@@ -1,0 +1,50 @@
+Arrow Thing Source-Available License v1.0
+
+Copyright (c) 2026 Arrow Thing contributors
+
+This license grants access to source code while reserving distribution rights.
+
+1. Definitions
+
+"Software" means the Arrow Thing source code in this repository, including modified versions.
+
+"You" means any individual or legal entity exercising permissions under this license.
+
+2. Permissions
+
+Subject to the terms below, you may:
+
+- Use the Software for personal, educational, and internal purposes.
+- Study and modify the Software.
+- Build/compile the Software for your own personal or internal use.
+
+3. Restrictions
+
+Without prior written permission from the copyright holder, you may not:
+
+- Distribute, sublicense, sell, rent, or otherwise provide the Software's source code (original or modified) to third parties.
+- Distribute, sublicense, sell, rent, or otherwise provide compiled builds/binaries (original or modified) to third parties.
+- Offer the Software (or derivative works) as a hosted service where users interact with core functionality as a substitute for distribution rights.
+
+For clarity, submitting code changes back to the official Arrow Thing repository via pull request is allowed.
+
+4. Commercial Distribution Rights
+
+All commercial distribution rights are reserved by the copyright holder.
+
+This includes rights to sell official builds through storefronts or other channels.
+
+5. Termination
+
+Any violation of this license automatically terminates your rights under it.
+
+Upon termination, you must stop using and delete your copies of the Software.
+
+6. No Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+7. Limitation of Liability
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
