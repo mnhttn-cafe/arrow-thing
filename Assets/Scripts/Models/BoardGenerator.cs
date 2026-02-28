@@ -11,12 +11,10 @@ public sealed class BoardGenerator
     private HashSet<BoardCell> _occupiedCells;
     private Dictionary<BoardCell, ArrowDirection> _arrowHeads;
     private Dictionary<BoardCell, BoardCell> _occupiedOwnerHeads;
-    private List<int> _lengthsBuffer;
 
     public BoardGenerator(int? seed = null)
     {
         _random = seed.HasValue ? new Random(seed.Value) : new Random();
-        _lengthsBuffer = new List<int>();
     }
 
     public int FillBoard(
@@ -132,14 +130,16 @@ public sealed class BoardGenerator
 
             checkedCount++;
 
-            PrepareLengths(minLength, maxLength);
-
-            foreach (int targetLen in _lengthsBuffer)
+            // Sample uniformly from [minLength, maxLength]
+            int targetLen = _random.Next(minLength, maxLength + 1);
+            
+            // Try target length first, then only higher lengths if target fails
+            for (int len = targetLen; len <= maxLength; len++)
             {
                 if (TryBuildArrowPath(
                         board,
                         candidate,
-                        targetLen,
+                        len,
                         out List<BoardCell> path))
                 {
                     arrow = new ArrowModel(path);
@@ -226,6 +226,15 @@ public sealed class BoardGenerator
             if (_occupiedCells.Contains(n)) continue;
             if (pathSet.Contains(n)) continue;
             if (IsOnHeadRay(headCell, headDirection, n)) continue;
+            
+            pathSet.Add(n);
+            bool createsCycle = WouldPlacementCreateCycle(board, pathSet, headCell, headDirection);
+            pathSet.Remove(n);
+            
+            if (createsCycle) {
+                continue;
+            }
+
             options[optionCount++] = n;
         }
 
@@ -325,15 +334,6 @@ public sealed class BoardGenerator
         return true;
     }
 
-    private void PrepareLengths(int minLength, int maxLength)
-    {
-        _lengthsBuffer.Clear();
-        for (int len = maxLength; len >= minLength; len--)
-        {
-            _lengthsBuffer.Add(len);
-        }
-    }
-
     private ArrowModel TryBuildFallbackArrow(BoardModel board, int minLength, int maxLength)
     {
         if (_possibleStarters.Count == 0)
@@ -353,11 +353,13 @@ public sealed class BoardGenerator
                 continue;
             }
 
-            PrepareLengths(minLength, maxLength);
-
-            foreach (int targetLen in _lengthsBuffer)
+            // Sample uniformly from [minLength, maxLength]
+            int targetLen = _random.Next(minLength, maxLength + 1);
+            
+            // Try target length first, then only higher lengths if target fails
+            for (int len = targetLen; len <= maxLength; len++)
             {
-                if (TryBuildArrowPath(board, starter, targetLen, out List<BoardCell> path))
+                if (TryBuildArrowPath(board, starter, len, out List<BoardCell> path))
                 {
                     _possibleStarters.RemoveAt(index);
                     return new ArrowModel(path);
