@@ -16,7 +16,7 @@ public readonly struct BoardCell : IEquatable<BoardCell>
         return X == other.X && Y == other.Y;
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         return obj is BoardCell other && Equals(other);
     }
