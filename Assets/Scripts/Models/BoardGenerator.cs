@@ -132,7 +132,7 @@ public sealed class BoardGenerator
 
             // Sample uniformly from [minLength, maxLength]
             int targetLen = _random.Next(minLength, maxLength + 1);
-            
+
             // Try target length first, then only higher lengths if target fails
             for (int len = targetLen; len <= maxLength; len++)
             {
@@ -226,12 +226,13 @@ public sealed class BoardGenerator
             if (_occupiedCells.Contains(n)) continue;
             if (pathSet.Contains(n)) continue;
             if (IsOnHeadRay(headCell, headDirection, n)) continue;
-            
+
             pathSet.Add(n);
             bool createsCycle = WouldPlacementCreateCycle(board, pathSet, headCell, headDirection);
             pathSet.Remove(n);
-            
-            if (createsCycle) {
+
+            if (createsCycle)
+            {
                 continue;
             }
 
@@ -355,7 +356,7 @@ public sealed class BoardGenerator
 
             // Sample uniformly from [minLength, maxLength]
             int targetLen = _random.Next(minLength, maxLength + 1);
-            
+
             // Try target length first, then only higher lengths if target fails
             for (int len = targetLen; len <= maxLength; len++)
             {

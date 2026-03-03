@@ -128,12 +128,12 @@ public sealed class BoardModel
 
     public IEnumerable<BoardCell> GetFreeBoardCells()
     {
-        for(int x = 0; x < Width; x++)
+        for (int x = 0; x < Width; x++)
         {
-            for(int y = 0; y < Height; y++)
+            for (int y = 0; y < Height; y++)
             {
-                BoardCell cell = new BoardCell(x,y);
-                if(!IsOccupied(cell)) yield return cell;
+                BoardCell cell = new BoardCell(x, y);
+                if (!IsOccupied(cell)) yield return cell;
             }
         }
     }
