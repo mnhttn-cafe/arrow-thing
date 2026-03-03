@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using NUnit.Framework;
@@ -12,7 +10,7 @@ public sealed class BoardModelTests
     [Test]
     public void Constructor_SetsDimensions_AndArrowsStartsEmpty()
     {
-        BoardModel board = new(4, 6);
+        Board board = new(4, 6);
 
         Assert.That(board.Width, Is.EqualTo(4));
         Assert.That(board.Height, Is.EqualTo(6));
@@ -22,7 +20,7 @@ public sealed class BoardModelTests
     [Test]
     public void Contains_ReturnsExpectedForInBoundsAndOutOfBounds()
     {
-        BoardModel board = new(3, 2);
+        Board board = new(3, 2);
 
         Assert.That(board.Contains(new BoardCell(0, 0)), Is.True);
         Assert.That(board.Contains(new BoardCell(2, 1)), Is.True);
@@ -35,7 +33,7 @@ public sealed class BoardModelTests
     [Test]
     public void IsOccupied_ReturnsFalseForEmptyCell_AndTrueAfterAdd()
     {
-        BoardModel board = new(5, 5);
+        Board board = new(5, 5);
         ArrowModel arrow = CreateArrowFacingRight(1, 1);
 
         Assert.That(board.IsOccupied(new BoardCell(1, 1)), Is.False);
@@ -47,7 +45,7 @@ public sealed class BoardModelTests
     [Test]
     public void TryAddArrow_AddsArrowWhenPlacementIsValid()
     {
-        BoardModel board = new(5, 5);
+        Board board = new(5, 5);
         ArrowModel arrow = CreateArrowFacingRight(1, 1);
 
         bool added = board.TryAddArrow(arrow);
@@ -62,7 +60,7 @@ public sealed class BoardModelTests
     [Test]
     public void TryAddArrow_ReturnsFalse_WhenPlacementIsInvalid()
     {
-        BoardModel board = new(4, 4);
+        Board board = new(4, 4);
         ArrowModel outOfBounds = CreateArrowFacingRight(-1, 1);
 
         bool added = board.TryAddArrow(outOfBounds);
@@ -74,7 +72,7 @@ public sealed class BoardModelTests
     [Test]
     public void TryRemoveArrow_ReturnsFalse_WhenArrowWasNotAdded()
     {
-        BoardModel board = new(5, 5);
+        Board board = new(5, 5);
         ArrowModel arrow = CreateArrowFacingRight(1, 1);
 
         bool removed = board.TryRemoveArrow(arrow);
@@ -85,7 +83,7 @@ public sealed class BoardModelTests
     [Test]
     public void TryRemoveArrow_ReturnsFalse_WhenArrowIsBlockedInHeadDirection()
     {
-        BoardModel board = new(6, 4);
+        Board board = new(6, 4);
         ArrowModel blocker = CreateArrowFacingRight(3, 1);
         ArrowModel blocked = CreateArrowFacingRight(1, 1);
 
@@ -101,7 +99,7 @@ public sealed class BoardModelTests
     [Test]
     public void TryRemoveArrow_RemovesArrowWhenAllowed()
     {
-        BoardModel board = new(5, 5);
+        Board board = new(5, 5);
         ArrowModel arrow = CreateArrowFacingRight(1, 1);
         Assert.That(board.TryAddArrow(arrow), Is.True);
 
@@ -116,7 +114,7 @@ public sealed class BoardModelTests
     [Test]
     public void CanPlaceArrow_ReturnsFalse_ForNullAndEmptyArrow()
     {
-        BoardModel board = new(5, 5);
+        Board board = new(5, 5);
         ArrowModel emptyArrow = CreateArrowWithZeroCells();
 
         Assert.That(board.CanPlaceArrow(null!), Is.False);
@@ -126,7 +124,7 @@ public sealed class BoardModelTests
     [Test]
     public void CanPlaceArrow_ReturnsFalse_WhenArrowHasOutOfBoundsCell()
     {
-        BoardModel board = new(3, 3);
+        Board board = new(3, 3);
         ArrowModel outOfBounds = CreateArrowFacingRight(-1, 0);
 
         Assert.That(board.CanPlaceArrow(outOfBounds), Is.False);
@@ -135,7 +133,7 @@ public sealed class BoardModelTests
     [Test]
     public void CanPlaceArrow_ReturnsFalse_WhenAnyCellOverlapsExistingOccupancy()
     {
-        BoardModel board = new(6, 3);
+        Board board = new(6, 3);
         ArrowModel existing = CreateArrowFacingRight(3, 1);
         ArrowModel overlapping = CreateArrow(new BoardCell(2, 1), new BoardCell(1, 1));
         Assert.That(board.TryAddArrow(existing), Is.True);
@@ -146,7 +144,7 @@ public sealed class BoardModelTests
     [Test]
     public void CanPlaceArrow_ReturnsFalse_WhenNewArrowWouldSelfCycleInHeadDirection()
     {
-        BoardModel board = new(6, 4);
+        Board board = new(6, 4);
         ArrowModel selfCycling = CreateArrow(
             new BoardCell(1, 1),
             new BoardCell(0, 1),
@@ -158,7 +156,7 @@ public sealed class BoardModelTests
     [Test]
     public void CanPlaceArrow_ReturnsTrue_WhenBlockingChainEventuallyLeavesBoard()
     {
-        BoardModel board = new(6, 4);
+        Board board = new(6, 4);
         ArrowModel blocker = CreateArrowFacingRight(3, 1);
         ArrowModel candidate = CreateArrowFacingRight(1, 1);
         Assert.That(board.TryAddArrow(blocker), Is.True);
@@ -169,7 +167,7 @@ public sealed class BoardModelTests
     [Test]
     public void CanRemoveArrow_ReturnsFalse_ForNullAndBlockedArrow_AndTrueOtherwise()
     {
-        BoardModel board = new(6, 4);
+        Board board = new(6, 4);
         ArrowModel blocker = CreateArrowFacingRight(3, 1);
         ArrowModel blocked = CreateArrowFacingRight(1, 1);
         ArrowModel clear = CreateArrowFacingRight(5, 3);
@@ -182,31 +180,15 @@ public sealed class BoardModelTests
         Assert.That(board.CanRemoveArrow(clear), Is.True);
     }
 
-    [Test]
-    public void GetFreeBoardCells_ReturnsOnlyUnoccupiedCells()
-    {
-        BoardModel board = new(2, 2);
-        ArrowModel arrow = CreateArrow(new BoardCell(0, 0), new BoardCell(0, 1));
-        Assert.That(board.TryAddArrow(arrow), Is.True);
-
-        List<BoardCell> freeCells = board.GetFreeBoardCells().ToList();
-
-        Assert.That(freeCells, Is.EqualTo(new[]
-        {
-            new BoardCell(1, 0),
-            new BoardCell(1, 1)
-        }));
-    }
-
-    private static ArrowModel CreateArrow(params BoardCell[] cells)
+    private static ArrowModel CreateArrow(params Cell[] cells)
     {
         return new ArrowModel(cells);
     }
 
     private static ArrowModel CreateArrowFacingRight(int headX, int headY)
     {
-        BoardCell head = new(headX, headY);
-        BoardCell next = new(headX - 1, headY);
+        Cell head = new(headX, headY);
+        Cell next = new(headX - 1, headY);
         return CreateArrow(head, next);
     }
 
@@ -214,7 +196,7 @@ public sealed class BoardModelTests
     {
         ArrowModel arrow = (ArrowModel)RuntimeHelpers.GetUninitializedObject(typeof(ArrowModel));
         FieldInfo cellsField = typeof(ArrowModel).GetField("_cells", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        cellsField.SetValue(arrow, new List<BoardCell>());
+        cellsField.SetValue(arrow, new List<Cell>());
         return arrow;
     }
 }

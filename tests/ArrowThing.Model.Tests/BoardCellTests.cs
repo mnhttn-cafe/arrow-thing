@@ -8,7 +8,7 @@ public sealed class BoardCellTests
     [Test]
     public void Constructor_SetsCoordinates()
     {
-        BoardCell cell = new(7, 11);
+        Cell cell = new(7, 11);
 
         Assert.That(cell.X, Is.EqualTo(7));
         Assert.That(cell.Y, Is.EqualTo(11));
@@ -17,10 +17,10 @@ public sealed class BoardCellTests
     [Test]
     public void EqualsBoardCell_ReturnsTrueForSameCoordinates_AndFalseForDifferentCoordinates()
     {
-        BoardCell a = new(2, 3);
-        BoardCell same = new(2, 3);
-        BoardCell differentX = new(9, 3);
-        BoardCell differentY = new(2, 8);
+        Cell a = new(2, 3);
+        Cell same = new(2, 3);
+        Cell differentX = new(9, 3);
+        Cell differentY = new(2, 8);
 
         Assert.That(a.Equals(same), Is.True);
         Assert.That(a.Equals(differentX), Is.False);
@@ -30,7 +30,7 @@ public sealed class BoardCellTests
     [Test]
     public void EqualsObject_ReturnsExpectedForBoardCellNullAndDifferentType()
     {
-        BoardCell cell = new(5, 6);
+        Cell cell = new(5, 6);
         object sameAsObject = new BoardCell(5, 6);
         object differentType = "not-a-board-cell";
 
@@ -42,8 +42,8 @@ public sealed class BoardCellTests
     [Test]
     public void GetHashCode_IsEqualForEqualCells()
     {
-        BoardCell a = new(4, 9);
-        BoardCell b = new(4, 9);
+        Cell a = new(4, 9);
+        Cell b = new(4, 9);
 
         Assert.That(a.GetHashCode(), Is.EqualTo(b.GetHashCode()));
     }
@@ -51,9 +51,9 @@ public sealed class BoardCellTests
     [Test]
     public void EqualityOperators_ReturnExpectedValues()
     {
-        BoardCell a = new(1, 1);
-        BoardCell same = new(1, 1);
-        BoardCell different = new(1, 2);
+        Cell a = new(1, 1);
+        Cell same = new(1, 1);
+        Cell different = new(1, 2);
 
         Assert.That(a == same, Is.True);
         Assert.That(a != same, Is.False);

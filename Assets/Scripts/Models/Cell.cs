@@ -1,24 +1,24 @@
 using System;
 
-public readonly struct BoardCell : IEquatable<BoardCell>
+public readonly struct Cell : IEquatable<Cell>
 {
     public int X { get; }
     public int Y { get; }
 
-    public BoardCell(int x, int y)
+    public Cell(int x, int y)
     {
         X = x;
         Y = y;
     }
 
-    public bool Equals(BoardCell other)
+    public bool Equals(Cell other)
     {
         return X == other.X && Y == other.Y;
     }
 
     public override bool Equals(object? obj)
     {
-        return obj is BoardCell other && Equals(other);
+        return obj is Cell other && Equals(other);
     }
 
     public override int GetHashCode()
@@ -26,12 +26,12 @@ public readonly struct BoardCell : IEquatable<BoardCell>
         return HashCode.Combine(X, Y);
     }
 
-    public static bool operator ==(BoardCell left, BoardCell right)
+    public static bool operator ==(Cell left, Cell right)
     {
         return left.Equals(right);
     }
 
-    public static bool operator !=(BoardCell left, BoardCell right)
+    public static bool operator !=(Cell left, Cell right)
     {
         return !left.Equals(right);
     }

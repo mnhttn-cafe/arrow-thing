@@ -9,7 +9,7 @@ public sealed class BoardGeneratorModelTests
     [Test]
     public void FillBoard_ReturnsNumberOfPlacedArrows()
     {
-        BoardModel board = new(2, 1);
+        Board board = new(2, 1);
         BoardGenerator generator = new(seed: 1234);
 
         int placed = generator.FillBoard(board, arrowCount: 2, minLength: 2, maxLength: 2);
@@ -21,7 +21,7 @@ public sealed class BoardGeneratorModelTests
     [Test]
     public void TryGenerateSingleArrow_ReturnsTrueWhenPlacementExists()
     {
-        BoardModel board = new(2, 1);
+        Board board = new(2, 1);
         BoardGenerator generator = new(seed: 7);
 
         bool success = generator.TryGenerateSingleArrow(board, minLength: 2, maxLength: 2, out ArrowModel arrow);
@@ -36,7 +36,7 @@ public sealed class BoardGeneratorModelTests
     [Test]
     public void TryGenerateSingleArrow_ReturnsFalseWhenNoPlacementExists()
     {
-        BoardModel board = new(2, 1);
+        Board board = new(2, 1);
         Assert.That(board.TryAddArrow(CreateArrowFacingRight(1, 0)), Is.True);
         BoardGenerator generator = new(seed: 7);
 
@@ -49,7 +49,7 @@ public sealed class BoardGeneratorModelTests
     [Test]
     public void Methods_ValidateLengthRangeArguments()
     {
-        BoardModel board = new(3, 3);
+        Board board = new(3, 3);
         BoardGenerator generator = new(seed: 1);
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -86,7 +86,7 @@ public sealed class BoardGeneratorModelTests
 
         for (int i = 0; i < iterations; i++)
         {
-            BoardModel board = new(width, height);
+            Board board = new(width, height);
             bool success = generator.TryGenerateSingleArrow(board, minLength, maxLength, out ArrowModel arrow);
 
             if (success)
@@ -135,7 +135,7 @@ public sealed class BoardGeneratorModelTests
 
         for (int i = 0; i < runs; i++)
         {
-            BoardModel board = new(width, height);
+            Board board = new(width, height);
             BoardGenerator generator = new(seed: 1000 + i);
 
             int placed = generator.FillBoard(board, targetArrowCount, minLength, maxLength);
@@ -161,8 +161,8 @@ public sealed class BoardGeneratorModelTests
 
     private static ArrowModel CreateArrowFacingRight(int headX, int headY)
     {
-        BoardCell head = new(headX, headY);
-        BoardCell next = new(headX - 1, headY);
+        Cell head = new(headX, headY);
+        Cell next = new(headX - 1, headY);
         return new ArrowModel(new[] { head, next });
     }
 }

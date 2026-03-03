@@ -19,7 +19,7 @@ public sealed class ArrowModelTests
     [TestCase(1)]
     public void Constructor_ThrowsArgumentException_WhenFewerThanTwoCellsAreProvided(int cellCount)
     {
-        List<BoardCell> cells = new();
+        List<Cell> cells = new();
         for (int i = 0; i < cellCount; i++)
         {
             cells.Add(new BoardCell(i, 0));
@@ -36,10 +36,10 @@ public sealed class ArrowModelTests
     [TestCase(-1, 0, ArrowDirection.Right)]
     public void Constructor_SetsHeadCellCellsAndDerivedHeadDirection(int dx, int dy, ArrowDirection expectedDirection)
     {
-        BoardCell head = new(10, 10);
-        BoardCell next = new(head.X + dx, head.Y + dy);
-        BoardCell tail = new(next.X, next.Y + 1);
-        List<BoardCell> cells = new() { head, next, tail };
+        Cell head = new(10, 10);
+        Cell next = new(head.X + dx, head.Y + dy);
+        Cell tail = new(next.X, next.Y + 1);
+        List<Cell> cells = new() { head, next, tail };
 
         ArrowModel arrow = new(cells);
 
@@ -58,8 +58,8 @@ public sealed class ArrowModelTests
     [TestCase(0, 2)]
     public void Constructor_ThrowsArgumentException_WhenFirstTwoCellsAreNotOrthogonallyAdjacent(int dx, int dy)
     {
-        BoardCell head = new(3, 3);
-        BoardCell next = new(head.X + dx, head.Y + dy);
+        Cell head = new(3, 3);
+        Cell next = new(head.X + dx, head.Y + dy);
 
         Assert.Throws<ArgumentException>(() => new ArrowModel(new[] { head, next }));
     }
