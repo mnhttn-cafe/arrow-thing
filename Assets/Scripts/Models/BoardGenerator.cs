@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
 public sealed class BoardGenerator
 {
@@ -8,17 +7,14 @@ public sealed class BoardGenerator
     private const int RandomPathAttemptsPerLength = 3;
 
     private readonly Random _random;
-    private List<ArrowModel> _possibleStarters = new();
-    private HashSet<BoardCell> _occupiedCells = new();
-    private Dictionary<BoardCell, ArrowDirection> _arrowHeads = new();
-    private Dictionary<BoardCell, BoardCell> _occupiedOwnerHeads = new();
-    private readonly List<int> _lengthsBuffer;
-    private bool _stateInitialized;
+    private List<ArrowModel> _possibleStarters;
+    private HashSet<BoardCell> _occupiedCells;
+    private Dictionary<BoardCell, ArrowDirection> _arrowHeads;
+    private Dictionary<BoardCell, BoardCell> _occupiedOwnerHeads;
 
     public BoardGenerator(int? seed = null)
     {
         _random = seed.HasValue ? new Random(seed.Value) : new Random();
-        _lengthsBuffer = new List<int>();
     }
 
     public int FillBoard(
@@ -54,7 +50,7 @@ public sealed class BoardGenerator
                 // Greedy fallback: place any valid arrow within length range when struggling
                 if (consecutiveFailures >= 8 && consecutiveFailures % 4 == 0 && _possibleStarters.Count > 0)
                 {
-                    ArrowModel? fallback = TryBuildFallbackArrow(board, minLength, maxLength);
+                    ArrowModel fallback = TryBuildFallbackArrow(board, minLength, maxLength);
                     if (fallback != null && board.TryAddArrow(fallback))
                     {
                         UpdateAfterPlacement(board, fallback);
@@ -64,7 +60,7 @@ public sealed class BoardGenerator
                     }
                 }
 
-                // Can't place anything meaningful anymore -> stop
+                // Can't place anything meaningful anymore → stop
                 if (consecutiveFailures > 24 || _possibleStarters.Count == 0)
                 {
                     break;
@@ -95,13 +91,12 @@ public sealed class BoardGenerator
         BoardModel board,
         int minLength,
         int maxLength,
-        [NotNullWhen(true)]
         out ArrowModel arrow)
     {
         ValidateLengthRange(minLength, maxLength);
-        arrow = default!;
+        arrow = null;
 
-        if (!_stateInitialized)
+        if (_possibleStarters == null)
         {
             InitializeStateFromBoard(board);
             InitializePossibleStarters(board);
@@ -135,14 +130,16 @@ public sealed class BoardGenerator
 
             checkedCount++;
 
-            PrepareLengths(minLength, maxLength);
-
-            foreach (int targetLen in _lengthsBuffer)
+            // Sample uniformly from [minLength, maxLength]
+            int targetLen = _random.Next(minLength, maxLength + 1);
+            
+            // Try target length first, then only higher lengths if target fails
+            for (int len = targetLen; len <= maxLength; len++)
             {
                 if (TryBuildArrowPath(
                         board,
                         candidate,
-                        targetLen,
+                        len,
                         out List<BoardCell> path))
                 {
                     arrow = new ArrowModel(path);
@@ -161,10 +158,9 @@ public sealed class BoardGenerator
         BoardModel board,
         ArrowModel starter,
         int targetLength,
-        [NotNullWhen(true)]
         out List<BoardCell> path)
     {
-        path = default!;
+        path = null;
 
         for (int attempt = 0; attempt < RandomPathAttemptsPerLength; attempt++)
         {
@@ -230,6 +226,15 @@ public sealed class BoardGenerator
             if (_occupiedCells.Contains(n)) continue;
             if (pathSet.Contains(n)) continue;
             if (IsOnHeadRay(headCell, headDirection, n)) continue;
+            
+            pathSet.Add(n);
+            bool createsCycle = WouldPlacementCreateCycle(board, pathSet, headCell, headDirection);
+            pathSet.Remove(n);
+            
+            if (createsCycle) {
+                continue;
+            }
+
             options[optionCount++] = n;
         }
 
@@ -304,9 +309,9 @@ public sealed class BoardGenerator
 
     private void InitializeStateFromBoard(BoardModel board)
     {
-        _occupiedCells.Clear();
-        _arrowHeads.Clear();
-        _occupiedOwnerHeads.Clear();
+        _occupiedCells = new HashSet<BoardCell>();
+        _arrowHeads = new Dictionary<BoardCell, ArrowDirection>();
+        _occupiedOwnerHeads = new Dictionary<BoardCell, BoardCell>();
 
         foreach (ArrowModel existing in board.Arrows)
         {
@@ -317,8 +322,6 @@ public sealed class BoardGenerator
                 _occupiedOwnerHeads[cell] = existing.HeadCell;
             }
         }
-
-        _stateInitialized = true;
     }
 
     private bool IsStarterUsable(BoardModel board, ArrowModel starter)
@@ -331,16 +334,7 @@ public sealed class BoardGenerator
         return true;
     }
 
-    private void PrepareLengths(int minLength, int maxLength)
-    {
-        _lengthsBuffer.Clear();
-        for (int len = maxLength; len >= minLength; len--)
-        {
-            _lengthsBuffer.Add(len);
-        }
-    }
-
-    private ArrowModel? TryBuildFallbackArrow(BoardModel board, int minLength, int maxLength)
+    private ArrowModel TryBuildFallbackArrow(BoardModel board, int minLength, int maxLength)
     {
         if (_possibleStarters.Count == 0)
         {
@@ -359,11 +353,13 @@ public sealed class BoardGenerator
                 continue;
             }
 
-            PrepareLengths(minLength, maxLength);
-
-            foreach (int targetLen in _lengthsBuffer)
+            // Sample uniformly from [minLength, maxLength]
+            int targetLen = _random.Next(minLength, maxLength + 1);
+            
+            // Try target length first, then only higher lengths if target fails
+            for (int len = targetLen; len <= maxLength; len++)
             {
-                if (TryBuildArrowPath(board, starter, targetLen, out List<BoardCell> path))
+                if (TryBuildArrowPath(board, starter, len, out List<BoardCell> path))
                 {
                     _possibleStarters.RemoveAt(index);
                     return new ArrowModel(path);
