@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj
+
+      - name: Validate whitespace formatting
+        run: dotnet format whitespace tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --verify-no-changes --no-restore
+
+      - name: Validate code style
+        run: dotnet format style tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --verify-no-changes --severity warn --no-restore
+
+      - name: Run tests
+        run: dotnet test tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --configuration Debug --nologo --no-restore
