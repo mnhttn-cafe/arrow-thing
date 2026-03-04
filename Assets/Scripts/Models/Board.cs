@@ -11,4 +11,9 @@ public sealed class Board
         Width = width;
         Height = height;
     }
+
+    public bool Contains(Cell cell)
+    {
+        return cell.X >= 0 && cell.X < Width && cell.Y >= 0 && cell.Y < Height;
+    }
 }

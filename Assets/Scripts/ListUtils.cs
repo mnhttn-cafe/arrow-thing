@@ -1,0 +1,17 @@
+using System.Collections.Generic;
+using System;
+
+public static class ListUtils
+{
+    public static void Shuffle<T>(List<T> list, Random random)
+    {
+        // Fisher-Yates
+        int n = list.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = random.Next(n + 1);
+            (list[n], list[k]) = (list[k], list[n]);
+        }
+    }
+}
