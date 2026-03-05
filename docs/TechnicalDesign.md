@@ -15,7 +15,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ## Related Docs
 
 - [`GDD.md`](GDD.md): game design goals and player-facing behavior.
-- [`BoardGenerationPlan.md`](BoardGenerationPlan.md): high-level generator notes and algorithm explanation.
+- [`BoardGeneration.md`](BoardGeneration.md): generator behavior and algorithm explanation.
 
 ## Architecture Overview
 
