@@ -6,29 +6,43 @@ public static class BoardGeneration
 {
     private static readonly Dictionary<Board, BoardCacheData> boardCacheDict = new();
 
-    public static void FillBoard(Board board, int minLength, int maxLength, Random random)
+    /// <summary>
+    /// Default cap on DFS dead ends per arrow candidate. Beyond this the DFS returns
+    /// the best path found so far rather than exhausting the search tree. Chosen empirically:
+    /// at 10, a 50×50 board with arrows up to length 50 fills in ~20ms with no meaningful
+    /// loss in density compared to higher limits.
+    /// </summary>
+    private const int DefaultDeadEndLimit = 10;
+
+    public static void FillBoard(Board board, int minLength, int maxLength, Random random, int deadEndLimit = DefaultDeadEndLimit)
     {
         int maxPossibleArrows = board.Width * board.Height / 2;
-        GenerateArrows(board, minLength, maxLength, maxPossibleArrows, random, out _);
+        GenerateArrows(board, minLength, maxLength, maxPossibleArrows, random, out _, deadEndLimit);
     }
 
-    public static bool GenerateArrows(Board board, int minLength, int maxLength, int amount, Random random, out int createdArrows)
+    public static bool GenerateArrows(Board board, int minLength, int maxLength, int amount, Random random, out int createdArrows, int deadEndLimit = DefaultDeadEndLimit)
     {
         createdArrows = 0;
         BoardCacheData boardCache = GetOrCreateCache(board);
-        while (createdArrows < amount && TryGenerateArrow(board, minLength, maxLength, random, boardCache, out Arrow arrow))
+        while (createdArrows < amount && TryGenerateArrow(board, minLength, maxLength, random, boardCache, out Arrow? arrow, deadEndLimit))
         {
-            board.Arrows.Add(arrow);
-            foreach (Cell c in arrow.Cells)
+            board.AddArrow(arrow!);
+            boardCache.version = board.Version;
+            HashSet<ArrowHeadData> toRemove = new();
+            foreach (Cell c in arrow!.Cells)
             {
                 boardCache.occupancy[c.X, c.Y] = arrow;
+                foreach (ArrowHeadData stale in boardCache.candidateLookup[c.X, c.Y])
+                    toRemove.Add(stale);
+                boardCache.candidateLookup[c.X, c.Y].Clear();
             }
+            boardCache.availableArrowHeads.RemoveAll(toRemove.Contains);
             createdArrows++;
         }
         return createdArrows == amount;
     }
 
-    private static bool TryGenerateArrow(Board board, int minLength, int maxLength, Random random, BoardCacheData cache, out Arrow arrow)
+    private static bool TryGenerateArrow(Board board, int minLength, int maxLength, Random random, BoardCacheData cache, out Arrow? arrow, int deadEndLimit)
     {
         arrow = null;
         int targetLength = random.Next(minLength, maxLength + 1);
@@ -38,52 +52,68 @@ public static class BoardGeneration
             int headIndex = random.Next(cache.availableArrowHeads.Count);
             ArrowHeadData candidateArrowHead = cache.availableArrowHeads[headIndex];
 
-            if (DoesArrowCandidateCauseCycle(board, candidateArrowHead.Body, candidateArrowHead.direction, cache))
+            if (cache.occupancy[candidateArrowHead.head.X, candidateArrowHead.head.Y] != null ||
+                cache.occupancy[candidateArrowHead.next.X, candidateArrowHead.next.Y] != null ||
+                DoesArrowCandidateCauseCycle(board, candidateArrowHead.head, candidateArrowHead.Body, candidateArrowHead.direction, cache))
             {
                 cache.availableArrowHeads.RemoveAt(headIndex);
                 continue;
             }
 
-            arrow = new(CompleteArrowTail(board, targetLength, candidateArrowHead, random, cache));
+            List<Cell> tail = CompleteArrowTail(board, targetLength, candidateArrowHead, random, cache, deadEndLimit);
+            if (tail.Count < minLength)
+            {
+                cache.availableArrowHeads.RemoveAt(headIndex);
+                continue;
+            }
+
+            arrow = new(tail);
             return true;
         }
 
         return false;
     }
 
-    private static List<Cell> CompleteArrowTail(Board board, int targetLength, ArrowHeadData headData, Random random, BoardCacheData cache)
+    private static List<Cell> CompleteArrowTail(Board board, int targetLength, ArrowHeadData headData, Random random, BoardCacheData cache, int deadEndLimit)
     {
         List<Cell> path = new() { headData.head, headData.next };
         HashSet<Cell> visited = new(path);
         List<Cell> best = new(path);
+        int deadEnds = 0;
 
         void Dfs(Cell current)
         {
+            if (deadEnds >= deadEndLimit) return;
             if (path.Count == targetLength)
             {
                 best = new(path);
                 return;
             }
 
+            bool anyValid = false;
             foreach (Cell neighbor in Shuffle(GetNeighbors(current), random))
             {
                 if (visited.Contains(neighbor)) continue;
                 if (!board.Contains(neighbor)) continue;
                 if (IsInRay(neighbor, headData.head, headData.direction)) continue;
+                if (cache.occupancy[neighbor.X, neighbor.Y] != null) continue;
 
                 path.Add(neighbor);
                 visited.Add(neighbor);
 
-                if (!DoesArrowCandidateCauseCycle(board, path, headData.direction, cache))
+                if (!DoesArrowCandidateCauseCycle(board, headData.head, visited, headData.direction, cache))
                 {
                     if (path.Count > best.Count) best = new(path);
+                    anyValid = true;
                     Dfs(neighbor);
-                    if (best.Count == targetLength) return; // early exit once exact length found
+                    if (best.Count == targetLength || deadEnds >= deadEndLimit) return;
                 }
 
-                visited.Remove(neighbor);                // backtrack
-                path.RemoveAt(path.Count - 1);           // backtrack
+                visited.Remove(neighbor);
+                path.RemoveAt(path.Count - 1);
             }
+
+            if (!anyValid) deadEnds++;
         }
 
         Dfs(headData.next);
@@ -106,11 +136,11 @@ public static class BoardGeneration
     {
         if (direction == Arrow.Direction.Up)
         {
-            return target.X == head.X && target.Y < head.Y;
+            return target.X == head.X && target.Y > head.Y;
         }
         if (direction == Arrow.Direction.Down)
         {
-            return target.X == head.X && target.Y > head.Y;
+            return target.X == head.X && target.Y < head.Y;
         }
         if (direction == Arrow.Direction.Right)
         {
@@ -128,12 +158,31 @@ public static class BoardGeneration
         if (!boardCacheDict.TryGetValue(board, out var cache))
         {
             List<ArrowHeadData> candidateArrowHeads = CreateInitialArrowHeads(board);
+
+            List<ArrowHeadData>[,] lookup = new List<ArrowHeadData>[board.Width, board.Height];
+            for (int x = 0; x < board.Width; x++)
+                for (int y = 0; y < board.Height; y++)
+                    lookup[x, y] = new List<ArrowHeadData>();
+            foreach (ArrowHeadData candidate in candidateArrowHeads)
+            {
+                lookup[candidate.head.X, candidate.head.Y].Add(candidate);
+                lookup[candidate.next.X, candidate.next.Y].Add(candidate);
+            }
+
             cache = new BoardCacheData
             {
+                version = board.Version,
                 availableArrowHeads = candidateArrowHeads,
-                occupancy = new Arrow[board.Width, board.Height]
+                occupancy = new Arrow[board.Width, board.Height],
+                candidateLookup = lookup
             };
             boardCacheDict[board] = cache;
+        }
+        else if (cache.version != board.Version)
+        {
+            throw new InvalidOperationException(
+                $"Board was mutated outside of BoardGeneration (cache version {cache.version}, board version {board.Version}). " +
+                "Only use Board.AddArrow / Board.RemoveArrow through BoardGeneration.");
         }
 
         return cache;
@@ -178,8 +227,8 @@ public static class BoardGeneration
             {
                 arrowHeads.Add(new ArrowHeadData
                 {
-                    head = new(x, y),
-                    next = new(x, y + 1),
+                    head = new(x, y + 1),
+                    next = new(x, y),
                     direction = Arrow.Direction.Up
                 });
             }
@@ -192,8 +241,8 @@ public static class BoardGeneration
             {
                 arrowHeads.Add(new ArrowHeadData
                 {
-                    head = new(x, y + 1),
-                    next = new(x, y),
+                    head = new(x, y),
+                    next = new(x, y + 1),
                     direction = Arrow.Direction.Down
                 });
             }
@@ -201,9 +250,9 @@ public static class BoardGeneration
         return arrowHeads;
     }
 
-    private static bool DoesArrowCandidateCauseCycle(Board board, List<Cell> currentBody, Arrow.Direction direction, BoardCacheData cache)
+    private static bool DoesArrowCandidateCauseCycle(Board board, Cell head, HashSet<Cell> currentBody, Arrow.Direction direction, BoardCacheData cache)
     {
-        Cell rayOrigin = currentBody[0];
+        Cell rayOrigin = head;
         Arrow.Direction rayDirection = direction;
         HashSet<Arrow> visitedArrows = new();
 
@@ -211,7 +260,7 @@ public static class BoardGeneration
         {
             (int dx, int dy) = Arrow.GetDirectionStep(rayDirection);
             Cell cursor = new(rayOrigin.X + dx, rayOrigin.Y + dy);
-            Arrow hitArrow = null;
+            Arrow? hitArrow = null;
 
             while (board.Contains(cursor))
             {
@@ -245,17 +294,19 @@ public static class BoardGeneration
         }
     }
 
-    private struct BoardCacheData
+    private class BoardCacheData
     {
-        public List<ArrowHeadData> availableArrowHeads;
-        public Arrow[,] occupancy;
+        public int version;
+        public required List<ArrowHeadData> availableArrowHeads;
+        public required Arrow?[,] occupancy;
+        public required List<ArrowHeadData>[,] candidateLookup;
     }
 
     private sealed class ArrowHeadData
     {
         public Cell head;
         public Cell next;
-        public List<Cell> Body => new() { head, next };
+        public HashSet<Cell> Body => new() { head, next };
         public Arrow.Direction direction;
     }
 }
