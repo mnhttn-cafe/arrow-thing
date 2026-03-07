@@ -21,13 +21,13 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore
-        run: dotnet restore tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj
+        run: dotnet restore tests/ArrowThing.Tests/ArrowThing.Tests.csproj
 
       - name: Validate whitespace formatting
-        run: dotnet format whitespace tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --verify-no-changes --no-restore
+        run: dotnet format whitespace tests/ArrowThing.Tests/ArrowThing.Tests.csproj --verify-no-changes --no-restore
 
       - name: Validate code style
-        run: dotnet format style tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --verify-no-changes --severity warn --no-restore
+        run: dotnet format style tests/ArrowThing.Tests/ArrowThing.Tests.csproj --verify-no-changes --severity warn --no-restore
 
       - name: Run tests
-        run: dotnet test tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --configuration Debug --nologo --no-restore
+        run: dotnet test tests/ArrowThing.Tests/ArrowThing.Tests.csproj --configuration Debug --nologo --no-restore

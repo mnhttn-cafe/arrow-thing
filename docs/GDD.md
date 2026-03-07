@@ -210,9 +210,11 @@
   - Not a current explicit target, but may emerge naturally during mode and multiplayer testing.
 
 ## Open Questions
-- First-pass 20x20 defaults:
-  - Exact length-distribution skew parameters.
-  - Target arrow count baseline (to be selected from playtest data after generator implementation).
+- None currently open.
+
+## Resolved Questions
+- **Target arrow count**: Do not target a fixed count. Provide a maximum (`board area / min arrow size`) and let generation stop naturally when no valid candidates remain.
+- **Length distribution**: Controlling the distribution precisely is not feasible without significant performance cost as the board fills. Accept that arrow lengths become less controllable at high density; this is an acceptable constraint given generation speed requirements.
 
 ## Changelog
 - 2026-02-25: Created initial GDD skeleton in `docs/GDD.md`.
@@ -221,3 +223,4 @@
 - 2026-02-25: Revised to v0.4 with concrete generation targets, top-out garbage insertion rule, precise timing/replay direction, and discrete collision-check clarifications.
 - 2026-02-25: Revised to v0.5 with JSON replay format, tie-allowed policy, and generator-playtest-driven arrow-count decision.
 - 2026-02-28: Revised to v0.6 with updated generation bounds language (minimum-only rule with mode-specific practical caps).
+- 2026-03-06: Closed open questions on arrow count and length distribution based on generation rewrite experience.
