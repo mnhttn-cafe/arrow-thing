@@ -9,10 +9,10 @@ public class GenerationTests
     // Mirrors the private BoardGeneration.IsInRay for postcondition checks.
     private static bool IsInRay(Cell target, Cell head, Arrow.Direction direction) => direction switch
     {
-        Arrow.Direction.Up    => target.X == head.X && target.Y > head.Y,
-        Arrow.Direction.Down  => target.X == head.X && target.Y < head.Y,
+        Arrow.Direction.Up => target.X == head.X && target.Y > head.Y,
+        Arrow.Direction.Down => target.X == head.X && target.Y < head.Y,
         Arrow.Direction.Right => target.Y == head.Y && target.X > head.X,
-        Arrow.Direction.Left  => target.Y == head.Y && target.X < head.X,
+        Arrow.Direction.Left => target.Y == head.Y && target.X < head.X,
         _ => false
     };
 
