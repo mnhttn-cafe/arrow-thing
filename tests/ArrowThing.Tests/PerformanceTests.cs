@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using NUnit.Framework;
 
-[TestFixture]
+[TestFixture, Category("Performance")]
 public class PerformanceTests
 {
     private static void Run(int w, int h, int minLen, int maxLen, int deadEndLimit, int seed = 0)
