@@ -297,9 +297,9 @@ public static class BoardGeneration
     private class BoardCacheData
     {
         public int version;
-        public required List<ArrowHeadData> availableArrowHeads;
-        public required Arrow?[,] occupancy;
-        public required List<ArrowHeadData>[,] candidateLookup;
+        public List<ArrowHeadData> availableArrowHeads = null!;
+        public Arrow?[,] occupancy = null!;
+        public List<ArrowHeadData>[,] candidateLookup = null!;
     }
 
     private sealed class ArrowHeadData
