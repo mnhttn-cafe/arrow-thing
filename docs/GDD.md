@@ -6,7 +6,7 @@
 - Platform(s): Mobile first, desktop supported during development
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
 - Status: Draft v0.6
-- Last Updated: 2026-02-28
+- Last Updated: 2026-03-06
 
 ## High Concept
 - One-sentence pitch: Clear winding grid-based arrows as fast as possible, then weaponize your speed against opponents by sending garbage.

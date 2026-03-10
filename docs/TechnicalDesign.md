@@ -32,7 +32,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### `Cell` (`readonly struct`)
 
-- Immutable value type with `X`, `Y`. Y increases downward.
+- Immutable value type with `X`, `Y`. Y increases upward.
 - Implements `IEquatable<Cell>` for use in `HashSet<Cell>` and `Dictionary` keying.
 
 ### `Arrow.Direction` (`enum`)
@@ -79,7 +79,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ## Testing Strategy
 
 - Domain logic must be testable without Unity. Unity is used only for graphics; the test suite should not depend on it.
-- Tests live in a standalone .NET NUnit project at `tests/ArrowThing.Tests`. The original project (`tests/ArrowThing.Model.Tests`) was removed because it depended on the old `BoardModel`/`BoardGenerator` APIs. It will be recreated once the TODO bugs are resolved and the API is stable.
+- Tests live in a standalone .NET NUnit project at `tests/ArrowThing.Tests`, with no Unity dependency.
 - Priority test areas:
   - head-direction derivation
   - clearability / ray obstruction logic
