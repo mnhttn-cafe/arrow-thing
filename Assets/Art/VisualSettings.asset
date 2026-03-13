@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bfc8e9f9d54aa447b7d4e8b9e74b30b, type: 3}
+  m_Name: VisualSettings
+  m_EditorClassIdentifier: Assembly-CSharp::VisualSettings
+  backgroundColor: {r: 0.102, g: 0.102, b: 0.18, a: 1}
+  gridDotColor: {r: 0.18, g: 0.227, b: 0.349, a: 1}
+  arrowBodyColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
+  boardDotSprite: {fileID: 0}
+  arrowHeadSprite: {fileID: 0}
+  arrowBodyMaterial: {fileID: 0}
+  rejectFlashColor: {r: 1, g: 0.267, b: 0.267, a: 1}
+  rejectFlashDuration: 0.35
+  rejectFlashCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
