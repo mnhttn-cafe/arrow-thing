@@ -8,26 +8,19 @@ on:
       - master
 
 jobs:
-  validate:
+  test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Run EditMode tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
-          dotnet-version: 8.0.x
-
-      - name: Restore
-        run: dotnet restore tests/ArrowThing.Tests/ArrowThing.Tests.csproj
-
-      - name: Validate whitespace formatting
-        run: dotnet format whitespace tests/ArrowThing.Tests/ArrowThing.Tests.csproj --verify-no-changes --no-restore
-
-      - name: Validate code style
-        run: dotnet format style tests/ArrowThing.Tests/ArrowThing.Tests.csproj --verify-no-changes --severity warn --no-restore
-
-      - name: Run tests
-        run: dotnet test tests/ArrowThing.Tests/ArrowThing.Tests.csproj --configuration Debug --nologo --no-restore --filter "TestCategory!=Performance"
+          testMode: EditMode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: EditMode tests
+          customParameters: -nographics

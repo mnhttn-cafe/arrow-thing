@@ -25,6 +25,7 @@ coverage/
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -50,4 +51,3 @@ Thumbs.db
 
 # Keep package lock file tracked
 ![Pp]ackages/packages-lock.json
-!tests/**/*.csproj

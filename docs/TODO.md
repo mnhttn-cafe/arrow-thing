@@ -6,8 +6,12 @@ Goal: a functional but bare-bones board. Display a generated board, pan/zoom the
 
 ## Domain additions
 
-- [ ] Add `IsClearable(Arrow arrow, Board board)` — static method, probably on `BoardGeneration` or a small `BoardRules` file if it grows. Walk the forward ray from the head using `Arrow.GetDirectionStep` + `Board.Contains`; if any cell along it is occupied (by any arrow other than self), return false. This is the same logic as the inner ray-walk in `DoesArrowCandidateCauseCycle`, just read-only.
-  - Add NUnit tests: blocked ray, clear ray, self not blocking, head at board edge.
+- [x] **Occupancy moved into `Board`** (`Assets/Scripts/Models/Board.cs`):
+  - `Board` now owns `Arrow?[,] _occupancy`, maintained atomically in `AddArrow`/`RemoveArrow`.
+  - `GetArrowAt(Cell) → Arrow?` — returns the arrow at a cell, or null if empty/out-of-bounds. Enables hit-testing tap coordinates against the grid without defining per-arrow tappable regions.
+  - `IsClearable(Arrow) → bool` — walks the forward ray from the head; returns false if any other arrow occupies a ray cell.
+  - `BoardGeneration.BoardCacheData` no longer owns its own `occupancy` array; all occupancy reads now go through `board.GetArrowAt()`. `DoesArrowCandidateCauseCycle` and `CompleteArrowTail` no longer take `cache` for occupancy purposes.
+  - NUnit tests added to `BoardTests.cs`: `GetArrowAt` (after add, empty cell, after remove, out-of-bounds), `IsClearable` (empty ray, blocked ray, head at edge, own cells don't block self). All 47 tests pass.
 
 ---
 
@@ -31,7 +35,7 @@ Goal: a functional but bare-bones board. Display a generated board, pan/zoom the
   - Owns a `Dictionary<Arrow, ArrowView>` mapping.
   - On init: spawns one `ArrowView` per arrow.
   - Exposes `RemoveArrow(Arrow)` — destroys the corresponding `ArrowView` and calls `Board.RemoveArrow`.
-  - On arrow removed: refresh clearability highlight on remaining arrows.
+  - On arrow removed: no clearability highlight refresh needed — clearable arrows are not highlighted. Failed attempts trigger a reject flash on the arrow instead.
 - [ ] Add `BoardGridRenderer` MonoBehaviour (or static helper):
   - Draws dotted background grid using a grid of small dot sprites.
   - Dots at each integer cell center. Board boundary outlined with a thin border sprite/line.
@@ -73,9 +77,10 @@ Confirmed approach: **procedural mesh** with arc-length UVs, sharp path corners,
 ## Input & interaction
 
 - [ ] Add `InputHandler` MonoBehaviour (or integrate into `GameController`):
+  - Use the **Unity Input System** with an `InputActions` asset (not the legacy `Input` class).
   - On left-click: raycast from camera at mouse position.
-  - Determine which arrow was hit: convert mouse world pos to nearest cell (`WorldToCell`), look up arrow from `board.Arrows`.
-  - Call `IsClearable(arrow, board)`. If yes: `boardView.RemoveArrow(arrow)`. If no: `arrowView.PlayRejectFlash()`.
+  - Determine which arrow was hit: convert mouse world pos to nearest cell (`WorldToCell`), call `board.GetArrowAt(cell)` — no per-arrow collider/tappable region needed.
+  - Call `board.IsClearable(arrow)`. If yes: `boardView.RemoveArrow(arrow)`. If no: `arrowView.PlayRejectFlash()`.
 
 ---
 
@@ -84,11 +89,12 @@ Confirmed approach: **procedural mesh** with arc-length UVs, sharp path corners,
 - [ ] **`Assets/Art/Sprites/ArrowHead.png`** — simple filled triangle or chevron pointing right (Unity rotates via transform). ~64×64 px. Pivot at the flat base center. White so the shader/tint controls color.
 - [ ] **`Assets/Art/Sprites/Dot.png`** — small filled circle, ~12×12 px, for the grid background. White (tint in code).
 - [ ] **`Assets/Art/Shaders/ArrowBody.shader`** (or Shader Graph) — see Arrow rendering section above.
-- [ ] **Color palette** (define as constants or a `ScriptableObject` `ColorPalette`):
-  - Background: near-black (e.g. `#1A1A2E`)
-  - Grid dot: muted blue-grey (`#2E3A59`)
-  - Arrow body default: light grey-white (`#D0D8E8`)
-  - Arrow reject flash: red (e.g. `#FF4444`)
+- [ ] **`VisualSettings` ScriptableObject** — a single container for all visual customization, replacing the standalone `ColorPalette` idea. Covers colors and visual assets in one place:
+  - Colors: background (`#1A1A2E`), grid dot (`#2E3A59`), arrow body default (`#D0D8E8`), arrow reject flash (`#FF4444`)
+  - Board dot sprite reference
+  - Arrow body material reference
+  - Arrowhead sprite reference
+  - Reject flash parameters (color, duration, curve) — so skins/themes can override flash behavior without code changes
 
 ---
 
