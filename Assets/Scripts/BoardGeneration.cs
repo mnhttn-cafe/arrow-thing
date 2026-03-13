@@ -31,7 +31,6 @@ public static class BoardGeneration
             HashSet<ArrowHeadData> toRemove = new();
             foreach (Cell c in arrow!.Cells)
             {
-                boardCache.occupancy[c.X, c.Y] = arrow;
                 foreach (ArrowHeadData stale in boardCache.candidateLookup[c.X, c.Y])
                     toRemove.Add(stale);
                 boardCache.candidateLookup[c.X, c.Y].Clear();
@@ -52,15 +51,15 @@ public static class BoardGeneration
             int headIndex = random.Next(cache.availableArrowHeads.Count);
             ArrowHeadData candidateArrowHead = cache.availableArrowHeads[headIndex];
 
-            if (cache.occupancy[candidateArrowHead.head.X, candidateArrowHead.head.Y] != null ||
-                cache.occupancy[candidateArrowHead.next.X, candidateArrowHead.next.Y] != null ||
-                DoesArrowCandidateCauseCycle(board, candidateArrowHead.head, candidateArrowHead.Body, candidateArrowHead.direction, cache))
+            if (board.GetArrowAt(candidateArrowHead.head) != null ||
+                board.GetArrowAt(candidateArrowHead.next) != null ||
+                DoesArrowCandidateCauseCycle(board, candidateArrowHead.head, candidateArrowHead.Body, candidateArrowHead.direction))
             {
                 cache.availableArrowHeads.RemoveAt(headIndex);
                 continue;
             }
 
-            List<Cell> tail = CompleteArrowTail(board, targetLength, candidateArrowHead, random, cache, deadEndLimit);
+            List<Cell> tail = CompleteArrowTail(board, targetLength, candidateArrowHead, random, deadEndLimit);
             if (tail.Count < minLength)
             {
                 cache.availableArrowHeads.RemoveAt(headIndex);
@@ -74,7 +73,7 @@ public static class BoardGeneration
         return false;
     }
 
-    private static List<Cell> CompleteArrowTail(Board board, int targetLength, ArrowHeadData headData, Random random, BoardCacheData cache, int deadEndLimit)
+    private static List<Cell> CompleteArrowTail(Board board, int targetLength, ArrowHeadData headData, Random random, int deadEndLimit)
     {
         List<Cell> path = new() { headData.head, headData.next };
         HashSet<Cell> visited = new(path);
@@ -96,12 +95,12 @@ public static class BoardGeneration
                 if (visited.Contains(neighbor)) continue;
                 if (!board.Contains(neighbor)) continue;
                 if (IsInRay(neighbor, headData.head, headData.direction)) continue;
-                if (cache.occupancy[neighbor.X, neighbor.Y] != null) continue;
+                if (board.GetArrowAt(neighbor) != null) continue;
 
                 path.Add(neighbor);
                 visited.Add(neighbor);
 
-                if (!DoesArrowCandidateCauseCycle(board, headData.head, visited, headData.direction, cache))
+                if (!DoesArrowCandidateCauseCycle(board, headData.head, visited, headData.direction))
                 {
                     if (path.Count > best.Count) best = new(path);
                     anyValid = true;
@@ -173,7 +172,6 @@ public static class BoardGeneration
             {
                 version = board.Version,
                 availableArrowHeads = candidateArrowHeads,
-                occupancy = new Arrow[board.Width, board.Height],
                 candidateLookup = lookup
             };
             boardCacheDict[board] = cache;
@@ -250,7 +248,7 @@ public static class BoardGeneration
         return arrowHeads;
     }
 
-    private static bool DoesArrowCandidateCauseCycle(Board board, Cell head, HashSet<Cell> currentBody, Arrow.Direction direction, BoardCacheData cache)
+    private static bool DoesArrowCandidateCauseCycle(Board board, Cell head, HashSet<Cell> currentBody, Arrow.Direction direction)
     {
         Cell rayOrigin = head;
         Arrow.Direction rayDirection = direction;
@@ -269,7 +267,7 @@ public static class BoardGeneration
                     return true;
                 }
 
-                hitArrow = cache.occupancy[cursor.X, cursor.Y];
+                hitArrow = board.GetArrowAt(cursor);
 
                 if (hitArrow != null)
                 {
@@ -298,7 +296,6 @@ public static class BoardGeneration
     {
         public int version;
         public List<ArrowHeadData> availableArrowHeads = null!;
-        public Arrow?[,] occupancy = null!;
         public List<ArrowHeadData>[,] candidateLookup = null!;
     }
 

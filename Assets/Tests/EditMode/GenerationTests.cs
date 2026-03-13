@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using NUnit.Framework;
@@ -21,8 +20,8 @@ public class GenerationTests
     {
         var board1 = new Board(6, 6);
         var board2 = new Board(6, 6);
-        BoardGeneration.FillBoard(board1, 2, 5, new Random(42));
-        BoardGeneration.FillBoard(board2, 2, 5, new Random(42));
+        BoardGeneration.FillBoard(board1, 2, 5, new System.Random(42));
+        BoardGeneration.FillBoard(board2, 2, 5, new System.Random(42));
 
         Assert.That(board1.Arrows.Count, Is.EqualTo(board2.Arrows.Count));
         for (int i = 0; i < board1.Arrows.Count; i++)
@@ -33,7 +32,7 @@ public class GenerationTests
     public void FillBoard_NoCellsOverlap()
     {
         var board = new Board(6, 6);
-        BoardGeneration.FillBoard(board, 2, 5, new Random(7));
+        BoardGeneration.FillBoard(board, 2, 5, new System.Random(7));
 
         var seen = new HashSet<Cell>();
         foreach (var arrow in board.Arrows)
@@ -46,7 +45,7 @@ public class GenerationTests
     public void FillBoard_AllCellsWithinBounds()
     {
         var board = new Board(5, 7);
-        BoardGeneration.FillBoard(board, 2, 4, new Random(13));
+        BoardGeneration.FillBoard(board, 2, 4, new System.Random(13));
 
         foreach (var arrow in board.Arrows)
             foreach (var cell in arrow.Cells)
@@ -59,7 +58,7 @@ public class GenerationTests
     {
         const int minLength = 3;
         var board = new Board(6, 6);
-        BoardGeneration.FillBoard(board, minLength, 6, new Random(99));
+        BoardGeneration.FillBoard(board, minLength, 6, new System.Random(99));
 
         foreach (var arrow in board.Arrows)
             Assert.That(arrow.Cells.Count, Is.GreaterThanOrEqualTo(minLength),
@@ -70,7 +69,7 @@ public class GenerationTests
     public void FillBoard_NoTailCellInOwnRay()
     {
         var board = new Board(6, 6);
-        BoardGeneration.FillBoard(board, 2, 6, new Random(55));
+        BoardGeneration.FillBoard(board, 2, 6, new System.Random(55));
 
         foreach (var arrow in board.Arrows)
             for (int i = 1; i < arrow.Cells.Count; i++)
@@ -82,7 +81,7 @@ public class GenerationTests
     public void GenerateArrows_ExactAmountRequested_ReturnsTrue()
     {
         var board = new Board(8, 8);
-        bool success = BoardGeneration.GenerateArrows(board, 2, 3, 4, new Random(1), out int created);
+        bool success = BoardGeneration.GenerateArrows(board, 2, 3, 4, new System.Random(1), out int created);
         Assert.That(success, Is.True);
         Assert.That(created, Is.EqualTo(4));
         Assert.That(board.Arrows.Count, Is.EqualTo(4));
@@ -93,12 +92,12 @@ public class GenerationTests
     {
         var board = new Board(6, 6);
         // Seed the cache by running generation.
-        BoardGeneration.GenerateArrows(board, 2, 3, 1, new Random(0), out _);
+        BoardGeneration.GenerateArrows(board, 2, 3, 1, new System.Random(0), out _);
         // Mutate the board outside of BoardGeneration.
-        board.AddArrow(new Arrow([new(0, 1), new(0, 0)]));
+        board.AddArrow(new Arrow(new Cell[] { new(0, 1), new(0, 0) }));
         // Next generation call should detect the desync.
-        Assert.Throws<InvalidOperationException>(() =>
-            BoardGeneration.GenerateArrows(board, 2, 3, 1, new Random(0), out _));
+        Assert.Throws<System.InvalidOperationException>(() =>
+            BoardGeneration.GenerateArrows(board, 2, 3, 1, new System.Random(0), out _));
     }
 
     [Test]
@@ -108,10 +107,10 @@ public class GenerationTests
         for (int i = 0; i < 100; i++)
         {
             var board = new Board(10, 10);
-            BoardGeneration.FillBoard(board, 2, 5, new Random(i));
+            BoardGeneration.FillBoard(board, 2, 5, new System.Random(i));
         }
         sw.Stop();
         Assert.That(sw.ElapsedMilliseconds, Is.LessThan(5000),
-            $"100x FillBoard(10×10) took {sw.ElapsedMilliseconds}ms, expected < 5000ms.");
+            $"100x FillBoard(10x10) took {sw.ElapsedMilliseconds}ms, expected < 5000ms.");
     }
 }

@@ -1,4 +1,4 @@
 ﻿<Solution>
-  <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="tests/ArrowThing.Tests/ArrowThing.Tests.csproj" />
+  <Project Path="ArrowThing.csproj" />
+  <Project Path="ArrowThing.Tests.EditMode.csproj" />
 </Solution>

@@ -36,7 +36,7 @@ Static class. Key design points:
 
 ## Testing
 
-Tests live in `tests/ArrowThing.Tests` — a plain .NET 8 NUnit project with no Unity dependency. Domain source files are linked via glob in the `.csproj`. Run with `dotnet test tests/ArrowThing.Tests`. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/version/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, cache desync detection, and a 100-iteration timing gate.
+Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/version/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, cache desync detection, and a 100-iteration timing gate. Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
 
 ## Key Design Rules
 

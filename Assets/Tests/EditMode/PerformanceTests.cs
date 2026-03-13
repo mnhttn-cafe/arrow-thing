@@ -1,17 +1,16 @@
-using System;
 using System.Diagnostics;
 using NUnit.Framework;
 
-[TestFixture, Category("Performance")]
+[TestFixture, Category("Performance"), Explicit("Run manually — these are slow benchmarks")]
 public class PerformanceTests
 {
     private static void Run(int w, int h, int minLen, int maxLen, int deadEndLimit, int seed = 0)
     {
         var board = new Board(w, h);
         var sw = Stopwatch.StartNew();
-        BoardGeneration.FillBoard(board, minLen, maxLen, new Random(seed), deadEndLimit);
+        BoardGeneration.FillBoard(board, minLen, maxLen, new System.Random(seed), deadEndLimit);
         sw.Stop();
-        TestContext.Out.WriteLine(
+        UnityEngine.Debug.Log(
             $"{w}x{h}  len=[{minLen},{maxLen}]  deadEnds={deadEndLimit,-5}  arrows={board.Arrows.Count}  cells={TotalCells(board)}  time={sw.ElapsedMilliseconds}ms");
     }
 
@@ -22,7 +21,7 @@ public class PerformanceTests
         return n;
     }
 
-    // Sweep dead-end limits on the expensive 50x50 VeryLong case
+    // Sweep dead-end limits on the expensive 50x50 case
     [Test] public void Perf_50x50_VeryLong_DeadEnd10() => Run(50, 50, 10, 50, 10);
     [Test] public void Perf_50x50_VeryLong_DeadEnd20() => Run(50, 50, 10, 50, 20);
     [Test] public void Perf_50x50_VeryLong_DeadEnd50() => Run(50, 50, 10, 50, 50);
