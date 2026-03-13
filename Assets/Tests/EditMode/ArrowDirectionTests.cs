@@ -1,4 +1,3 @@
-using System;
 using NUnit.Framework;
 
 [TestFixture]
@@ -8,31 +7,31 @@ public class ArrowDirectionTests
 
     [Test]
     public void HeadDirection_NextBelow_IsUp()
-        => Assert.That(new Arrow([new(5, 5), new(5, 4)]).HeadDirection, Is.EqualTo(Arrow.Direction.Up));
+        => Assert.That(new Arrow(new Cell[] { new(5, 5), new(5, 4) }).HeadDirection, Is.EqualTo(Arrow.Direction.Up));
 
     [Test]
     public void HeadDirection_NextAbove_IsDown()
-        => Assert.That(new Arrow([new(5, 5), new(5, 6)]).HeadDirection, Is.EqualTo(Arrow.Direction.Down));
+        => Assert.That(new Arrow(new Cell[] { new(5, 5), new(5, 6) }).HeadDirection, Is.EqualTo(Arrow.Direction.Down));
 
     [Test]
     public void HeadDirection_NextRight_IsLeft()
-        => Assert.That(new Arrow([new(5, 5), new(6, 5)]).HeadDirection, Is.EqualTo(Arrow.Direction.Left));
+        => Assert.That(new Arrow(new Cell[] { new(5, 5), new(6, 5) }).HeadDirection, Is.EqualTo(Arrow.Direction.Left));
 
     [Test]
     public void HeadDirection_NextLeft_IsRight()
-        => Assert.That(new Arrow([new(5, 5), new(4, 5)]).HeadDirection, Is.EqualTo(Arrow.Direction.Right));
+        => Assert.That(new Arrow(new Cell[] { new(5, 5), new(4, 5) }).HeadDirection, Is.EqualTo(Arrow.Direction.Right));
 
     [Test]
     public void Constructor_NonAdjacentCells_Throws()
-        => Assert.Throws<ArgumentException>(() => _ = new Arrow([new(0, 0), new(2, 0)]));
+        => Assert.Throws<System.ArgumentException>(() => _ = new Arrow(new Cell[] { new(0, 0), new(2, 0) }));
 
     [Test]
     public void Constructor_SingleCell_Throws()
-        => Assert.Throws<ArgumentException>(() => _ = new Arrow([new(0, 0)]));
+        => Assert.Throws<System.ArgumentException>(() => _ = new Arrow(new Cell[] { new(0, 0) }));
 
     [Test]
     public void Constructor_NullCells_Throws()
-        => Assert.Throws<ArgumentNullException>(() => _ = new Arrow(null!));
+        => Assert.Throws<System.ArgumentNullException>(() => _ = new Arrow(null!));
 
     // GetDirectionStep: Y-up convention
 
@@ -55,7 +54,7 @@ public class ArrowDirectionTests
     [Test]
     public void HeadCell_IsFirstCell()
     {
-        var arrow = new Arrow([new(3, 7), new(3, 6), new(3, 5)]);
+        var arrow = new Arrow(new Cell[] { new(3, 7), new(3, 6), new(3, 5) });
         Assert.That(arrow.HeadCell, Is.EqualTo(new Cell(3, 7)));
     }
 
@@ -63,7 +62,7 @@ public class ArrowDirectionTests
     public void LongerArrow_DirectionDerivedFromFirstTwoCellsOnly()
     {
         // Head at (0,0), next at (1,0) — faces Left regardless of remaining cells
-        var arrow = new Arrow([new(0, 0), new(1, 0), new(2, 0), new(2, 1)]);
+        var arrow = new Arrow(new Cell[] { new(0, 0), new(1, 0), new(2, 0), new(2, 1) });
         Assert.That(arrow.HeadDirection, Is.EqualTo(Arrow.Direction.Left));
     }
 }
