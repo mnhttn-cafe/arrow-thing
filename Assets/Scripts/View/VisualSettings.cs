@@ -5,8 +5,8 @@ public sealed class VisualSettings : ScriptableObject
 {
     [Header("Colors")]
     public Color backgroundColor = new Color(0.102f, 0.102f, 0.180f);   // #1A1A2E
-    public Color gridDotColor    = new Color(0.180f, 0.227f, 0.349f);   // #2E3A59
-    public Color arrowBodyColor  = new Color(0.816f, 0.847f, 0.910f);   // #D0D8E8
+    public Color gridDotColor = new Color(0.180f, 0.227f, 0.349f);   // #2E3A59
+    public Color arrowBodyColor = new Color(0.816f, 0.847f, 0.910f);   // #D0D8E8
 
     [Header("Sprites")]
     public Sprite? boardDotSprite;

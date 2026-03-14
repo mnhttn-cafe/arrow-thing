@@ -104,9 +104,9 @@ public static class ArrowMeshBuilder
             float uHead = arcLength[0];
 
             int baseIdx = vertices.Count;
-            vertices.Add(baseLeft);  uvs.Add(new Vector2(uHead, 0f));
+            vertices.Add(baseLeft); uvs.Add(new Vector2(uHead, 0f));
             vertices.Add(baseRight); uvs.Add(new Vector2(uHead, 1f));
-            vertices.Add(tip);       uvs.Add(new Vector2(uHead, 0.5f));
+            vertices.Add(tip); uvs.Add(new Vector2(uHead, 0.5f));
 
             triangles.Add(baseIdx + 0);
             triangles.Add(baseIdx + 1);
