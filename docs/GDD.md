@@ -39,7 +39,7 @@
   - Valid clear removes arrow after clear animation.
   - Invalid clear attempt plays fail animation and returns to original state.
 - Resource systems:
-  - MVP: No punishment resource for misclicks; time loss is the only penalty.
+  - MVP: No explicit punishment for misclicks. The only cost is the player's own time spent on the failed attempt.
   - PvP planned: garbage meter and packet exchange.
 
 ## Arrows System
@@ -192,11 +192,13 @@
 
 ## Production Scope
 - MVP definition:
-  - Minimal start menu.
-  - Procedural arrow generation.
-  - Core click/tap clear loop with success/fail animations.
-  - Timer UI.
-  - Simple clear screen.
+  - Minimal start menu. **[Not started — scene exists but empty]**
+  - Procedural arrow generation. **[Done]**
+  - Core click/tap clear loop with success/fail animations. **[Done]**
+  - Timer UI. **[Not started]**
+  - Simple clear screen. **[Not started]**
+  - Audio feedback for success/fail/clear. **[Not started]**
+  - Build configuration (all gameplay scenes in build settings). **[Not started]**
 - Stretch goals:
   - Fixed-count challenge variants.
   - Leaderboards by board profile.

@@ -11,32 +11,16 @@ This project is early-stage, so keep contributions small, focused, and easy to r
 
 ## Testing Standards
 
-- Changes to Unity-independent classes must include NUnit coverage in `tests/ArrowThing.Model.Tests`.
+- Changes to Unity-independent classes must include NUnit coverage in `Assets/Tests/EditMode/`.
+- Run tests via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab).
 - Pull requests should not reduce coverage for touched Unity-independent classes.
 - Target at least `90%` line coverage on touched Unity-independent classes, and aim higher for core rules.
 - If a class cannot be covered well, document why in the pull request.
-
-## Local Commands
-
-Run model tests:
-
-```powershell
-dotnet test tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --configuration Debug --nologo
-```
-
-Collect coverage:
-
-```powershell
-dotnet test tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --configuration Debug --nologo --collect "XPlat Code Coverage"
-```
-
-Coverage files are written under `tests/ArrowThing.Model.Tests/TestResults/`.
 
 ## Docs Consistency
 
 - If you spot a docs inconsistency, either fix it in the same PR or call it out in the PR and open an issue.
 - Keep `docs/TechnicalDesign.md` aligned with architecture/class-structure changes.
-- Keep `docs/BoardGenerationPlan.md` aligned with current generator behavior while treating it as high-level design notes.
 
 ## Technical Design Document (TDDoc)
 

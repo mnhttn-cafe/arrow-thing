@@ -22,7 +22,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - Domain layer (Unity-independent):
   - Location: `Assets/Scripts/`
   - Contains board state, arrow data, and generation logic.
-  - Must be testable via .NET unit tests without Unity runtime.
+  - Must be testable without Unity runtime dependencies (tests use Unity Test Framework / NUnit in `Assets/Tests/EditMode/`).
 - Unity adapter layer (Unity-dependent):
   - Input handling, rendering, animation, scene wiring, and UI.
   - Should translate user actions to domain operations and reflect resulting state.
@@ -148,7 +148,7 @@ This approach is necessary because arrows are polylines with bends — a rigid `
 
 [CSharpier](https://csharpier.com/) (Roslyn-based, opinionated) owns all C# formatting. Configured as a local dotnet tool (`.config/dotnet-tools.json`, pinned version). Respects `.editorconfig` for `indent_size`, `indent_style`, and `max_line_length`.
 
-IDE0055 (the IDE's built-in formatting diagnostic) is disabled in `.editorconfig` to avoid conflicting with CSharpier's output. IDE0001 (simplify fully qualified names) is left at default — it shows IDE squiggles in VS/Rider but cannot be enforced at build time (Roslyn marks it `EnforceOnBuild.Never`).
+IDE0055 (the IDE's built-in formatting diagnostic) is disabled in `.editorconfig` to avoid conflicting with CSharpier's output.
 
 Unity's Roslyn analyzer pipeline does not read `.editorconfig` during compilation — only `.ruleset` files. For IDE-time analysis, `.editorconfig` works normally in VS/Rider.
 

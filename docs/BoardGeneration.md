@@ -172,7 +172,7 @@ Returns the 4 orthogonal neighbors in fixed order (right, left, up, down).
 
 ## Performance
 
-Measured on .NET 8, Debug build, single-threaded, seed 0.
+Measured in Unity EditMode tests, single-threaded, seed 0.
 
 | Board | len=[2,5] | len=[5,20] | len=[10,50] |
 |-------|-----------|------------|-------------|
