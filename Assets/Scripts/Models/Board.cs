@@ -38,6 +38,18 @@ public sealed class Board
 
     public void AddArrow(Arrow arrow)
     {
+        if (arrow == null)
+            throw new System.ArgumentNullException(nameof(arrow));
+        if (_arrows.Contains(arrow))
+            throw new System.InvalidOperationException("Arrow is already on the board.");
+        foreach (Cell c in arrow.Cells)
+        {
+            if (!Contains(c))
+                throw new System.ArgumentException($"Cell ({c.X}, {c.Y}) is out of bounds for board {Width}x{Height}.");
+            if (_occupancy[c.X, c.Y] != null)
+                throw new System.InvalidOperationException($"Cell ({c.X}, {c.Y}) is already occupied.");
+        }
+
         _arrows.Add(arrow);
         foreach (Cell c in arrow.Cells) _occupancy[c.X, c.Y] = arrow;
 
@@ -90,6 +102,13 @@ public sealed class Board
 
     public void RemoveArrow(Arrow arrow)
     {
+        if (arrow == null)
+            throw new System.ArgumentNullException(nameof(arrow));
+        if (!_arrows.Contains(arrow))
+            throw new System.InvalidOperationException("Arrow is not on the board.");
+        if (!IsClearable(arrow))
+            throw new System.InvalidOperationException("Arrow is not clearable — it has unresolved dependencies.");
+
         _arrows.Remove(arrow);
         foreach (Cell c in arrow.Cells) _occupancy[c.X, c.Y] = null;
 
@@ -118,6 +137,24 @@ public sealed class Board
 
     /// <summary>Returns the arrow occupying <paramref name="cell"/>, or null if empty or out of bounds.</summary>
     public Arrow GetArrowAt(Cell cell) => Contains(cell) ? _occupancy[cell.X, cell.Y] : null;
+
+    /// <summary>
+    /// Returns the first arrow hit by walking the ray from <paramref name="arrow"/>'s head
+    /// in its <see cref="Arrow.HeadDirection"/>, or null if the ray is clear.
+    /// </summary>
+    public Arrow GetFirstInRay(Arrow arrow)
+    {
+        (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+        Cell cursor = new(arrow.HeadCell.X + dx, arrow.HeadCell.Y + dy);
+        while (Contains(cursor))
+        {
+            Arrow hit = _occupancy[cursor.X, cursor.Y];
+            if (hit != null && hit != arrow)
+                return hit;
+            cursor = new(cursor.X + dx, cursor.Y + dy);
+        }
+        return null;
+    }
 
     /// <summary>
     /// Returns true if <paramref name="arrow"/> can be cleared — no other arrow blocks its forward ray.
