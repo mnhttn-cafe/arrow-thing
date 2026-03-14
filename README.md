@@ -16,17 +16,20 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
 
 - Unity `6000.3.8f1`
 - C# models under `Assets/Scripts/Models`
-- NUnit model tests in `tests/ArrowThing.Model.Tests` (`net8.0`)
+- NUnit tests via Unity Test Framework in `Assets/Tests/EditMode`
 
 ## Local Development
 
 1. Open this folder in Unity Hub using editor version `6000.3.8f1`.
-2. Open the `Game` or `MainMenu` scene under `Assets/Scenes`.
-3. Run model tests from the repo root:
+2. Open the `Game` scene under `Assets/Scenes`.
+3. Run tests via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab).
+4. Set up the pre-commit hook:
 
-```powershell
-dotnet test tests/ArrowThing.Model.Tests/ArrowThing.Model.Tests.csproj --configuration Debug --nologo
+```bash
+git config core.hooksPath .githooks
 ```
+
+This enables formatting checks (no tabs, no trailing whitespace, final newlines, no fully qualified `System.Collections.Generic` usage) on staged `.cs` files.
 
 ## Contributing
 
@@ -45,6 +48,6 @@ See [`LICENSE`](LICENSE) for exact terms.
 ## Repository Layout
 
 - `Assets/Scripts/Models` - Core board/arrow domain logic
-- `tests/ArrowThing.Model.Tests` - Unit tests for model behavior
+- `Assets/Tests/EditMode` - Unit tests (Unity Test Framework)
 - `docs/GDD.md` - Game design direction and scope
 - `docs/TechnicalDesign.md` - Architecture and class-structure decisions
