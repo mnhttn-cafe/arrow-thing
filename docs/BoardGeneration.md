@@ -29,8 +29,9 @@ It is not responsible for gameplay removal logic or rendering.
 
 - `version`: last known `Board.Version` at time of sync. Compared against `board.Version` on every `GetOrCreateCache` call; throws `InvalidOperationException` on mismatch to catch external mutation early.
 - `availableArrowHeads`: pool of remaining unpruned 2-cell head candidates.
-- `occupancy`: `Arrow?[,]` grid lookup — maps each cell to the arrow occupying it, or `null`.
 - `candidateLookup`: `List<ArrowHeadData>[,]` reverse-lookup — maps each cell to the candidates whose `head` or `next` touches it. Used to efficiently prune stale candidates on arrow placement.
+
+Note: occupancy is owned by `Board` directly (`Board.GetArrowAt`), not cached here.
 
 ### `ArrowHeadData`
 
@@ -53,9 +54,8 @@ Flow:
 1. Fetch or create cache via `GetOrCreateCache(board)`.
 2. Repeatedly call `TryGenerateArrow(...)` until `createdArrows == amount` or candidates are exhausted.
 3. On each successful arrow:
-   - call `board.AddArrow(arrow)` (increments `board.Version`)
+   - call `board.AddArrow(arrow)` (increments `board.Version`, updates `Board`'s occupancy)
    - sync `boardCache.version = board.Version`
-   - stamp every arrow cell into `cache.occupancy`
    - collect stale candidates via `candidateLookup` and prune them from `availableArrowHeads`
 4. Return `createdArrows == amount`.
 
@@ -95,7 +95,7 @@ Neighbor filtering per step:
 - already in `visited`
 - out of bounds
 - lies on the candidate's head ray (`IsInRay`)
-- occupied by an existing arrow
+- occupied by an existing arrow (`board.GetArrowAt`)
 
 After adding a neighbor, `DoesArrowCandidateCauseCycle` runs on the current `visited` set. Only cycle-free extensions are recursed into.
 
@@ -118,7 +118,7 @@ This keeps the candidate pool clean without a full linear scan on every placemen
 
 ## Cycle Detection
 
-### `DoesArrowCandidateCauseCycle(Board board, Cell head, HashSet<Cell> currentBody, Arrow.Direction direction, BoardCacheData cache)`
+### `DoesArrowCandidateCauseCycle(Board board, Cell head, HashSet<Cell> currentBody, Arrow.Direction direction)`
 
 Determines whether placing the candidate body would create a cyclic clear dependency — i.e., a loop in the "blocks" graph where arrow A's ray is blocked by arrow B, B's ray is blocked by C, and so on back to A.
 

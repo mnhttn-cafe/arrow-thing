@@ -20,7 +20,10 @@ public static class ArrowMeshBuilder
     /// <param name="windowStart">Arc-length value at which the visible window begins.</param>
     /// <param name="windowEnd">Arc-length value at which the visible window ends. Pass
     /// <c>float.MaxValue</c> (or any value beyond total length) to show the full path.</param>
-    public static Mesh Build(Vector3[]? path, float width, float windowStart = 0f, float windowEnd = float.MaxValue)
+    /// <param name="headLength">Length of the arrowhead triangle beyond the last path point.
+    /// Pass 0 to omit the arrowhead.</param>
+    /// <param name="headWidthMultiplier">Half-base of the arrowhead as a multiple of body width.</param>
+    public static Mesh Build(Vector3[]? path, float width, float windowStart = 0f, float windowEnd = float.MaxValue, float headLength = 0f, float headWidthMultiplier = 1.2f)
     {
         if (path == null || path.Length < 2)
         {
@@ -83,6 +86,31 @@ public static class ArrowMeshBuilder
                     b - perp, b + perp, b - perp2, b + perp2,
                     uB, uB);
             }
+        }
+
+        // Arrowhead triangle at the head end of the path (path[0] is the head).
+        if (headLength > 0f && path.Length >= 2 && arcLength[0] >= windowStart && arcLength[0] <= wEnd)
+        {
+            Vector3 headPos = path[0];
+            Vector3 headDir = (path[0] - path[1]).normalized;
+            Vector3 headPerp = new Vector3(-headDir.y, headDir.x, 0f);
+
+            // Base of the triangle is wider than the body
+            float headHalfBase = width * headWidthMultiplier;
+            Vector3 baseLeft = headPos - headPerp * headHalfBase;
+            Vector3 baseRight = headPos + headPerp * headHalfBase;
+            Vector3 tip = headPos + headDir * headLength;
+
+            float uHead = arcLength[0];
+
+            int baseIdx = vertices.Count;
+            vertices.Add(baseLeft); uvs.Add(new Vector2(uHead, 0f));
+            vertices.Add(baseRight); uvs.Add(new Vector2(uHead, 1f));
+            vertices.Add(tip); uvs.Add(new Vector2(uHead, 0.5f));
+
+            triangles.Add(baseIdx + 0);
+            triangles.Add(baseIdx + 1);
+            triangles.Add(baseIdx + 2);
         }
 
         var mesh = new Mesh
