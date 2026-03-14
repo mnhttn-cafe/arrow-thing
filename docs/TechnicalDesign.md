@@ -49,9 +49,11 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### `Board` (`sealed class`)
 
-- Minimal container: grid dimensions (`Width`, `Height`) and `List<Arrow> Arrows`.
+- Grid dimensions (`Width`, `Height`) and `List<Arrow> Arrows`.
+- Owns `Arrow?[,] _occupancy`, maintained atomically in `AddArrow`/`RemoveArrow`.
 - `Contains(Cell)` performs bounds checking.
-- Does not own an occupancy map or legality logic — those live in `BoardGeneration`.
+- `GetArrowAt(Cell)` returns the arrow occupying a cell, or null.
+- `IsClearable(Arrow)` walks the forward ray from the head; returns false if any other arrow occupies a ray cell.
 
 ### `BoardGeneration` (`static class`)
 
@@ -78,8 +80,8 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ## Testing Strategy
 
-- Domain logic must be testable without Unity. Unity is used only for graphics; the test suite should not depend on it.
-- Tests live in a standalone .NET NUnit project at `tests/ArrowThing.Tests`, with no Unity dependency.
+- Domain logic must be testable without Unity runtime dependencies.
+- Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`.
 - Priority test areas:
   - head-direction derivation
   - clearability / ray obstruction logic
@@ -93,4 +95,5 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - 2026-02-28: Defined `BoardModel` as authoritative source for occupancy and legality checks.
 - 2026-02-28: Defined `BoardGenerator` as reusable source for initial fill and single-arrow generation.
 - 2026-02-28: Standardized this document as the source of truth for architecture and class-structure changes.
-- 2026-03-06: `generation-rewrite` branch refactored away from `BoardModel`/`BoardGenerator` toward minimal model classes (`Cell`, `Arrow`, `Board`) with game logic in static classes (`BoardGeneration`). Occupancy map and placement/removal API moved out of the model layer. Model classes are now intentionally minimal and self-contained.
+- 2026-03-06: `generation-rewrite` branch refactored away from `BoardModel`/`BoardGenerator` toward minimal model classes (`Cell`, `Arrow`, `Board`) with game logic in static classes (`BoardGeneration`). Model classes are now intentionally minimal and self-contained.
+- 2026-03-13: Occupancy and `IsClearable` moved into `Board`. View layer added: `GameController`, `CameraController`, `BoardView`, `BoardGridRenderer`, `ArrowView`, `InputHandler`, `BoardCoords`. Tests migrated from standalone .NET project to Unity Test Framework (`Assets/Tests/EditMode/`).
