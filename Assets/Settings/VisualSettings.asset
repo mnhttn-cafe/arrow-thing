@@ -21,6 +21,8 @@ MonoBehaviour:
   arrowHeadWidthMultiplier: 2
   gridDotScale: 1
   arrowBodyMaterial: {fileID: 2100000, guid: aa9f78cb7cbca1d4ca79624a882a1211, type: 2}
+  arrowHeadMaterial: {fileID: 2100000, guid: b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7, type: 2}
+  arrowHeadColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
   rejectFlashColor: {r: 1, g: 0.267, b: 0.267, a: 1}
   rejectFlashDuration: 0.35
   rejectFlashCurve:

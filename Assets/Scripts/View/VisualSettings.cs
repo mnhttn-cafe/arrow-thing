@@ -21,6 +21,10 @@ public sealed class VisualSettings : ScriptableObject
 
     [Header("Materials")]
     public Material arrowBodyMaterial;
+    public Material arrowHeadMaterial;
+
+    [Header("Arrow Head Color")]
+    public Color arrowHeadColor = new Color(0.816f, 0.847f, 0.910f);   // #D0D8E8
 
     [Header("Reject Flash")]
     public Color rejectFlashColor = new Color(1f, 0.267f, 0.267f);      // #FF4444
