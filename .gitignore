@@ -41,9 +41,29 @@ coverage/
 # Unity crash logs
 sysinfo.txt
 
+# Build outputs
+*.apk
+*.unitypackage
+
+# Asset Store Tools
+[Aa]ssets/AssetStoreTools*
+
+# Audio waveform cache
+*.reapeaks
+*.pk
+*.pkf
+*.asd
+
+# Gradle (Android builds)
+.gradle/
+
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Never ignore Asset meta files
+![Aa]ssets/**/*.meta
 
 # Claude Code
 .claude/

@@ -11,13 +11,15 @@ public sealed class Arrow
 
     public Arrow(IEnumerable<Cell> cells)
     {
-        _cells = cells == null
-            ? throw new ArgumentNullException(nameof(cells))
-            : new List<Cell>(cells);
+        _cells =
+            cells == null ? throw new ArgumentNullException(nameof(cells)) : new List<Cell>(cells);
 
         if (_cells.Count < 2)
         {
-            throw new ArgumentException("Arrow requires at least 2 cells to derive head direction.", nameof(cells));
+            throw new ArgumentException(
+                "Arrow requires at least 2 cells to derive head direction.",
+                nameof(cells)
+            );
         }
 
         HeadDirection = DeriveHeadDirection(_cells[0], _cells[1]);
@@ -31,7 +33,11 @@ public sealed class Arrow
             Direction.Right => (1, 0),
             Direction.Down => (0, -1),
             Direction.Left => (-1, 0),
-            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unsupported arrow direction.")
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(direction),
+                direction,
+                "Unsupported arrow direction."
+            ),
         };
     }
 
@@ -46,7 +52,7 @@ public sealed class Arrow
             (1, 0) => Direction.Left,
             (0, -1) => Direction.Up,
             (-1, 0) => Direction.Right,
-            _ => throw new ArgumentException("Head and next cells must be orthogonally adjacent.")
+            _ => throw new ArgumentException("Head and next cells must be orthogonally adjacent."),
         };
     }
 
@@ -55,6 +61,6 @@ public sealed class Arrow
         Up,
         Right,
         Down,
-        Left
+        Left,
     }
 }

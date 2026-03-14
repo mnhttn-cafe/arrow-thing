@@ -27,8 +27,8 @@ public sealed class Board
         _availableArrowHeads = CreateInitialArrowHeads();
         _candidateLookup = new List<ArrowHeadData>[Width, Height];
         for (int x = 0; x < Width; x++)
-            for (int y = 0; y < Height; y++)
-                _candidateLookup[x, y] = new List<ArrowHeadData>();
+        for (int y = 0; y < Height; y++)
+            _candidateLookup[x, y] = new List<ArrowHeadData>();
         foreach (ArrowHeadData candidate in _availableArrowHeads)
         {
             _candidateLookup[candidate.head.X, candidate.head.Y].Add(candidate);
@@ -45,13 +45,18 @@ public sealed class Board
         foreach (Cell c in arrow.Cells)
         {
             if (!Contains(c))
-                throw new System.ArgumentException($"Cell ({c.X}, {c.Y}) is out of bounds for board {Width}x{Height}.");
+                throw new System.ArgumentException(
+                    $"Cell ({c.X}, {c.Y}) is out of bounds for board {Width}x{Height}."
+                );
             if (_occupancy[c.X, c.Y] != null)
-                throw new System.InvalidOperationException($"Cell ({c.X}, {c.Y}) is already occupied.");
+                throw new System.InvalidOperationException(
+                    $"Cell ({c.X}, {c.Y}) is already occupied."
+                );
         }
 
         _arrows.Add(arrow);
-        foreach (Cell c in arrow.Cells) _occupancy[c.X, c.Y] = arrow;
+        foreach (Cell c in arrow.Cells)
+            _occupancy[c.X, c.Y] = arrow;
 
         // Forward deps: this arrow depends on all existing arrows in its ray
         var deps = new HashSet<Arrow>();
@@ -72,7 +77,8 @@ public sealed class Board
         var revDeps = new HashSet<Arrow>();
         foreach (Arrow existing in _arrows)
         {
-            if (existing == arrow) continue;
+            if (existing == arrow)
+                continue;
             foreach (Cell c in arrow.Cells)
             {
                 if (IsInRay(c, existing.HeadCell, existing.HeadDirection))
@@ -97,7 +103,6 @@ public sealed class Board
             }
             _availableArrowHeads.RemoveAll(toRemove.Contains);
         }
-
     }
 
     public void RemoveArrow(Arrow arrow)
@@ -107,10 +112,13 @@ public sealed class Board
         if (!_arrows.Contains(arrow))
             throw new System.InvalidOperationException("Arrow is not on the board.");
         if (!IsClearable(arrow))
-            throw new System.InvalidOperationException("Arrow is not clearable — it has unresolved dependencies.");
+            throw new System.InvalidOperationException(
+                "Arrow is not clearable — it has unresolved dependencies."
+            );
 
         _arrows.Remove(arrow);
-        foreach (Cell c in arrow.Cells) _occupancy[c.X, c.Y] = null;
+        foreach (Cell c in arrow.Cells)
+            _occupancy[c.X, c.Y] = null;
 
         // Remove forward edges: arrow depended on these
         if (_dependsOn.TryGetValue(arrow, out var deps))
@@ -127,7 +135,6 @@ public sealed class Board
                 _dependsOn[depBy].Remove(arrow);
             _dependedOnBy.Remove(arrow);
         }
-
     }
 
     public bool Contains(Cell cell)
@@ -165,54 +172,63 @@ public sealed class Board
     internal HashSet<Arrow> GetDependencies(Arrow arrow) => _dependsOn[arrow];
 
     /// <summary>Returns whether <paramref name="target"/> lies strictly forward of <paramref name="head"/> along <paramref name="direction"/>.</summary>
-    public static bool IsInRay(Cell target, Cell head, Arrow.Direction direction) => direction switch
-    {
-        Arrow.Direction.Up => target.X == head.X && target.Y > head.Y,
-        Arrow.Direction.Down => target.X == head.X && target.Y < head.Y,
-        Arrow.Direction.Right => target.Y == head.Y && target.X > head.X,
-        Arrow.Direction.Left => target.Y == head.Y && target.X < head.X,
-        _ => false
-    };
+    public static bool IsInRay(Cell target, Cell head, Arrow.Direction direction) =>
+        direction switch
+        {
+            Arrow.Direction.Up => target.X == head.X && target.Y > head.Y,
+            Arrow.Direction.Down => target.X == head.X && target.Y < head.Y,
+            Arrow.Direction.Right => target.Y == head.Y && target.X > head.X,
+            Arrow.Direction.Left => target.Y == head.Y && target.X < head.X,
+            _ => false,
+        };
 
     private List<ArrowHeadData> CreateInitialArrowHeads()
     {
         List<ArrowHeadData> arrowHeads = new();
 
         for (int x = 0; x < Width - 1; x++)
-            for (int y = 0; y < Height; y++)
-                arrowHeads.Add(new ArrowHeadData
+        for (int y = 0; y < Height; y++)
+            arrowHeads.Add(
+                new ArrowHeadData
                 {
                     head = new(x + 1, y),
                     next = new(x, y),
-                    direction = Arrow.Direction.Right
-                });
+                    direction = Arrow.Direction.Right,
+                }
+            );
 
         for (int x = 0; x < Width - 1; x++)
-            for (int y = 0; y < Height; y++)
-                arrowHeads.Add(new ArrowHeadData
+        for (int y = 0; y < Height; y++)
+            arrowHeads.Add(
+                new ArrowHeadData
                 {
                     head = new(x, y),
                     next = new(x + 1, y),
-                    direction = Arrow.Direction.Left
-                });
+                    direction = Arrow.Direction.Left,
+                }
+            );
 
         for (int x = 0; x < Width; x++)
-            for (int y = 0; y < Height - 1; y++)
-                arrowHeads.Add(new ArrowHeadData
+        for (int y = 0; y < Height - 1; y++)
+            arrowHeads.Add(
+                new ArrowHeadData
                 {
                     head = new(x, y + 1),
                     next = new(x, y),
-                    direction = Arrow.Direction.Up
-                });
+                    direction = Arrow.Direction.Up,
+                }
+            );
 
         for (int x = 0; x < Width; x++)
-            for (int y = 0; y < Height - 1; y++)
-                arrowHeads.Add(new ArrowHeadData
+        for (int y = 0; y < Height - 1; y++)
+            arrowHeads.Add(
+                new ArrowHeadData
                 {
                     head = new(x, y),
                     next = new(x, y + 1),
-                    direction = Arrow.Direction.Down
-                });
+                    direction = Arrow.Direction.Down,
+                }
+            );
 
         return arrowHeads;
     }

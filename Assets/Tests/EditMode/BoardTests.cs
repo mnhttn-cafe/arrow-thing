@@ -44,8 +44,8 @@ public class BoardTests
     }
 
     [Test]
-    public void Arrows_IsReadOnlyList()
-        => Assert.That(new Board(3, 3).Arrows, Is.InstanceOf<IReadOnlyList<Arrow>>());
+    public void Arrows_IsReadOnlyList() =>
+        Assert.That(new Board(3, 3).Arrows, Is.InstanceOf<IReadOnlyList<Arrow>>());
 
     // --- GetArrowAt ---
 

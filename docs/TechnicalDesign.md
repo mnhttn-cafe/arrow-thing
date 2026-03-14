@@ -142,6 +142,44 @@ This approach is necessary because arrows are polylines with bends — a rigid `
   - occupancy and bounds invariants
   - generation performance benchmarks (to catch regressions)
 
+## CI/CD
+
+### Formatting
+
+[CSharpier](https://csharpier.com/) (Roslyn-based, opinionated) owns all C# formatting. Configured as a local dotnet tool (`.config/dotnet-tools.json`, pinned version). Respects `.editorconfig` for `indent_size`, `indent_style`, and `max_line_length`.
+
+IDE0055 (the IDE's built-in formatting diagnostic) is disabled in `.editorconfig` to avoid conflicting with CSharpier's output. IDE0001 (simplify fully qualified names) is left at default — it shows IDE squiggles in VS/Rider but cannot be enforced at build time (Roslyn marks it `EnforceOnBuild.Never`).
+
+Unity's Roslyn analyzer pipeline does not read `.editorconfig` during compilation — only `.ruleset` files. For IDE-time analysis, `.editorconfig` works normally in VS/Rider.
+
+### Git Hooks (`.githooks/`)
+
+Activated via `git config core.hooksPath .githooks`. Setup: `dotnet tool restore && git config core.hooksPath .githooks`.
+
+- **Pre-commit**: CSharpier formatting check on staged `.cs` files, 100 MB file size gate (GitHub's limit), Asset `.meta` file sync (added/removed files must have matching `.meta`).
+- **Post-merge**: removes empty directories under `Assets/` to prevent Unity from generating orphan `.meta` files.
+
+### GitHub Actions (`.github/workflows/ci.yml`)
+
+Two jobs run in parallel:
+
+- **`format`**: CSharpier check, file size validation, meta file sync. Uses `dotnet tool restore` — no Unity license needed.
+- **`test`**: EditMode tests via [`game-ci/unity-test-runner@v4`](https://github.com/game-ci/unity-test-runner). Requires `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD` secrets.
+
+### Branch Protection
+
+`main` requires PRs, disallows force pushes and branch deletion. `enforce_admins` is off and `required_approving_review_count` is 0 so the sole contributor can merge their own PRs.
+
+### Git Configuration
+
+- **`.gitattributes`**: LF normalization, `diff=csharp` for `.cs` files, Unity YAML merge driver (`unityyamlmerge`) for scenes/prefabs/assets, `linguist-generated` markers to collapse Unity files in GitHub diffs, comprehensive binary type coverage. Based on [NYU Game Center's Unity-Git-Config](https://github.com/NYUGameCenter/Unity-Git-Config).
+- **`.gitignore`**: Unity-generated folders, IDE files, build outputs. Includes `![Aa]ssets/**/*.meta` safety rule to prevent accidentally ignoring Asset meta files.
+- **SmartMerge** (optional): `git config merge.unityyamlmerge.driver '<path>/UnityYAMLMerge merge -p %O %A %B %P'` for better Unity YAML conflict resolution.
+
+### Future: Builds and Deployment
+
+[Avalin/Unity-CI-CD](https://github.com/Avalin/Unity-CI-CD) — a modular GitHub Actions pipeline (test → build → release → deploy → notify) for Unity projects. Supports multi-platform builds, SemVer tagging, and deployment to itch.io, Steam, gh-pages, AWS S3, and more. Uses `game-ci` under the hood. Reference for when we need automated builds and deployment.
+
 ## Decision Log
 
 - 2026-02-28: Adopted split between Unity-independent domain logic and Unity adapter layer.

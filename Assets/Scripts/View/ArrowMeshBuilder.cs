@@ -24,7 +24,12 @@ public static class ArrowMeshBuilder
     /// <param name="windowStart">Arc-length value at which the visible window begins.</param>
     /// <param name="windowEnd">Arc-length value at which the visible window ends. Pass
     /// <c>float.MaxValue</c> (or any value beyond total length) to show the full path.</param>
-    public static Mesh Build(Vector3[] path, float width, float windowStart = 0f, float windowEnd = float.MaxValue)
+    public static Mesh Build(
+        Vector3[] path,
+        float width,
+        float windowStart = 0f,
+        float windowEnd = float.MaxValue
+    )
     {
         if (path == null || path.Length < 2)
         {
@@ -51,7 +56,8 @@ public static class ArrowMeshBuilder
             float uB = arcLength[i + 1];
 
             // Skip segments entirely outside the window.
-            if (uB < windowStart || uA > wEnd) continue;
+            if (uB < windowStart || uA > wEnd)
+                continue;
 
             // Clamp segment endpoints to the window.
             if (uA < windowStart)
@@ -70,9 +76,7 @@ public static class ArrowMeshBuilder
             Vector3 dir = (b - a).normalized;
             Vector3 perp = new Vector3(-dir.y, dir.x, 0f) * half;
 
-            AddQuad(vertices, uvs, triangles,
-                a - perp, a + perp, b - perp, b + perp,
-                uA, uB);
+            AddQuad(vertices, uvs, triangles, a - perp, a + perp, b - perp, b + perp, uA, uB);
 
             // Fill corner gap between this segment and the next.
             if (i < path.Length - 2 && arcLength[i + 1] >= windowStart && arcLength[i + 1] <= wEnd)
@@ -83,16 +87,11 @@ public static class ArrowMeshBuilder
 
                 // Square fill: spans from b-perp / b+perp to b-perp2 / b+perp2.
                 // All 4 corners share the same arc-length value (the corner point).
-                AddQuad(vertices, uvs, triangles,
-                    b - perp, b + perp, b - perp2, b + perp2,
-                    uB, uB);
+                AddQuad(vertices, uvs, triangles, b - perp, b + perp, b - perp2, b + perp2, uB, uB);
             }
         }
 
-        var mesh = new Mesh
-        {
-            name = "ArrowBody"
-        };
+        var mesh = new Mesh { name = "ArrowBody" };
         mesh.SetVertices(vertices);
         mesh.SetUVs(0, uvs);
         mesh.SetTriangles(triangles, 0);
@@ -120,18 +119,31 @@ public static class ArrowMeshBuilder
         List<Vector3> verts,
         List<Vector2> uvs,
         List<int> tris,
-        Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3,
-        float uStart, float uEnd)
+        Vector3 v0,
+        Vector3 v1,
+        Vector3 v2,
+        Vector3 v3,
+        float uStart,
+        float uEnd
+    )
     {
         int base_ = verts.Count;
 
-        verts.Add(v0); uvs.Add(new Vector2(uStart, 0f));
-        verts.Add(v1); uvs.Add(new Vector2(uStart, 1f));
-        verts.Add(v2); uvs.Add(new Vector2(uEnd, 0f));
-        verts.Add(v3); uvs.Add(new Vector2(uEnd, 1f));
+        verts.Add(v0);
+        uvs.Add(new Vector2(uStart, 0f));
+        verts.Add(v1);
+        uvs.Add(new Vector2(uStart, 1f));
+        verts.Add(v2);
+        uvs.Add(new Vector2(uEnd, 0f));
+        verts.Add(v3);
+        uvs.Add(new Vector2(uEnd, 1f));
 
         // Two counter-clockwise triangles (Unity winding).
-        tris.Add(base_ + 0); tris.Add(base_ + 1); tris.Add(base_ + 2);
-        tris.Add(base_ + 2); tris.Add(base_ + 1); tris.Add(base_ + 3);
+        tris.Add(base_ + 0);
+        tris.Add(base_ + 1);
+        tris.Add(base_ + 2);
+        tris.Add(base_ + 2);
+        tris.Add(base_ + 1);
+        tris.Add(base_ + 3);
     }
 }

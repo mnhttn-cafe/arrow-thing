@@ -119,9 +119,10 @@ public sealed class ArrowView : MonoBehaviour
         mf.mesh = mesh;
 
         var mr = go.AddComponent<MeshRenderer>();
-        mr.material = settings.arrowHeadMaterial != null
-            ? settings.arrowHeadMaterial
-            : settings.arrowBodyMaterial;
+        mr.material =
+            settings.arrowHeadMaterial != null
+                ? settings.arrowHeadMaterial
+                : settings.arrowBodyMaterial;
         mr.sortingOrder = 2;
 
         return go;
@@ -134,8 +135,10 @@ public sealed class ArrowView : MonoBehaviour
     /// </summary>
     private Vector3 SamplePathAtArcLength(float arcLength)
     {
-        if (arcLength <= 0f) return _path[0];
-        if (arcLength >= _extendedArcLength) return _path[_path.Length - 1];
+        if (arcLength <= 0f)
+            return _path[0];
+        if (arcLength >= _extendedArcLength)
+            return _path[_path.Length - 1];
 
         for (int i = 1; i < _path.Length; i++)
         {

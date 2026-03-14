@@ -19,33 +19,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check C# formatting
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
+      - name: Check C# formatting (CSharpier)
+        run: dotnet csharpier check Assets/Scripts/ Assets/Tests/
+
+      - name: Check file sizes (100 MB limit)
         run: |
           errors=0
           while IFS= read -r file; do
-            if grep -Pn '\t' "$file" > /dev/null 2>&1; then
-              echo "ERROR: Tab characters found in $file (use 4 spaces)"
+            size=$(stat -c%s "$file" 2>/dev/null) || continue
+            if [ "$size" -ge 104857600 ]; then
+              size_mb=$((size / 1048576))
+              echo "ERROR: $file is ${size_mb} MB (>= 100 MB). Use Git LFS or reduce file size."
               errors=1
             fi
-            if grep -Pn ' +$' "$file" > /dev/null 2>&1; then
-              echo "ERROR: Trailing whitespace found in $file"
-              errors=1
-            fi
-            if [ -n "$(tail -c 1 "$file")" ]; then
-              echo "ERROR: Missing final newline in $file"
-              errors=1
-            fi
-            if grep -Pn 'System\.Collections\.Generic\.' "$file" | grep -v '^\s*using ' > /dev/null 2>&1; then
-              echo "ERROR: Fully qualified System.Collections.Generic usage in $file (add a using directive)"
-              errors=1
-            fi
-          done < <(find Assets/Scripts Assets/Tests -name '*.cs' 2>/dev/null)
+          done < <(git ls-files)
           if [ $errors -ne 0 ]; then
-            echo ""
-            echo "Formatting check failed."
             exit 1
           fi
-          echo "All formatting checks passed."
+          echo "No oversized files found."
+
+      - name: Check meta file sync
+        run: |
+          errors=0
+          while IFS= read -r file; do
+            case "$file" in *.meta) continue ;; esac
+            if ! git ls-files --error-unmatch "$file.meta" > /dev/null 2>&1; then
+              echo "ERROR: $file tracked without its .meta file"
+              errors=1
+            fi
+          done < <(git ls-files -- 'Assets/*')
+          if [ $errors -ne 0 ]; then
+            exit 1
+          fi
+          echo "All Asset files have matching .meta files."
 
   test:
     runs-on: ubuntu-latest

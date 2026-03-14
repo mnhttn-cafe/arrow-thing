@@ -18,7 +18,9 @@ public sealed class BoardGridRenderer : MonoBehaviour
 
         if (settings.boardDotSprite == null)
         {
-            Debug.LogWarning("BoardGridRenderer: boardDotSprite is not assigned in VisualSettings.");
+            Debug.LogWarning(
+                "BoardGridRenderer: boardDotSprite is not assigned in VisualSettings."
+            );
             return;
         }
 
