@@ -1,46 +1,94 @@
 #!/bin/bash
-# Pre-commit hook: validate formatting of staged .cs files.
-# Enforces .editorconfig rules that aren't caught by the IDE alone.
-
-set -e
+# Pre-commit hook: formatting, file size, and meta file checks.
 
 errors=0
 
-# Get staged .cs files (added or modified, excluding deleted).
+# ---------------------------------------------------------------------------
+# 1. C# formatting (mirrors .editorconfig rules)
+# ---------------------------------------------------------------------------
+
 staged_cs=$(git diff --cached --name-only --diff-filter=d -- '*.cs') || true
 
-if [ -z "$staged_cs" ]; then
-    exit 0
-fi
-
 for file in $staged_cs; do
-    # Check for tab characters (should use spaces per .editorconfig).
     if git show ":$file" | grep -Pn '\t' > /dev/null 2>&1; then
         echo "ERROR: Tab characters found in $file (use 4 spaces)"
         errors=1
     fi
 
-    # Check for trailing whitespace.
     if git show ":$file" | grep -Pn ' +$' > /dev/null 2>&1; then
         echo "ERROR: Trailing whitespace found in $file"
         errors=1
     fi
 
-    # Check for missing final newline.
     if [ -n "$(git show ":$file" | tail -c 1)" ]; then
         echo "ERROR: Missing final newline in $file"
         errors=1
     fi
 
-    # Check for fully qualified System.Collections.Generic usage.
-    if git show ":$file" | grep -Pn 'System\.Collections\.Generic\.' > /dev/null 2>&1; then
-        # Exclude using statements — those are fine.
-        if git show ":$file" | grep -Pn 'System\.Collections\.Generic\.' | grep -v '^\s*using ' > /dev/null 2>&1; then
-            echo "WARNING: Fully qualified System.Collections.Generic usage in $file (add a using directive instead)"
-            errors=1
-        fi
+    if git show ":$file" | grep -Pn 'System\.Collections\.Generic\.' | grep -v '^\s*using ' > /dev/null 2>&1; then
+        echo "ERROR: Fully qualified System.Collections.Generic usage in $file (add a using directive)"
+        errors=1
     fi
 done
+
+# ---------------------------------------------------------------------------
+# 2. File size gate (GitHub rejects files >= 100 MB)
+# ---------------------------------------------------------------------------
+
+MAX_FILE_SIZE=104857600  # 100 MB in bytes
+
+staged_all=$(git diff --cached --name-only --diff-filter=d) || true
+
+for file in $staged_all; do
+    file_size=$(git cat-file -s ":$file" 2>/dev/null) || continue
+    if [ "$file_size" -ge "$MAX_FILE_SIZE" ]; then
+        size_mb=$((file_size / 1048576))
+        echo "ERROR: $file is ${size_mb} MB (>= 100 MB). Use Git LFS or reduce file size."
+        errors=1
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# 3. Meta file sync (every added/removed Asset needs its .meta paired)
+# ---------------------------------------------------------------------------
+
+staged_added=$(git diff --cached --name-only --diff-filter=A) || true
+staged_deleted=$(git diff --cached --name-only --diff-filter=D) || true
+
+for file in $staged_added; do
+    # Skip files outside Assets/ or .meta files themselves.
+    case "$file" in
+        Assets/*) ;;
+        *) continue ;;
+    esac
+    case "$file" in
+        *.meta) continue ;;
+    esac
+
+    meta="$file.meta"
+    if ! git diff --cached --name-only | grep -qx "$meta"; then
+        echo "ERROR: $file added without its .meta file ($meta)"
+        errors=1
+    fi
+done
+
+for file in $staged_deleted; do
+    case "$file" in
+        Assets/*) ;;
+        *) continue ;;
+    esac
+    case "$file" in
+        *.meta) continue ;;
+    esac
+
+    meta="$file.meta"
+    if ! git diff --cached --name-only --diff-filter=D | grep -qx "$meta"; then
+        echo "ERROR: $file removed but its .meta file ($meta) was not removed"
+        errors=1
+    fi
+done
+
+# ---------------------------------------------------------------------------
 
 if [ $errors -ne 0 ]; then
     echo ""

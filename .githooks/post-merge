@@ -1,0 +1,6 @@
+#!/bin/bash
+# Post-merge hook: remove empty directories left behind by deleted files.
+# Prevents Unity from generating orphan .meta files for empty folders.
+
+# Find directories under Assets/ that are now empty and remove them.
+find Assets/ -type d -empty -delete 2>/dev/null || true

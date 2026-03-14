@@ -29,7 +29,17 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
 git config core.hooksPath .githooks
 ```
 
-This enables formatting checks (no tabs, no trailing whitespace, final newlines, no fully qualified `System.Collections.Generic` usage) on staged `.cs` files.
+This enables:
+- Formatting checks (no tabs, no trailing whitespace, final newlines, no fully qualified `System.Collections.Generic`) on staged `.cs` files
+- File size gate (rejects files >= 100 MB)
+- Meta file sync (ensures added/removed Assets have matching `.meta` files)
+- Post-merge cleanup (removes empty directories to prevent orphan `.meta` files)
+
+5. (Optional) Set up Unity SmartMerge for better YAML conflict resolution:
+
+```bash
+git config merge.unityyamlmerge.driver '<path-to-Unity>/Editor/Data/Tools/UnityYAMLMerge merge -p %O %A %B %P'
+```
 
 ## Contributing
 

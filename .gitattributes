@@ -1,22 +1,80 @@
 # Auto-detect text files and normalize line endings to LF on commit.
 * text=auto eol=lf
 
-# Unity serialized assets use LF.
-*.unity text eol=lf
-*.prefab text eol=lf
-*.asset text eol=lf
-*.meta text eol=lf
-*.mat text eol=lf
-*.anim text eol=lf
-*.controller text eol=lf
+# Source files.
+*.cs text diff=csharp eol=lf
+*.shader text eol=lf
+*.cginc text eol=lf
+*.hlsl text eol=lf
+*.compute text eol=lf
+
+# Unity YAML — text serialization with SmartMerge support.
+# Configure UnityYAMLMerge via: git config merge.unityyamlmerge.driver '<path>/UnityYAMLMerge merge -p %O %A %B %P'
+*.unity text merge=unityyamlmerge eol=lf
+*.prefab text merge=unityyamlmerge eol=lf
+*.asset text merge=unityyamlmerge eol=lf
+*.meta text merge=unityyamlmerge eol=lf
+*.mat text merge=unityyamlmerge eol=lf
+*.anim text merge=unityyamlmerge eol=lf
+*.controller text merge=unityyamlmerge eol=lf
+*.physicsMaterial2D text merge=unityyamlmerge eol=lf
+*.physicsMaterial text merge=unityyamlmerge eol=lf
+
+# Collapse Unity-generated files in GitHub diffs.
+*.unity linguist-generated
+*.prefab linguist-generated
+*.asset linguist-generated
+*.mat linguist-generated
+*.meta linguist-generated
+*.anim linguist-generated
+*.controller linguist-generated
 
 # Ensure shell scripts use LF (important for git hooks).
 *.sh text eol=lf
 
-# Binary files.
+# Images.
 *.png binary
 *.jpg binary
+*.jpeg binary
+*.gif binary
+*.bmp binary
+*.tga binary
+*.tif binary
+*.tiff binary
+*.psd binary
+*.hdr binary
+*.exr binary
+
+# Audio.
 *.wav binary
 *.mp3 binary
+*.ogg binary
+*.aif binary
+*.aiff binary
+*.flac binary
+
+# Video.
+*.mp4 binary
+*.mov binary
+*.avi binary
+*.webm binary
+
+# 3D meshes.
+*.fbx binary
+*.blend binary
+*.obj binary
+*.max binary
+*.gltf binary
+*.glb binary
+
+# Fonts.
 *.ttf binary
 *.otf binary
+*.woff binary
+*.woff2 binary
+
+# Compiled / packaged.
+*.dll binary
+*.pdb binary
+*.apk binary
+*.unitypackage binary

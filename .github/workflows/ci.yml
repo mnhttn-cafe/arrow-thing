@@ -47,6 +47,37 @@ jobs:
           fi
           echo "All formatting checks passed."
 
+      - name: Check file sizes (100 MB limit)
+        run: |
+          errors=0
+          while IFS= read -r file; do
+            size=$(stat -c%s "$file" 2>/dev/null) || continue
+            if [ "$size" -ge 104857600 ]; then
+              size_mb=$((size / 1048576))
+              echo "ERROR: $file is ${size_mb} MB (>= 100 MB). Use Git LFS or reduce file size."
+              errors=1
+            fi
+          done < <(git ls-files)
+          if [ $errors -ne 0 ]; then
+            exit 1
+          fi
+          echo "No oversized files found."
+
+      - name: Check meta file sync
+        run: |
+          errors=0
+          while IFS= read -r file; do
+            case "$file" in *.meta) continue ;; esac
+            if ! git ls-files --error-unmatch "$file.meta" > /dev/null 2>&1; then
+              echo "ERROR: $file tracked without its .meta file"
+              errors=1
+            fi
+          done < <(git ls-files -- 'Assets/*')
+          if [ $errors -ne 0 ]; then
+            exit 1
+          fi
+          echo "All Asset files have matching .meta files."
+
   test:
     runs-on: ubuntu-latest
 
