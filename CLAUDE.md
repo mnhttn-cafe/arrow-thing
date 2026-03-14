@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Arrow Thing** — a minimalist speed-clearing puzzle game (Unity 2D URP). Players tap arrows on a grid to clear them; an arrow is clearable only when the ray extending forward from its head to the board boundary contains no other arrow body cells. The dependency graph between arrows must be acyclic (DAG) for a board to be solvable. Competitive PvP with Tetris-like garbage mechanics is planned post-MVP. Board generation will run server-side for the networked game.
 
-Docs: `docs/GDD.md` (game design), `docs/TechnicalDesign.md` (architecture), `docs/BoardGeneration.md` (generator algorithm), `docs/TODO.md` (per-feature task tracking — created during planning, deleted when the feature PR is complete). When a TODO.md exists, treat it as the authoritative task list for the current feature. Do not delete or simplify it mid-feature; it captures design decisions and context that inform implementation.
+Docs: `docs/GDD.md` (game design), `docs/TechnicalDesign.md` (architecture — single source of truth for all technical decisions), `docs/BoardGeneration.md` (generator algorithm). See **Feature Workflow** below for how `docs/TODO.md` is used during feature development.
 
 ## Architecture
 
@@ -48,6 +48,14 @@ Static class, purely algorithmic — all persistent state lives on `Board`. Key 
 ## Testing
 
 Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, full solvability verification (50 seeds + counterexample), external AddArrow compatibility, and a 100-iteration timing gate. Explicit perf tests include multi-seed solvability stress tests (500×10x10, 100×20x20, 20×50x50). Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
+
+## Feature Workflow
+
+New features follow a three-phase workflow:
+
+1. **Design** — Create `docs/TODO.md` with the feature design, implementation plan, and open questions. Resolve open questions before moving to implementation. When a `TODO.md` exists, treat it as the authoritative task list for the current feature.
+2. **Implement** — Build the feature against the plan in `TODO.md`. Do not delete or simplify `TODO.md` mid-feature; it captures design decisions and context that inform implementation.
+3. **Clean up** — Update stale documentation, delete `TODO.md`, validate `docs/TechnicalDesign.md` reflects the current architecture. The TDD is the single source of truth for all technical decisions.
 
 ## Key Design Rules
 
