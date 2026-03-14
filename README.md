@@ -55,6 +55,10 @@ This project uses a source-available license inspired by the Aseprite model:
 
 See [`LICENSE`](LICENSE) for exact terms.
 
+## Acknowledgements
+
+Git configuration (`.gitattributes`, `.gitignore`, git hooks) is based on [NYU Game Center's Unity-Git-Config](https://github.com/NYUGameCenter/Unity-Git-Config) — a great open resource for Unity project setup.
+
 ## Repository Layout
 
 - `Assets/Scripts/Models` - Core board/arrow domain logic
