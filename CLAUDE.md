@@ -15,7 +15,17 @@ The codebase is split into two layers:
 - **Domain layer** (`Assets/Scripts/`) — Unity-independent pure C#. Contains board state, arrow rules, clearability logic, and generation. Must be testable without Unity runtime.
 - **Unity adapter layer** — input handling, rendering, animation, scene wiring. Translates player actions into domain operations and reflects resulting state. Should not own gameplay rules. Unity is used for graphics only.
 
-The board interaction flow: `BoardGeneration` fills `Board` → Unity renders it → player selects arrow → Unity queries a rules/logic class for clearability → Unity plays feedback.
+The board interaction flow: `BoardGeneration` fills `Board` → Unity renders it → player selects arrow → Unity queries `Board.IsClearable` → Unity plays feedback.
+
+View layer scripts live in `Assets/Scripts/View/`:
+
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController` and `InputHandler`.
+- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a screen-space distance threshold. Scroll wheel and pinch-to-zoom for camera zoom.
+- **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom` methods. Fits to board on init. Clamped to board bounds.
+- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, removes or flashes reject.
+- **`BoardGridRenderer`** — spawns dot sprites at each cell center.
+- **`ArrowView`** — procedural mesh body + arrowhead sprite. Reject flash via `MaterialPropertyBlock` coroutine.
+- **`BoardCoords`** — static coordinate mapping (cell ↔ world space).
 
 ## Core Types (`Assets/Scripts/Models/`)
 
