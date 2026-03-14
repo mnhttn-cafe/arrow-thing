@@ -1,9 +1,11 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
 /// <summary>
 /// Visual representation of a single arrow. Owns the procedural body mesh
-/// and a separate arrowhead child object. Handles reject flash animation.
+/// and a separate arrowhead child object. Handles clear, bump, and reject
+/// flash animations via arc-length window sliding.
 /// </summary>
 public sealed class ArrowView : MonoBehaviour
 {
@@ -13,6 +15,16 @@ public sealed class ArrowView : MonoBehaviour
     private Material _headMaterialInstance = null!;
     private VisualSettings _settings = null!;
     private GameObject _arrowHead = null!;
+
+    // Cached path and geometry for animation
+    private Vector3[] _path = null!;
+    private float[] _arcLengths = null!;
+    private float _totalArcLength;
+    private float _extendedArcLength;
+    private float _bodyWidth;
+    private Vector3 _headDir;
+    private Vector3 _initialHeadPos;
+
     private static readonly int FlashTId = Shader.PropertyToID("_FlashT");
     private static readonly int FlashColorId = Shader.PropertyToID("_FlashColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
@@ -26,13 +38,12 @@ public sealed class ArrowView : MonoBehaviour
     {
         Arrow = arrow;
         _settings = settings;
+        _bodyWidth = settings.arrowBodyWidth;
 
         // Body mesh
         _meshFilter = gameObject.AddComponent<MeshFilter>();
         _meshRenderer = gameObject.AddComponent<MeshRenderer>();
 
-        // Create a material instance so per-arrow property changes don't affect others.
-        // Setting .material (not .sharedMaterial) auto-instantiates.
         _meshRenderer.material = settings.arrowBodyMaterial;
         _materialInstance = _meshRenderer.material;
 
@@ -40,13 +51,40 @@ public sealed class ArrowView : MonoBehaviour
         _materialInstance.SetColor(FlashColorId, settings.rejectFlashColor);
         _materialInstance.SetFloat(FlashTId, 0f);
 
-        Vector3[] path = BoardCoords.ArrowPathToWorld(arrow, boardWidth, boardHeight);
-        Mesh bodyMesh = ArrowMeshBuilder.Build(path, settings.arrowBodyWidth);
+        // Build the original path and compute arc lengths
+        Vector3[] originalPath = BoardCoords.ArrowPathToWorld(arrow, boardWidth, boardHeight);
+        _headDir = (originalPath[0] - originalPath[1]).normalized;
+        _initialHeadPos = originalPath[0];
+
+        // Compute arc lengths of the original path
+        _totalArcLength = 0f;
+        for (int i = 1; i < originalPath.Length; i++)
+            _totalArcLength += Vector3.Distance(originalPath[i - 1], originalPath[i]);
+
+        // Extend path with a synthetic exit point along the head direction
+        float extensionDist = Mathf.Max(boardWidth, boardHeight) * settings.pathExtensionMultiplier;
+        Vector3 exitPoint = originalPath[0] + _headDir * extensionDist;
+
+        _path = new Vector3[originalPath.Length + 1];
+        // path[0] is the extension point (farthest from board), original head becomes path[1]
+        _path[0] = exitPoint;
+        for (int i = 0; i < originalPath.Length; i++)
+            _path[i + 1] = originalPath[i];
+
+        // Compute arc lengths for the extended path
+        _arcLengths = new float[_path.Length];
+        _arcLengths[0] = 0f;
+        for (int i = 1; i < _path.Length; i++)
+            _arcLengths[i] = _arcLengths[i - 1] + Vector3.Distance(_path[i - 1], _path[i]);
+        _extendedArcLength = _arcLengths[_arcLengths.Length - 1];
+
+        // Build initial body mesh using the original path (no extension visible)
+        Mesh bodyMesh = ArrowMeshBuilder.Build(originalPath, _bodyWidth);
         _meshFilter.mesh = bodyMesh;
         _meshRenderer.sortingOrder = 1;
 
         // Arrowhead as separate child object
-        _arrowHead = CreateArrowHead(path, settings);
+        _arrowHead = CreateArrowHead(originalPath, settings);
         _arrowHead.transform.SetParent(transform, true);
 
         _headMaterialInstance = _arrowHead.GetComponent<MeshRenderer>().material;
@@ -62,9 +100,11 @@ public sealed class ArrowView : MonoBehaviour
         Vector3 headPerp = new Vector3(-headDir.y, headDir.x, 0f);
 
         float headHalfBase = settings.arrowBodyWidth * settings.arrowHeadWidthMultiplier;
-        Vector3 tip = headPos + headDir * settings.arrowHeadLength;
-        Vector3 baseLeft = headPos - headPerp * headHalfBase;
-        Vector3 baseRight = headPos + headPerp * headHalfBase;
+
+        // Build mesh centered at origin so transform.position controls placement
+        Vector3 tip = headDir * settings.arrowHeadLength;
+        Vector3 baseLeft = -headPerp * headHalfBase;
+        Vector3 baseRight = headPerp * headHalfBase;
 
         var mesh = new Mesh { name = "ArrowHead" };
         mesh.vertices = new[] { baseLeft, baseRight, tip };
@@ -73,6 +113,8 @@ public sealed class ArrowView : MonoBehaviour
         mesh.RecalculateBounds();
 
         var go = new GameObject("ArrowHead");
+        go.transform.position = headPos;
+
         var mf = go.AddComponent<MeshFilter>();
         mf.mesh = mesh;
 
@@ -85,8 +127,148 @@ public sealed class ArrowView : MonoBehaviour
         return go;
     }
 
+    // ---- Animation helpers ------------------------------------------------
+
     /// <summary>
-    /// Plays the reject flash animation by driving _FlashT on the material instance.
+    /// Samples a world-space position along the extended path at a given arc length.
+    /// </summary>
+    private Vector3 SamplePathAtArcLength(float arcLength)
+    {
+        if (arcLength <= 0f) return _path[0];
+        if (arcLength >= _extendedArcLength) return _path[_path.Length - 1];
+
+        for (int i = 1; i < _path.Length; i++)
+        {
+            if (_arcLengths[i] >= arcLength)
+            {
+                float segStart = _arcLengths[i - 1];
+                float segEnd = _arcLengths[i];
+                float t = (arcLength - segStart) / (segEnd - segStart);
+                return Vector3.Lerp(_path[i - 1], _path[i], t);
+            }
+        }
+
+        return _path[_path.Length - 1];
+    }
+
+    /// <summary>
+    /// Applies a slideOffset to the body mesh and arrowhead position.
+    /// The extended path is laid out as [exitPoint, originalHead, ...originalTail].
+    /// slideOffset=0 means the arrow is at rest; positive values slide head-first toward the exit.
+    /// </summary>
+    private void ApplySlideOffset(float slideOffset)
+    {
+        // The original arrow occupies the tail end of the extended path.
+        // At rest: windowStart = extensionDist, windowEnd = extendedArcLength
+        // extensionDist = _arcLengths[1] (distance from exit point to original head)
+        float extensionDist = _arcLengths[1];
+        float windowStart = extensionDist - slideOffset;
+        float windowEnd = windowStart + _totalArcLength;
+
+        // Clamp to extended path bounds
+        windowStart = Mathf.Max(0f, windowStart);
+        windowEnd = Mathf.Min(_extendedArcLength, windowEnd);
+
+        _meshFilter.mesh = ArrowMeshBuilder.Build(_path, _bodyWidth, windowStart, windowEnd);
+
+        // Position arrowhead at the leading edge (windowStart is the head end in the extended path)
+        _arrowHead.transform.position = SamplePathAtArcLength(windowStart);
+    }
+
+    // ---- Animations -------------------------------------------------------
+
+    /// <summary>
+    /// Plays the pull-out animation for a clearable arrow. The arrow slides
+    /// head-first off the board and is destroyed on completion.
+    /// </summary>
+    public void PlayPullOut(Action onComplete = null)
+    {
+        StopAllCoroutines();
+        StartCoroutine(PullOutCoroutine(onComplete));
+    }
+
+    private IEnumerator PullOutCoroutine(Action onComplete)
+    {
+        float duration = _settings.clearSlideDuration;
+        AnimationCurve curve = _settings.clearSlideCurve;
+        float extensionDist = _arcLengths[1];
+        // Max offset: slide until the tail clears the original path end
+        float maxOffset = extensionDist + _totalArcLength;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            float t = curve.Evaluate(elapsed / duration);
+            float slideOffset = Mathf.Lerp(0f, maxOffset, t);
+            ApplySlideOffset(slideOffset);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        onComplete?.Invoke();
+    }
+
+    /// <summary>
+    /// Plays the bump animation for a blocked arrow. The arrow slides toward
+    /// the blocker, bumps, and returns. Reject flash fires on contact.
+    /// </summary>
+    public void PlayBump(float contactArcLength)
+    {
+        StopAllCoroutines();
+        StartCoroutine(BumpCoroutine(contactArcLength));
+    }
+
+    private IEnumerator BumpCoroutine(float contactArcLength)
+    {
+        // Phase 1: Slide to contact
+        float elapsed = 0f;
+        float slideDuration = _settings.bumpSlideDuration;
+        AnimationCurve slideCurve = _settings.bumpSlideCurve;
+
+        while (elapsed < slideDuration)
+        {
+            float t = slideCurve.Evaluate(elapsed / slideDuration);
+            ApplySlideOffset(Mathf.Lerp(0f, contactArcLength, t));
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // Phase 2: Bump overshoot — fire reject flash
+        StartCoroutine(RejectFlashCoroutine());
+
+        elapsed = 0f;
+        float bumpDuration = _settings.bumpDuration;
+        AnimationCurve bumpCurve = _settings.bumpCurve;
+        float magnitude = _settings.bumpMagnitude;
+
+        while (elapsed < bumpDuration)
+        {
+            float t = bumpCurve.Evaluate(elapsed / bumpDuration);
+            // Curve goes 0→1→0: overshoot past contact then back to contact
+            ApplySlideOffset(contactArcLength + magnitude * t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // Phase 3: Return to original position
+        elapsed = 0f;
+        float returnDuration = _settings.bumpReturnDuration;
+        AnimationCurve returnCurve = _settings.bumpReturnCurve;
+
+        while (elapsed < returnDuration)
+        {
+            float t = returnCurve.Evaluate(elapsed / returnDuration);
+            ApplySlideOffset(Mathf.Lerp(contactArcLength, 0f, t));
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // Ensure final state is exactly the original position
+        ApplySlideOffset(0f);
+    }
+
+    /// <summary>
+    /// Plays the reject flash animation by driving _FlashT on both material instances.
     /// </summary>
     public void PlayRejectFlash()
     {
@@ -112,5 +294,4 @@ public sealed class ArrowView : MonoBehaviour
         _materialInstance.SetFloat(FlashTId, 0f);
         _headMaterialInstance.SetFloat(FlashTId, 0f);
     }
-
 }
