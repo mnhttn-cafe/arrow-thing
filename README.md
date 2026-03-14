@@ -32,7 +32,6 @@ git config core.hooksPath .githooks
 
 The pre-commit hook runs:
 - [CSharpier](https://csharpier.com/) formatting check on staged `.cs` files
-- Fully qualified namespace detection
 - File size gate (rejects files >= 100 MB)
 - Asset `.meta` file sync
 
@@ -52,11 +51,12 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for expectations around architecture, t
 
 ## Licensing and Monetization
 
-This project uses a source-available license inspired by the Aseprite model:
+This project uses a source-available license:
 
-- Source code is available to read, modify, and build for personal/internal use.
-- Redistribution of source code or binaries (original or modified) is not allowed without explicit written permission.
-- Official distributable builds can be sold through storefronts.
+- Source code is available to read, modify, build, and share for any non-commercial purpose.
+- Commercial distribution of source code or builds (original or modified) requires written permission.
+- Contributions are licensed under the same or more permissive terms (see the license for details).
+- Official distributable builds are sold through storefronts.
 
 See [`LICENSE`](LICENSE) for exact terms.
 
