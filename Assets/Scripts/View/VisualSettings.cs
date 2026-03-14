@@ -10,7 +10,14 @@ public sealed class VisualSettings : ScriptableObject
 
     [Header("Sprites")]
     public Sprite? boardDotSprite;
-    public Sprite? arrowHeadSprite;
+
+    [Header("Arrow Geometry")]
+    public float arrowBodyWidth = 0.5f;
+    public float arrowHeadLength = 0.35f;
+    public float arrowHeadWidthMultiplier = 1.2f;
+
+    [Header("Grid")]
+    public float gridDotScale = 0.15f;
 
     [Header("Materials")]
     public Material? arrowBodyMaterial;
