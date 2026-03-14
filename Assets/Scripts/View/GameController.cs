@@ -14,9 +14,9 @@ public sealed class GameController : MonoBehaviour
     [SerializeField] private int maxArrowLength = 5;
 
     [Header("References")]
-    [SerializeField] private VisualSettings? visualSettings;
-    [SerializeField] private Camera? mainCamera;
-    [SerializeField] private InputActionAsset? inputActions;
+    [SerializeField] private VisualSettings visualSettings;
+    [SerializeField] private Camera mainCamera;
+    [SerializeField] private InputActionAsset inputActions;
 
     private Board _board = null!;
     private BoardView _boardView = null!;

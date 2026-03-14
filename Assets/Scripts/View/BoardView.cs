@@ -42,7 +42,7 @@ public sealed class BoardView : MonoBehaviour
     {
         if (!_board.IsClearable(arrow))
         {
-            if (_arrowViews.TryGetValue(arrow, out ArrowView? view))
+            if (_arrowViews.TryGetValue(arrow, out ArrowView view))
                 view.PlayRejectFlash();
             return false;
         }
@@ -54,14 +54,14 @@ public sealed class BoardView : MonoBehaviour
     /// <summary>
     /// Returns the ArrowView for a given arrow, or null if not found.
     /// </summary>
-    public ArrowView? GetArrowView(Arrow arrow)
+    public ArrowView GetArrowView(Arrow arrow)
     {
-        return _arrowViews.TryGetValue(arrow, out ArrowView? view) ? view : null;
+        return _arrowViews.TryGetValue(arrow, out ArrowView view) ? view : null;
     }
 
     private void RemoveArrow(Arrow arrow)
     {
-        if (_arrowViews.TryGetValue(arrow, out ArrowView? view))
+        if (_arrowViews.TryGetValue(arrow, out ArrowView view))
         {
             _arrowViews.Remove(arrow);
             Destroy(view.gameObject);

@@ -9,7 +9,7 @@ public sealed class VisualSettings : ScriptableObject
     public Color arrowBodyColor = new Color(0.816f, 0.847f, 0.910f);   // #D0D8E8
 
     [Header("Sprites")]
-    public Sprite? boardDotSprite;
+    public Sprite boardDotSprite;
 
     [Header("Arrow Geometry")]
     public float arrowBodyWidth = 0.5f;
@@ -20,7 +20,7 @@ public sealed class VisualSettings : ScriptableObject
     public float gridDotScale = 0.15f;
 
     [Header("Materials")]
-    public Material? arrowBodyMaterial;
+    public Material arrowBodyMaterial;
 
     [Header("Reject Flash")]
     public Color rejectFlashColor = new Color(1f, 0.267f, 0.267f);      // #FF4444

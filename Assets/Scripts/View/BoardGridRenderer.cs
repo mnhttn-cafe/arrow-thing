@@ -6,7 +6,7 @@ using UnityEngine;
 /// </summary>
 public sealed class BoardGridRenderer : MonoBehaviour
 {
-    private Transform? _dotParent;
+    private Transform _dotParent;
 
     /// <summary>
     /// Creates the grid dots for the given board dimensions.
