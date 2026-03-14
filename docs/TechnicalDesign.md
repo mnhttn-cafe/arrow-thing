@@ -59,7 +59,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 - Procedurally fills a `Board` with acyclic arrows.
 - Public entry points: `FillBoard(...)` and `GenerateArrows(...)`.
-- Maintains a static per-board cache (`boardCacheDict`) holding an occupancy grid and available head candidates.
+- Maintains a static per-board cache (`boardCacheDict`) holding available head candidates and a candidate lookup grid.
 - See [`BoardGeneration.md`](BoardGeneration.md) for full algorithm details.
 
 ## Rule and Data Invariants

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Arrow Thing** — a minimalist speed-clearing puzzle game (Unity 2D URP). Players tap arrows on a grid to clear them; an arrow is clearable only when the ray extending forward from its head to the board boundary contains no other arrow body cells. The dependency graph between arrows must be acyclic (DAG) for a board to be solvable. Competitive PvP with Tetris-like garbage mechanics is planned post-MVP. Board generation will run server-side for the networked game.
 
-Docs: `docs/GDD.md` (game design), `docs/TechnicalDesign.md` (architecture), `docs/BoardGeneration.md` (generator algorithm).
+Docs: `docs/GDD.md` (game design), `docs/TechnicalDesign.md` (architecture), `docs/BoardGeneration.md` (generator algorithm), `docs/TODO.md` (per-feature task tracking — created during planning, deleted when the feature PR is complete). When a TODO.md exists, treat it as the authoritative task list for the current feature. Do not delete or simplify it mid-feature; it captures design decisions and context that inform implementation.
 
 ## Architecture
 
