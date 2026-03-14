@@ -2,15 +2,30 @@
 
 ## Overview
 
-When a player clears an arrow, it visually slides out of the board along its own path, head-first. If the sliding arrow's tail end reaches a static arrow that was previously blocked behind it, the static arrow plays a compression bump — a brief head-forward push and spring-back along its own path. Both animations use the same underlying mechanism: sliding an arc-length window across the arrow's path.
+All animations apply only to the tapped arrow itself. No other arrow on the board is ever moved or modified by a clear attempt.
 
-Domain state (`Board.RemoveArrow`) is updated immediately on clear, before the animation starts. This keeps the model ahead of the visuals so the player can chain clears without waiting for animations. Multiple pull-outs and bumps can run concurrently — overlapping arrows sliding through each other is expected and satisfying.
+There are two outcomes when a player taps an arrow:
+
+1. **Clearable** — the arrow's forward ray is empty. The arrow plays the **pull-out** animation, sliding head-first along its path until it exits the visible area. `Board.RemoveArrow` is called immediately (before the animation starts) so the player can chain clears without waiting.
+
+2. **Blocked** — the arrow's forward ray contains at least one other arrow. The tapped arrow slides head-first along its path until it reaches the first blocking arrow (`Board.GetFirstInRay`), plays a **bump** animation (compresses against the blocker and springs back to its original position), and simultaneously plays the **reject flash**. The arrow remains on the board. No domain state changes.
 
 ## Mechanism: Arc-Length Window
 
 `ArrowMeshBuilder.Build` already accepts `windowStart` and `windowEnd` parameters that clip the visible body mesh to a sub-range of the arrow's total arc length. Segments outside the window are skipped; segments partially inside are interpolated.
 
 The path polyline (`Vector3[]` from `BoardCoords.ArrowPathToWorld`) is fixed for the lifetime of the animation — only the window parameters change.
+
+### Constant arc length
+
+The arrow body maintains a constant visible arc length throughout all animations. Both `windowStart` and `windowEnd` advance by the same amount each frame — they are defined by a single `slideOffset` value:
+
+    windowStart = slideOffset
+    windowEnd   = slideOffset + totalArcLength
+
+All animation curves drive `slideOffset` only. The body shape never stretches or compresses.
+
+The one exception is the tail-drain at the very end of a pull-out: once the arrowhead has exited the visible area, `windowEnd` stops advancing (there's no more extended path) and `windowStart` continues until it reaches `windowEnd`, shrinking the visible body to zero.
 
 ### Why not rigid-body translation?
 
@@ -23,27 +38,34 @@ The arrowhead is a separate child GameObject with its own material, not part of 
 - **Visual distinction**: a different material on the arrowhead makes arrow direction more readable.
 - **Simpler mesh generation**: `ArrowMeshBuilder` only builds the body strip; no arrowhead logic.
 - **Resolution-independent**: a procedural triangle (3 verts, flat-color material) is perfectly sharp at any zoom, unlike a textured quad which would pixelate like the grid dots.
-- **Simpler animation**: the arrowhead never rotates during a pull-out (the head direction is constant), so animating it is just a position translation along the head direction. No mesh rebuild needed for the arrowhead — only the body rebuilds.
+- **Simpler animation**: the arrowhead never rotates during either animation (the head direction is constant), so animating it is just a position translation along the head direction. No mesh rebuild needed for the arrowhead — only the body rebuilds.
 
-During pull-out, the arrowhead position is computed by sampling the extended path at the current `windowEnd` (the leading edge of the window). During a bump, the arrowhead translates forward/back with the `windowEnd` offset.
+During both pull-out and bump, the arrowhead position is computed by sampling the path at the current `windowEnd` (the leading edge of the window).
 
-## Pull-Out Animation (Cleared Arrow)
+## Pull-Out Animation (Clearable Arrow)
 
-The cleared arrow slides head-first out of the board. The arrowhead leads.
+The tapped arrow is clearable — nothing blocks its ray. It slides head-first out of the board and is destroyed.
 
 - The path is extended at init time by appending a synthetic point along the head direction, far enough to guarantee the arrow fully exits the visible area. The extension distance is derived from the board dimensions and a static multiplier (same approach as `CameraController`'s board-fit calculation — just ensure the animation multiplier is larger than the camera one so the arrow clears the viewport).
-- `windowEnd` advances along the extended path, pulling the head forward.
-- `windowStart` advances in lockstep, keeping the visible body length constant — the arrow appears to maintain its shape as it slides out, not stretch.
+- `Board.RemoveArrow` is called immediately, before the animation starts. This lets other arrows become clearable right away.
+- `slideOffset` advances from `0` along the extended path, driven by `clearSlideCurve`. Both `windowStart` and `windowEnd` move in lockstep — the arrow maintains its shape as it slides out.
 - Each frame: rebuild the body mesh with the updated window. Move the arrowhead transform to the position at `windowEnd` on the path.
-- When `windowStart >= originalArcLength` (the original path, not the extension), the arrow has fully left the board — destroy the GameObject.
+- Once the arrowhead exits the visible area, the head has no more path to advance along. `windowEnd` stops at the end of the extended path and `windowStart` continues (tail-drain), shrinking the visible body to zero.
+- When `windowStart >= windowEnd`, the arrow is fully gone — destroy the GameObject.
 
-## Bump Animation (Static Arrow Hit by Departing Tail)
+## Bump Animation (Blocked Arrow)
 
-When the cleared arrow's retreating tail passes a static arrow that was blocked behind it, that arrow plays a compression bump.
+The tapped arrow is not clearable — at least one arrow blocks its ray. It slides forward until it hits the blocker, then springs back. The reject flash plays simultaneously with the bump.
 
-- **Finding the target**: before starting the pull-out, walk the ray from the cleared arrow's head in `HeadDirection` using `Board.GetArrowAt` to find the first hit. If no arrow is in the ray, skip the bump.
-- **Trigger timing**: the bump fires when the cleared arrow's `windowStart` (the trailing edge / tail) passes the arc-length position corresponding to the contact point with the static arrow. Each frame of the pull-out coroutine checks this threshold; when crossed, it triggers the bump on the target.
-- **Bump shape**: temporarily advance the static arrow's `windowEnd` slightly beyond its `totalArcLength` (extending the head forward along its own extended path), then spring it back. The arrowhead translates in sync. Driven by an `AnimationCurve` in `VisualSettings`, same pattern as the reject flash.
+All three phases animate `slideOffset` only — the visible arc length stays constant throughout.
+
+- **Finding the blocker**: call `Board.GetFirstInRay(arrow)` to find the first arrow in the tapped arrow's forward ray.
+- **Contact point**: the midpoint of the first cell of the blocking arrow that lies in the ray. Using the cell center keeps the math trivial. Incorporating `arrowBodyWidth` from `VisualSettings` to use the exact edge is straightforward if the midpoint doesn't feel right during playtesting.
+- **Slide phase**: `slideOffset` advances from `0` to `contactArcLength`, driven by `bumpSlideCurve`.
+- **Bump phase**: on contact, `slideOffset` overshoots slightly past `contactArcLength` and springs back to it, driven by `bumpCurve`. The reject flash fires at the same moment.
+- **Return phase**: `slideOffset` goes from `contactArcLength` back to `0`, driven by `bumpReturnCurve`.
+
+No domain state changes during any phase — the arrow stays on the board throughout.
 
 ## Body Animation: Arc-Length UV Shader vs. CPU Mesh Rebuild
 
@@ -67,24 +89,27 @@ Option B avoids per-frame mesh allocation and is more GPU-friendly, but adds sha
 
 - Spawn a child GameObject for the arrowhead (procedural triangle mesh, 3 verts, flat-color material).
 - Cache the `Vector3[] path` (extended), `totalArcLength`, and body mesh-build parameters from `Init`.
-- Expose `PlayPullOut(float duration, System.Action onBumpContact, System.Action onComplete)` coroutine. `onBumpContact` fires at the arc-length threshold where the tail reaches the bump target.
-- Expose `PlayBump(float duration, AnimationCurve curve, float magnitude)` coroutine.
-- Pull-out rebuilds the body mesh each frame; moves the arrowhead transform.
-- Bump rebuilds the body mesh each frame; moves the arrowhead transform.
+- `PlayPullOut(float duration)` coroutine — slides the window along the extended path, destroys the GameObject on completion.
+- `PlayBump(float slideDuration, float bumpDuration, float contactArcLength)` coroutine — slides to contact point, bumps, slides back, fires reject flash on contact.
+- Both coroutines rebuild the body mesh each frame and move the arrowhead transform.
 
 ### `BoardView`
 
-- `TryClearArrow`: call `Board.RemoveArrow` immediately. Remove the arrow from `_arrowViews`. Find the bump target by ray-walking (before removal, or walk using board geometry since the ray direction and cells are known). Start pull-out on the cleared `ArrowView`, passing a bump-contact callback that triggers `PlayBump` on the target's `ArrowView`. Destroy the cleared arrow's GameObject on completion.
+- `TryClearArrow`:
+  - **If clearable**: call `Board.RemoveArrow` immediately, remove from `_arrowViews`, start `PlayPullOut` on the `ArrowView`.
+  - **If blocked**: call `Board.GetFirstInRay` to find the blocker, compute the contact arc-length, start `PlayBump` on the tapped `ArrowView`. No domain state changes.
 
 ### `VisualSettings`
 
-- Add fields: `clearSlideDuration`, `clearSlideCurve`, `bumpDuration`, `bumpMagnitude`, `bumpCurve`.
+- Add fields: `clearSlideDuration`, `clearSlideCurve`, `bumpSlideDuration`, `bumpSlideCurve`, `bumpDuration`, `bumpMagnitude`, `bumpCurve`, `bumpReturnDuration`, `bumpReturnCurve`.
 - Add field: `arrowHeadMaterial` (flat-color, separate from `arrowBodyMaterial`).
 - Path extension multiplier (board-size-relative distance for the synthetic exit point).
 
 ## Resolved Decisions
 
 - **Arrowhead geometry**: procedural triangle mesh (3 verts, flat-color material). Resolution-independent — no pixelation at any zoom level. The shape is simple enough that texture-based iteration isn't needed.
-- **Bump contact point**: midpoint of the arrow body cell being hit, not the edge. Using the cell center keeps the math trivial (just the arc-length at that cell). Incorporating `arrowBodyWidth` from `VisualSettings` to use the exact edge is also straightforward if the midpoint doesn't feel right during playtesting.
-- **Pull-out easing**: `AnimationCurve` in `VisualSettings` (`clearSlideCurve`). Separate curve for bump (`bumpCurve`).
-- **No bump chaining**: only the cleared arrow animates. The bump target is treated as a static wall — it plays the bump animation but does not propagate force to anything behind it.
+- **Bump contact point**: midpoint of the blocking arrow's first ray-intersecting cell, not the edge. Adjustable during playtesting.
+- **Easing**: separate `AnimationCurve`s in `VisualSettings` — `clearSlideCurve` for pull-out, `bumpSlideCurve` / `bumpCurve` / `bumpReturnCurve` for the three bump phases.
+- **No effect on other arrows**: only the tapped arrow animates. The blocker is static — it is a wall, not a participant.
+- **Reject flash timing**: fires simultaneously with the bump contact, not as a separate animation.
+- **Domain state timing**: `RemoveArrow` is called immediately for clearable arrows. Blocked arrows never modify domain state.
