@@ -6,14 +6,15 @@ using NUnit.Framework;
 public class GenerationTests
 {
     // Mirrors Board.IsInRay for postcondition checks.
-    private static bool IsInRay(Cell target, Cell head, Arrow.Direction direction) => direction switch
-    {
-        Arrow.Direction.Up => target.X == head.X && target.Y > head.Y,
-        Arrow.Direction.Down => target.X == head.X && target.Y < head.Y,
-        Arrow.Direction.Right => target.Y == head.Y && target.X > head.X,
-        Arrow.Direction.Left => target.Y == head.Y && target.X < head.X,
-        _ => false
-    };
+    private static bool IsInRay(Cell target, Cell head, Arrow.Direction direction) =>
+        direction switch
+        {
+            Arrow.Direction.Up => target.X == head.X && target.Y > head.Y,
+            Arrow.Direction.Down => target.X == head.X && target.Y < head.Y,
+            Arrow.Direction.Right => target.Y == head.Y && target.X > head.X,
+            Arrow.Direction.Left => target.Y == head.Y && target.X < head.X,
+            _ => false,
+        };
 
     [Test]
     public void FillBoard_SameSeed_ProducesIdenticalBoards()
@@ -36,9 +37,12 @@ public class GenerationTests
 
         var seen = new HashSet<Cell>();
         foreach (var arrow in board.Arrows)
-            foreach (var cell in arrow.Cells)
-                Assert.That(seen.Add(cell), Is.True,
-                    $"Cell ({cell.X},{cell.Y}) is shared by multiple arrows.");
+        foreach (var cell in arrow.Cells)
+            Assert.That(
+                seen.Add(cell),
+                Is.True,
+                $"Cell ({cell.X},{cell.Y}) is shared by multiple arrows."
+            );
     }
 
     [Test]
@@ -48,9 +52,12 @@ public class GenerationTests
         BoardGeneration.FillBoard(board, 2, 4, new System.Random(13));
 
         foreach (var arrow in board.Arrows)
-            foreach (var cell in arrow.Cells)
-                Assert.That(board.Contains(cell), Is.True,
-                    $"Cell ({cell.X},{cell.Y}) is outside board bounds.");
+        foreach (var cell in arrow.Cells)
+            Assert.That(
+                board.Contains(cell),
+                Is.True,
+                $"Cell ({cell.X},{cell.Y}) is outside board bounds."
+            );
     }
 
     [Test]
@@ -61,8 +68,11 @@ public class GenerationTests
         BoardGeneration.FillBoard(board, minLength, 6, new System.Random(99));
 
         foreach (var arrow in board.Arrows)
-            Assert.That(arrow.Cells.Count, Is.GreaterThanOrEqualTo(minLength),
-                $"Arrow has only {arrow.Cells.Count} cells, expected >= {minLength}.");
+            Assert.That(
+                arrow.Cells.Count,
+                Is.GreaterThanOrEqualTo(minLength),
+                $"Arrow has only {arrow.Cells.Count} cells, expected >= {minLength}."
+            );
     }
 
     [Test]
@@ -73,15 +83,25 @@ public class GenerationTests
 
         foreach (var arrow in board.Arrows)
             for (int i = 1; i < arrow.Cells.Count; i++)
-                Assert.That(IsInRay(arrow.Cells[i], arrow.HeadCell, arrow.HeadDirection), Is.False,
-                    $"Tail cell ({arrow.Cells[i].X},{arrow.Cells[i].Y}) lies in arrow's own ray.");
+                Assert.That(
+                    IsInRay(arrow.Cells[i], arrow.HeadCell, arrow.HeadDirection),
+                    Is.False,
+                    $"Tail cell ({arrow.Cells[i].X},{arrow.Cells[i].Y}) lies in arrow's own ray."
+                );
     }
 
     [Test]
     public void GenerateArrows_ExactAmountRequested_ReturnsTrue()
     {
         var board = new Board(8, 8);
-        bool success = BoardGeneration.GenerateArrows(board, 2, 3, 4, new System.Random(1), out int created);
+        bool success = BoardGeneration.GenerateArrows(
+            board,
+            2,
+            3,
+            4,
+            new System.Random(1),
+            out int created
+        );
         Assert.That(success, Is.True);
         Assert.That(created, Is.EqualTo(4));
         Assert.That(board.Arrows.Count, Is.EqualTo(4));
@@ -95,7 +115,8 @@ public class GenerationTests
         // External mutation should not break further generation
         board.AddArrow(new Arrow(new Cell[] { new(7, 7), new(7, 6) }));
         Assert.DoesNotThrow(() =>
-            BoardGeneration.GenerateArrows(board, 2, 3, 1, new System.Random(1), out _));
+            BoardGeneration.GenerateArrows(board, 2, 3, 1, new System.Random(1), out _)
+        );
     }
 
     [Test]
@@ -122,8 +143,11 @@ public class GenerationTests
                         break;
                     }
                 }
-                Assert.That(toClear, Is.Not.Null,
-                    $"Seed {seed}: deadlock with {board.Arrows.Count} arrows remaining (cleared {cleared}/{initialCount}).");
+                Assert.That(
+                    toClear,
+                    Is.Not.Null,
+                    $"Seed {seed}: deadlock with {board.Arrows.Count} arrows remaining (cleared {cleared}/{initialCount})."
+                );
                 board.RemoveArrow(toClear!);
                 cleared++;
             }
@@ -164,7 +188,8 @@ public class GenerationTests
                     break;
                 }
             }
-            if (toClear == null) break;
+            if (toClear == null)
+                break;
             board.RemoveArrow(toClear);
             cleared++;
         }
@@ -184,7 +209,10 @@ public class GenerationTests
             BoardGeneration.FillBoard(board, 2, 5, new System.Random(i));
         }
         sw.Stop();
-        Assert.That(sw.ElapsedMilliseconds, Is.LessThan(5000),
-            $"100x FillBoard(10x10) took {sw.ElapsedMilliseconds}ms, expected < 5000ms.");
+        Assert.That(
+            sw.ElapsedMilliseconds,
+            Is.LessThan(5000),
+            $"100x FillBoard(10x10) took {sw.ElapsedMilliseconds}ms, expected < 5000ms."
+        );
     }
 }

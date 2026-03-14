@@ -10,7 +10,8 @@ using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 /// </summary>
 public sealed class InputHandler : MonoBehaviour
 {
-    [SerializeField] private float dragThresholdPixels = 10f;
+    [SerializeField]
+    private float dragThresholdPixels = 10f;
 
     private Board _board = null!;
     private BoardView _boardView = null!;
@@ -28,7 +29,12 @@ public sealed class InputHandler : MonoBehaviour
     // Pinch state
     private float _lastPinchDistance;
 
-    public void Init(Board board, BoardView boardView, CameraController camCtrl, InputActionAsset inputActions)
+    public void Init(
+        Board board,
+        BoardView boardView,
+        CameraController camCtrl,
+        InputActionAsset inputActions
+    )
     {
         _board = board;
         _boardView = boardView;

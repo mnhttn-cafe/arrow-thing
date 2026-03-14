@@ -142,6 +142,15 @@ This approach is necessary because arrows are polylines with bends — a rigid `
   - occupancy and bounds invariants
   - generation performance benchmarks (to catch regressions)
 
+## CI/CD
+
+- **Formatting**: [CSharpier](https://csharpier.com/) enforces consistent C# formatting. Configured as a local dotnet tool (`.config/dotnet-tools.json`). Runs in the pre-commit hook and CI.
+- **Pre-commit hook** (`.githooks/`): CSharpier formatting, fully qualified namespace check, 100 MB file size gate, Asset `.meta` file sync.
+- **Post-merge hook**: removes empty directories under `Assets/` to prevent orphan `.meta` files.
+- **GitHub Actions** (`.github/workflows/ci.yml`): formatting job (CSharpier + namespace + file size + meta sync) runs in parallel with Unity test job (`game-ci/unity-test-runner@v4`).
+- **Branch protection**: `main` requires PRs, no force push, no branch deletion.
+- **Future reference**: [Avalin/Unity-CI-CD](https://github.com/Avalin/Unity-CI-CD) — a modular GitHub Actions pipeline (test → build → release → deploy → notify) for Unity projects. Useful when we need multi-platform builds and deployment (itch.io, Steam, gh-pages, etc.).
+
 ## Decision Log
 
 - 2026-02-28: Adopted split between Unity-independent domain logic and Unity adapter layer.

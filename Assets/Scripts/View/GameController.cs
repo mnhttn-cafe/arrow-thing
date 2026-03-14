@@ -7,16 +7,30 @@ using UnityEngine.InputSystem;
 public sealed class GameController : MonoBehaviour
 {
     [Header("Board")]
-    [SerializeField] private int boardWidth = 6;
-    [SerializeField] private int boardHeight = 6;
-    [SerializeField] private int seed = 42;
-    [SerializeField] private int minArrowLength = 2;
-    [SerializeField] private int maxArrowLength = 5;
+    [SerializeField]
+    private int boardWidth = 6;
+
+    [SerializeField]
+    private int boardHeight = 6;
+
+    [SerializeField]
+    private int seed = 42;
+
+    [SerializeField]
+    private int minArrowLength = 2;
+
+    [SerializeField]
+    private int maxArrowLength = 5;
 
     [Header("References")]
-    [SerializeField] private VisualSettings visualSettings;
-    [SerializeField] private Camera mainCamera;
-    [SerializeField] private InputActionAsset inputActions;
+    [SerializeField]
+    private VisualSettings visualSettings;
+
+    [SerializeField]
+    private Camera mainCamera;
+
+    [SerializeField]
+    private InputActionAsset inputActions;
 
     private Board _board = null!;
     private BoardView _boardView = null!;

@@ -23,17 +23,22 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
 1. Open this folder in Unity Hub using editor version `6000.3.8f1`.
 2. Open the `Game` scene under `Assets/Scenes`.
 3. Run tests via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab).
-4. Set up the pre-commit hook:
+4. Install tools and hooks:
 
 ```bash
+dotnet tool restore
 git config core.hooksPath .githooks
 ```
 
-This enables:
-- Formatting checks (no tabs, no trailing whitespace, final newlines, no fully qualified `System.Collections.Generic`) on staged `.cs` files
+The pre-commit hook runs:
+- [CSharpier](https://csharpier.com/) formatting check on staged `.cs` files
+- Fully qualified namespace detection
 - File size gate (rejects files >= 100 MB)
-- Meta file sync (ensures added/removed Assets have matching `.meta` files)
-- Post-merge cleanup (removes empty directories to prevent orphan `.meta` files)
+- Asset `.meta` file sync
+
+The post-merge hook removes empty directories to prevent orphan `.meta` files.
+
+To auto-fix formatting: `dotnet csharpier format Assets/Scripts/ Assets/Tests/`
 
 5. (Optional) Set up Unity SmartMerge for better YAML conflict resolution:
 

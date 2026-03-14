@@ -7,12 +7,18 @@ using UnityEngine;
 public sealed class CameraController : MonoBehaviour
 {
     [Header("Zoom")]
-    [SerializeField] private float minOrthoSize = 2f;
-    [SerializeField] private float maxOrthoSize = 20f;
-    [SerializeField] private float zoomSpeed = 1f;
+    [SerializeField]
+    private float minOrthoSize = 2f;
+
+    [SerializeField]
+    private float maxOrthoSize = 20f;
+
+    [SerializeField]
+    private float zoomSpeed = 1f;
 
     [Header("Pan")]
-    [SerializeField] private float panBuffer = 2f;
+    [SerializeField]
+    private float panBuffer = 2f;
 
     private Camera _cam = null!;
     private Rect _panBounds;
@@ -59,7 +65,9 @@ public sealed class CameraController : MonoBehaviour
     {
         _cam.orthographicSize = Mathf.Clamp(
             _cam.orthographicSize - scrollDelta * zoomSpeed,
-            minOrthoSize, maxOrthoSize);
+            minOrthoSize,
+            maxOrthoSize
+        );
     }
 
     /// <summary>
@@ -69,6 +77,8 @@ public sealed class CameraController : MonoBehaviour
     {
         _cam.orthographicSize = Mathf.Clamp(
             _cam.orthographicSize / ratio,
-            minOrthoSize, maxOrthoSize);
+            minOrthoSize,
+            maxOrthoSize
+        );
     }
 }

@@ -4,32 +4,27 @@
 errors=0
 
 # ---------------------------------------------------------------------------
-# 1. C# formatting (mirrors .editorconfig rules)
+# 1. C# formatting via CSharpier
 # ---------------------------------------------------------------------------
 
 staged_cs=$(git diff --cached --name-only --diff-filter=d -- '*.cs') || true
 
-for file in $staged_cs; do
-    if git show ":$file" | grep -Pn '\t' > /dev/null 2>&1; then
-        echo "ERROR: Tab characters found in $file (use 4 spaces)"
-        errors=1
-    fi
+if [ -n "$staged_cs" ]; then
+    # Check fully qualified System.Collections.Generic usage (CSharpier won't catch this).
+    for file in $staged_cs; do
+        if git show ":$file" | grep -Pn 'System\.Collections\.Generic\.' | grep -v '^\s*using ' > /dev/null 2>&1; then
+            echo "ERROR: Fully qualified System.Collections.Generic usage in $file (add a using directive)"
+            errors=1
+        fi
+    done
 
-    if git show ":$file" | grep -Pn ' +$' > /dev/null 2>&1; then
-        echo "ERROR: Trailing whitespace found in $file"
+    # Run CSharpier on staged .cs files.
+    if ! dotnet csharpier check $staged_cs 2>&1; then
+        echo ""
+        echo "Run 'dotnet csharpier format Assets/Scripts/ Assets/Tests/' to fix formatting."
         errors=1
     fi
-
-    if [ -n "$(git show ":$file" | tail -c 1)" ]; then
-        echo "ERROR: Missing final newline in $file"
-        errors=1
-    fi
-
-    if git show ":$file" | grep -Pn 'System\.Collections\.Generic\.' | grep -v '^\s*using ' > /dev/null 2>&1; then
-        echo "ERROR: Fully qualified System.Collections.Generic usage in $file (add a using directive)"
-        errors=1
-    fi
-done
+fi
 
 # ---------------------------------------------------------------------------
 # 2. File size gate (GitHub rejects files >= 100 MB)
@@ -56,7 +51,6 @@ staged_added=$(git diff --cached --name-only --diff-filter=A) || true
 staged_deleted=$(git diff --cached --name-only --diff-filter=D) || true
 
 for file in $staged_added; do
-    # Skip files outside Assets/ or .meta files themselves.
     case "$file" in
         Assets/*) ;;
         *) continue ;;
