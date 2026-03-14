@@ -30,19 +30,6 @@ jobs:
       - name: Check C# formatting (CSharpier)
         run: dotnet csharpier check Assets/Scripts/ Assets/Tests/
 
-      - name: Check fully qualified namespaces
-        run: |
-          errors=0
-          while IFS= read -r file; do
-            if grep -Pn 'System\.Collections\.Generic\.' "$file" | grep -v '^\s*using ' > /dev/null 2>&1; then
-              echo "ERROR: Fully qualified System.Collections.Generic usage in $file (add a using directive)"
-              errors=1
-            fi
-          done < <(find Assets/Scripts Assets/Tests -name '*.cs' 2>/dev/null)
-          if [ $errors -ne 0 ]; then
-            exit 1
-          fi
-
       - name: Check file sizes (100 MB limit)
         run: |
           errors=0

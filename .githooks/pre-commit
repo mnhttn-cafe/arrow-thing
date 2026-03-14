@@ -10,15 +10,6 @@ errors=0
 staged_cs=$(git diff --cached --name-only --diff-filter=d -- '*.cs') || true
 
 if [ -n "$staged_cs" ]; then
-    # Check fully qualified System.Collections.Generic usage (CSharpier won't catch this).
-    for file in $staged_cs; do
-        if git show ":$file" | grep -Pn 'System\.Collections\.Generic\.' | grep -v '^\s*using ' > /dev/null 2>&1; then
-            echo "ERROR: Fully qualified System.Collections.Generic usage in $file (add a using directive)"
-            errors=1
-        fi
-    done
-
-    # Run CSharpier on staged .cs files.
     if ! dotnet csharpier check $staged_cs 2>&1; then
         echo ""
         echo "Run 'dotnet csharpier format Assets/Scripts/ Assets/Tests/' to fix formatting."

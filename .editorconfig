@@ -12,11 +12,15 @@ trim_trailing_whitespace = false
 indent_style = space
 indent_size = 4
 tab_width = 4
+max_line_length = 100
 
 # Keep disabled until nullable context is consistently enabled in Unity-generated project settings.
 # CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
 dotnet_diagnostic.CS8632.severity = none
 
-# Enforce low-noise, auto-fixable hygiene rules.
+# Unused imports.
 dotnet_diagnostic.IDE0005.severity = warning
-dotnet_diagnostic.IDE0055.severity = warning
+
+# Formatting is owned by CSharpier — disable the IDE's built-in formatting diagnostic
+# to avoid conflicts with CSharpier's output.
+dotnet_diagnostic.IDE0055.severity = none
