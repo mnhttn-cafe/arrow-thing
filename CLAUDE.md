@@ -24,7 +24,9 @@ View layer scripts live in `Assets/Scripts/View/`:
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom` methods. Fits to board on init. Clamped to board bounds.
 - **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, removes or flashes reject.
 - **`BoardGridRenderer`** — spawns dot sprites at each cell center.
-- **`ArrowView`** — procedural mesh body + arrowhead sprite. Reject flash via `MaterialPropertyBlock` coroutine.
+- **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Reject flash, pull-out animation, and bump animation.
+- **`ArrowMeshBuilder`** — static builder for polyline body mesh with arc-length UV windowing.
+- **`VisualSettings`** — `ScriptableObject` with colors, widths, animation curves, and durations.
 - **`BoardCoords`** — static coordinate mapping (cell ↔ world space).
 
 ## Core Types (`Assets/Scripts/Models/`)

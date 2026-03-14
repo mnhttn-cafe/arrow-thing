@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -38,9 +39,9 @@ public static class ArrowMeshBuilder
         float totalLength = arcLength[arcLength.Length - 1];
         float wEnd = Mathf.Min(windowEnd, totalLength);
 
-        var vertices = new System.Collections.Generic.List<Vector3>();
-        var uvs = new System.Collections.Generic.List<Vector2>();
-        var triangles = new System.Collections.Generic.List<int>();
+        var vertices = new List<Vector3>();
+        var uvs = new List<Vector2>();
+        var triangles = new List<int>();
 
         for (int i = 0; i < path.Length - 1; i++)
         {
@@ -116,9 +117,9 @@ public static class ArrowMeshBuilder
     /// Layout: v0=bottomLeft, v1=topLeft, v2=bottomRight, v3=topRight (in perp terms).
     /// </summary>
     private static void AddQuad(
-        System.Collections.Generic.List<Vector3> verts,
-        System.Collections.Generic.List<Vector2> uvs,
-        System.Collections.Generic.List<int> tris,
+        List<Vector3> verts,
+        List<Vector2> uvs,
+        List<int> tris,
         Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3,
         float uStart, float uEnd)
     {

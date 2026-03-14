@@ -15,7 +15,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ## Related Docs
 
 - [`GDD.md`](GDD.md): game design goals and player-facing behavior.
-- [`BoardGeneration.md`](BoardGeneration.md): generator behavior and algorithm explanation.
+- [`BoardGeneration.md`](BoardGeneration.md): generator algorithm, dependency graph maintenance, and cycle detection.
 
 ## Architecture Overview
 
@@ -81,6 +81,56 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 4. Unity layer queries a domain rules class for clearability and removes the arrow if valid.
 5. Unity layer plays success/failure feedback based on the result.
 
+## View Layer (`Assets/Scripts/View/`)
+
+### Scene Wiring
+
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController` and `InputHandler`.
+- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a screen-space distance threshold. Scroll wheel and pinch-to-zoom for camera zoom.
+- **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom` methods. Fits to board on init. Clamped to board bounds.
+
+### Board and Arrow Rendering
+
+- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, triggers pull-out or bump animation accordingly.
+- **`BoardGridRenderer`** — spawns dot sprites at each cell center.
+- **`BoardCoords`** — static coordinate mapping between cell indices and world-space positions.
+- **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Manages reject flash and clear/bump animations.
+- **`ArrowMeshBuilder`** — static builder that generates a polyline mesh for the arrow body with arc-length UVs and a sliding visibility window.
+- **`VisualSettings`** — `ScriptableObject` with visual tuning parameters: colors, widths, animation curves, and durations.
+
+### Arrowhead Separation
+
+The arrowhead is a separate child GameObject with its own material instance, not part of the body mesh:
+
+- Procedural triangle mesh (3 verts) — resolution-independent at any zoom.
+- Uses the same `ArrowBody` shader as the body, so the reject flash drives `_FlashT` on both materials in sync.
+- During animations, the arrowhead position is set by sampling the path at the window's leading edge. No mesh rebuild needed for the arrowhead.
+
+### Animation System
+
+All animations apply only to the tapped arrow. No other arrow on the board moves during a clear attempt.
+
+#### Arc-Length Windowing
+
+`ArrowMeshBuilder.Build` accepts `windowStart` and `windowEnd` parameters that clip the visible body mesh to a sub-range of the arrow's total arc length. Both parameters advance by the same `slideOffset` each frame, keeping the visible body length constant (the arrow slides along its path without stretching).
+
+This approach is necessary because arrows are polylines with bends — a rigid `transform.position` offset would shift all vertices uniformly, causing bent arrows to move sideways at their middle segments instead of sliding along their own shape.
+
+#### Pull-Out (Clearable Arrow)
+
+- `Board.RemoveArrow` is called immediately before the animation starts, so other arrows become clearable right away.
+- The path is extended at init with a synthetic exit point along the head direction to ensure the arrow fully exits the viewport.
+- `slideOffset` advances from `0` along the extended path, driven by `clearSlideCurve`. Both window edges move in lockstep.
+- Once the arrowhead exits the visible area, `windowEnd` stops and `windowStart` continues (tail-drain), shrinking the visible body to zero. The GameObject is destroyed when `windowStart >= windowEnd`.
+
+#### Bump (Blocked Arrow)
+
+- `Board.GetFirstInRay` finds the blocking arrow. The contact point is the midpoint of the blocker's first ray-intersecting cell.
+- **Slide phase**: `slideOffset` advances to `contactArcLength` via `bumpSlideCurve`.
+- **Bump phase**: `slideOffset` overshoots slightly past contact and springs back, driven by `bumpCurve`. The reject flash fires at contact.
+- **Return phase**: `slideOffset` returns to `0` via `bumpReturnCurve`.
+- No domain state changes — the arrow stays on the board throughout.
+
 ## Testing Strategy
 
 - Domain logic must be testable without Unity runtime dependencies.
@@ -100,4 +150,4 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - 2026-02-28: Standardized this document as the source of truth for architecture and class-structure changes.
 - 2026-03-06: `generation-rewrite` branch refactored away from `BoardModel`/`BoardGenerator` toward minimal model classes (`Cell`, `Arrow`, `Board`) with game logic in static classes (`BoardGeneration`). Model classes are now intentionally minimal and self-contained.
 - 2026-03-13: Occupancy and `IsClearable` moved into `Board`. View layer added: `GameController`, `CameraController`, `BoardView`, `BoardGridRenderer`, `ArrowView`, `InputHandler`, `BoardCoords`. Tests migrated from standalone .NET project to Unity Test Framework (`Assets/Tests/EditMode/`).
-- 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. Generation cache merged into `Board`. `Board.Version` removed (no longer needed without external cache). See `docs/dependency-graph-refactor/Design.md`.
+- 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.

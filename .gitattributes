@@ -1,0 +1,22 @@
+# Auto-detect text files and normalize line endings to LF on commit.
+* text=auto eol=lf
+
+# Unity serialized assets use LF.
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.meta text eol=lf
+*.mat text eol=lf
+*.anim text eol=lf
+*.controller text eol=lf
+
+# Ensure shell scripts use LF (important for git hooks).
+*.sh text eol=lf
+
+# Binary files.
+*.png binary
+*.jpg binary
+*.wav binary
+*.mp3 binary
+*.ttf binary
+*.otf binary
