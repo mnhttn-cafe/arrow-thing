@@ -50,16 +50,19 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ### `Board` (`sealed class`)
 
 - Grid dimensions (`Width`, `Height`) and `List<Arrow> Arrows`.
-- Owns `Arrow?[,] _occupancy`, maintained atomically in `AddArrow`/`RemoveArrow`.
+- Owns `Arrow[,] _occupancy` and a dependency graph (`_dependsOn`, `_dependedOnBy`), both maintained atomically in `AddArrow`/`RemoveArrow`.
 - `Contains(Cell)` performs bounds checking.
 - `GetArrowAt(Cell)` returns the arrow occupying a cell, or null.
-- `IsClearable(Arrow)` walks the forward ray from the head; returns false if any other arrow occupies a ray cell.
+- `IsClearable(Arrow)` returns true when the arrow's dependency set is empty (O(1)).
+- `IsInRay(Cell, Cell, Direction)` is a public static helper for ray geometry.
+- `InitializeForGeneration()` creates the candidate pool for arrow generation (only needed when generating, not for deserialized boards).
 
 ### `BoardGeneration` (`static class`)
 
 - Procedurally fills a `Board` with acyclic arrows.
 - Public entry points: `FillBoard(...)` and `GenerateArrows(...)`.
-- Maintains a static per-board cache (`boardCacheDict`) holding available head candidates and a candidate lookup grid.
+- Stateless — all persistent state (dependency graph, candidate pool) lives on `Board`.
+- Cycle detection uses a reachability set computed from forward deps and checked per-cell against the committed dependency graph.
 - See [`BoardGeneration.md`](BoardGeneration.md) for full algorithm details.
 
 ## Rule and Data Invariants
@@ -97,3 +100,4 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - 2026-02-28: Standardized this document as the source of truth for architecture and class-structure changes.
 - 2026-03-06: `generation-rewrite` branch refactored away from `BoardModel`/`BoardGenerator` toward minimal model classes (`Cell`, `Arrow`, `Board`) with game logic in static classes (`BoardGeneration`). Model classes are now intentionally minimal and self-contained.
 - 2026-03-13: Occupancy and `IsClearable` moved into `Board`. View layer added: `GameController`, `CameraController`, `BoardView`, `BoardGridRenderer`, `ArrowView`, `InputHandler`, `BoardCoords`. Tests migrated from standalone .NET project to Unity Test Framework (`Assets/Tests/EditMode/`).
+- 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. Generation cache merged into `Board`. `Board.Version` removed (no longer needed without external cache). See `docs/dependency-graph-refactor/Design.md`.

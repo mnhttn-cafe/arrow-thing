@@ -23,7 +23,7 @@ public static class ArrowMeshBuilder
     /// <param name="headLength">Length of the arrowhead triangle beyond the last path point.
     /// Pass 0 to omit the arrowhead.</param>
     /// <param name="headWidthMultiplier">Half-base of the arrowhead as a multiple of body width.</param>
-    public static Mesh Build(Vector3[]? path, float width, float windowStart = 0f, float windowEnd = float.MaxValue, float headLength = 0f, float headWidthMultiplier = 1.2f)
+    public static Mesh Build(Vector3[] path, float width, float windowStart = 0f, float windowEnd = float.MaxValue, float headLength = 0f, float headWidthMultiplier = 1.2f)
     {
         if (path == null || path.Length < 2)
         {

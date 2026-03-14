@@ -23,30 +23,6 @@ public class BoardTests
     }
 
     [Test]
-    public void Version_StartsAtZero()
-        => Assert.That(new Board(3, 3).Version, Is.EqualTo(0));
-
-    [Test]
-    public void Version_IncrementsOnAddArrow()
-    {
-        var board = new Board(4, 4);
-        board.AddArrow(new Arrow(new Cell[] { new(0, 1), new(0, 0) }));
-        Assert.That(board.Version, Is.EqualTo(1));
-        board.AddArrow(new Arrow(new Cell[] { new(3, 3), new(3, 2) }));
-        Assert.That(board.Version, Is.EqualTo(2));
-    }
-
-    [Test]
-    public void Version_IncrementsOnRemoveArrow()
-    {
-        var board = new Board(4, 4);
-        var arrow = new Arrow(new Cell[] { new(0, 1), new(0, 0) });
-        board.AddArrow(arrow);
-        board.RemoveArrow(arrow);
-        Assert.That(board.Version, Is.EqualTo(2));
-    }
-
-    [Test]
     public void Arrows_ReflectsAddedArrows()
     {
         var board = new Board(4, 4);

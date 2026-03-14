@@ -31,22 +31,21 @@ View layer scripts live in `Assets/Scripts/View/`:
 
 - **`Cell`** — immutable `(X, Y)` value struct with `IEquatable<Cell>`. Y increases **upward** (Unity convention): `Direction.Up → dy = +1`, `Direction.Down → dy = -1`.
 - **`Arrow`** — immutable ordered list of `Cell`s. `Cells[0]` is the head; `HeadDirection` is derived from the vector `Cells[0]→Cells[1]` and points **opposite** to that first segment (e.g., if next is to the right of head, the arrow faces Left).
-- **`Board`** — mutable container. Arrows are private; mutate only via `AddArrow`/`RemoveArrow`, which increment `Board.Version`. `Arrows` is exposed as `IReadOnlyList<Arrow>`. Owns `Arrow?[,] _occupancy`, maintained atomically in `AddArrow`/`RemoveArrow`. `GetArrowAt(Cell)` returns the arrow at a cell (or null). `IsClearable(Arrow)` walks the forward ray from the head and returns false if any other arrow occupies a ray cell.
+- **`Board`** — mutable container. Arrows are private; mutate only via `AddArrow`/`RemoveArrow`. `Arrows` is exposed as `IReadOnlyList<Arrow>`. Owns `Arrow[,] _occupancy` and a dependency graph (`_dependsOn`, `_dependedOnBy`), both maintained atomically in `AddArrow`/`RemoveArrow`. `GetArrowAt(Cell)` returns the arrow at a cell (or null). `IsClearable(Arrow)` returns true when the arrow's dependency set is empty (O(1)). `IsInRay` is a public static helper for ray geometry. `InitializeForGeneration()` creates the candidate pool for generation (not needed for deserialized boards).
 
-Model classes are intentionally minimal and self-contained. Generation logic lives in `BoardGeneration`; clearability is on `Board` since it's a direct occupancy query.
+Model classes are intentionally minimal and self-contained. Generation logic lives in `BoardGeneration`; clearability and dependency tracking are on `Board` since they're direct graph queries.
 
 ## Board Generation (`Assets/Scripts/BoardGeneration.cs`)
 
-Static class. Key design points:
+Static class, purely algorithmic — all persistent state lives on `Board`. Key design points:
 
-- **`boardCacheDict`** — static `Dictionary<Board, BoardCacheData>` caches generation state per board across calls. `BoardCacheData` (a `class`) holds `availableArrowHeads`, `candidateLookup`, and `version`. Occupancy is owned by `Board` directly. If `board.Version` doesn't match `cache.version` on entry, `GetOrCreateCache` throws `InvalidOperationException` — external mutation is detected immediately rather than silently desyncing.
-- **Head candidates** — all valid adjacent (head, next) pairs for all 4 directions are precomputed by `CreateInitialArrowHeads`. Candidates are eagerly pruned from `availableArrowHeads` when their head or next cell becomes occupied (via `candidateLookup`, a `List<ArrowHeadData>[,]` reverse-lookup array). They are also removed when the 2-cell form causes a cycle, or when the best reachable tail is shorter than `minLength`.
-- **Tail construction** — `CompleteArrowTail` runs DFS+backtracking from `[head, next]`, filtering neighbors that are out-of-bounds, already visited, already occupied, or lie on the head's forward ray (`IsInRay`). It tracks the longest valid path (`best`) and returns it if `targetLength` cannot be reached exactly.
-- **Cycle detection** — `DoesArrowCandidateCauseCycle` follows the forward ray from the candidate head, then hops to the next arrow's head if one is hit, continuing until the ray exits the board (no cycle) or a body cell from the current candidate or a previously-visited arrow is encountered (cycle).
+- **Candidate pool** — owned by `Board`, initialized via `InitializeForGeneration()`. All valid adjacent (head, next) pairs for all 4 directions are precomputed by `CreateInitialArrowHeads`. Candidates are eagerly pruned inside `Board.AddArrow` when their head or next cell becomes occupied (via `_candidateLookup`). They are also removed when the 2-cell form causes a cycle, or when the best reachable tail is shorter than `minLength`.
+- **Tail construction** — `CompleteArrowTail` runs DFS+backtracking from `[head, next]`, filtering neighbors that are out-of-bounds, already visited, already occupied, lie on the head's forward ray (`Board.IsInRay`), or would cause a dependency cycle (`WouldCellCauseCycle`). It tracks the longest valid path (`best`) and returns it if `targetLength` cannot be reached exactly.
+- **Cycle detection** — uses a reachability set approach. `ComputeForwardDeps` walks the candidate's ray to find all arrows it would depend on. `ComputeReachableSet` does BFS through the committed dependency graph from those arrows. `WouldCellCauseCycle` checks if any existing arrow whose ray crosses a candidate cell is in that reachable set. The reachability set is computed once per head candidate and reused for all tail cells — each cell check is stateless and independent, requiring no backtracking.
 
 ## Testing
 
-Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/version/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, cache desync detection, and a 100-iteration timing gate. Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
+Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, full solvability verification (50 seeds + counterexample), external AddArrow compatibility, and a 100-iteration timing gate. Explicit perf tests include multi-seed solvability stress tests (500×10x10, 100×20x20, 20×50x50). Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
 
 ## Key Design Rules
 
@@ -54,4 +53,4 @@ Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unit
 - Board occupancy is exclusive — one arrow per cell.
 - Seeded RNG must be supported for reproducible boards.
 - Replay system is event-log driven (JSON format).
-- C# nullable is enabled globally via `Assets/csc.rsp`.
+- C# nullable annotations are not used (no `csc.rsp`). Reference types are nullable by default.

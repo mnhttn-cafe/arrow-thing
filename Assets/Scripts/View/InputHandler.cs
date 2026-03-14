@@ -97,7 +97,7 @@ public sealed class InputHandler : MonoBehaviour
 
                 if (_board.Contains(cell))
                 {
-                    Arrow? arrow = _board.GetArrowAt(cell);
+                    Arrow arrow = _board.GetArrowAt(cell);
                     if (arrow != null)
                         _boardView.TryClearArrow(arrow);
                 }
