@@ -35,9 +35,10 @@ Arrows are polylines with bends. A `transform.position` offset shifts every vert
 
 The arrowhead is a separate child GameObject with its own material, not part of the body mesh. This gives several benefits:
 
-- **Visual distinction**: a different material on the arrowhead makes arrow direction more readable.
+- **Visual distinction**: separate material instance allows different color/highlight settings from the body.
 - **Simpler mesh generation**: `ArrowMeshBuilder` only builds the body strip; no arrowhead logic.
-- **Resolution-independent**: a procedural triangle (3 verts, flat-color material) is perfectly sharp at any zoom, unlike a textured quad which would pixelate like the grid dots.
+- **Resolution-independent**: a procedural triangle (3 verts) is perfectly sharp at any zoom, unlike a textured quad which would pixelate like the grid dots.
+- **Consistent flash**: uses the same `ArrowBody` shader as the body, so reject flash drives `_FlashT` on both materials in sync.
 - **Simpler animation**: the arrowhead never rotates during either animation (the head direction is constant), so animating it is just a position translation along the head direction. No mesh rebuild needed for the arrowhead — only the body rebuilds.
 
 During both pull-out and bump, the arrowhead position is computed by sampling the path at the current `windowEnd` (the leading edge of the window).
@@ -79,35 +80,26 @@ Build the full mesh once. Pass `windowStart`/`windowEnd` as material uniforms. T
 
 Option B avoids per-frame mesh allocation and is more GPU-friendly, but adds shader complexity and requires the full mesh to remain allocated. **Decision deferred to implementation** — start with Option A, profile, switch to B if needed.
 
-## Required Changes
+## Implementation Status
 
-### `ArrowMeshBuilder`
+All animation features are implemented:
 
-- Remove arrowhead triangle generation (the `headLength > 0` block). The arrowhead becomes a separate object.
+### Arrowhead separation (merged to main)
 
-### `ArrowView`
+- `ArrowMeshBuilder` — arrowhead triangle generation removed; body-only mesh builder.
+- `ArrowView` — spawns arrowhead as child GameObject (procedural 3-vert triangle mesh, centered at origin so transform controls placement). Separate material instance using the same `ArrowBody` shader. Reject flash drives `_FlashT` on both body and head material instances in sync.
+- `VisualSettings` — `arrowHeadMaterial` and `arrowHeadColor` fields added. `ArrowHead.mat` asset created and wired up.
+- `Board` — added input validation to `AddArrow`/`RemoveArrow` (null, duplicate, bounds, occupancy, clearability). Added `GetFirstInRay(Arrow)` to find the first blocking arrow in a ray.
 
-- Spawn a child GameObject for the arrowhead (procedural triangle mesh, 3 verts, flat-color material).
-- Cache the `Vector3[] path` (extended), `totalArcLength`, and body mesh-build parameters from `Init`.
-- `PlayPullOut(float duration)` coroutine — slides the window along the extended path, destroys the GameObject on completion.
-- `PlayBump(float slideDuration, float bumpDuration, float contactArcLength)` coroutine — slides to contact point, bumps, slides back, fires reject flash on contact.
-- Both coroutines rebuild the body mesh each frame and move the arrowhead transform.
+### Animation system
 
-### `BoardView`
-
-- `TryClearArrow`:
-  - **If clearable**: call `Board.RemoveArrow` immediately, remove from `_arrowViews`, start `PlayPullOut` on the `ArrowView`.
-  - **If blocked**: call `Board.GetFirstInRay` to find the blocker, compute the contact arc-length, start `PlayBump` on the tapped `ArrowView`. No domain state changes.
-
-### `VisualSettings`
-
-- Add fields: `clearSlideDuration`, `clearSlideCurve`, `bumpSlideDuration`, `bumpSlideCurve`, `bumpDuration`, `bumpMagnitude`, `bumpCurve`, `bumpReturnDuration`, `bumpReturnCurve`.
-- Add field: `arrowHeadMaterial` (flat-color, separate from `arrowBodyMaterial`).
-- Path extension multiplier (board-size-relative distance for the synthetic exit point).
+- `ArrowView` — path is extended at init with a synthetic exit point along head direction (`pathExtensionMultiplier × max(boardWidth, boardHeight)`). Caches extended path, arc lengths, and body width. `ApplySlideOffset(float)` rebuilds body mesh with windowed arc-length and repositions the arrowhead. `PlayPullOut(Action onComplete)` slides the arrow off-screen. `PlayBump(float contactArcLength)` runs the three-phase slide/bump/return with reject flash on contact.
+- `BoardView.TryClearArrow` — clearable arrows: `RemoveArrow` called immediately, pull-out animation plays, `Destroy` deferred to `onComplete`. Blocked arrows: walks ray to compute contact distance, calls `PlayBump`.
+- `VisualSettings` — `clearSlideDuration`, `clearSlideCurve`, `pathExtensionMultiplier`, `bumpSlideDuration`, `bumpSlideCurve`, `bumpDuration`, `bumpMagnitude`, `bumpCurve`, `bumpReturnDuration`, `bumpReturnCurve`.
 
 ## Resolved Decisions
 
-- **Arrowhead geometry**: procedural triangle mesh (3 verts, flat-color material). Resolution-independent — no pixelation at any zoom level. The shape is simple enough that texture-based iteration isn't needed.
+- **Arrowhead geometry**: procedural triangle mesh (3 verts), same `ArrowBody` shader as the body with its own material instance. Resolution-independent, consistent flash behavior.
 - **Bump contact point**: midpoint of the blocking arrow's first ray-intersecting cell, not the edge. Adjustable during playtesting.
 - **Easing**: separate `AnimationCurve`s in `VisualSettings` — `clearSlideCurve` for pull-out, `bumpSlideCurve` / `bumpCurve` / `bumpReturnCurve` for the three bump phases.
 - **No effect on other arrows**: only the tapped arrow animates. The blocker is static — it is a wall, not a participant.

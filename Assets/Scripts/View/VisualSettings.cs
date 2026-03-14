@@ -30,4 +30,18 @@ public sealed class VisualSettings : ScriptableObject
     public Color rejectFlashColor = new Color(1f, 0.267f, 0.267f);      // #FF4444
     public float rejectFlashDuration = 0.35f;
     public AnimationCurve rejectFlashCurve = AnimationCurve.EaseInOut(0f, 1f, 1f, 0f);
+
+    [Header("Clear Animation")]
+    public float clearSlideDuration = 0.4f;
+    public AnimationCurve clearSlideCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+    public float pathExtensionMultiplier = 1.5f;
+
+    [Header("Bump Animation")]
+    public float bumpSlideDuration = 0.15f;
+    public AnimationCurve bumpSlideCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+    public float bumpDuration = 0.15f;
+    public float bumpMagnitude = 0.15f;
+    public AnimationCurve bumpCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+    public float bumpReturnDuration = 0.2f;
+    public AnimationCurve bumpReturnCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 }

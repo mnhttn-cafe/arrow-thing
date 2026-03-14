@@ -40,14 +40,41 @@ public sealed class BoardView : MonoBehaviour
     /// </summary>
     public bool TryClearArrow(Arrow arrow)
     {
+        if (!_arrowViews.TryGetValue(arrow, out ArrowView view))
+            return false;
+
         if (!_board.IsClearable(arrow))
         {
-            if (_arrowViews.TryGetValue(arrow, out ArrowView view))
+            // Blocked: slide toward blocker, bump, flash, return
+            Arrow blocker = _board.GetFirstInRay(arrow);
+            if (blocker != null)
+            {
+                // Contact distance: cells between arrow head and blocker's first ray cell
+                (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+                Cell cursor = new(arrow.HeadCell.X + dx, arrow.HeadCell.Y + dy);
+                int cellDistance = 1;
+                while (_board.Contains(cursor))
+                {
+                    if (_board.GetArrowAt(cursor) == blocker)
+                        break;
+                    cursor = new(cursor.X + dx, cursor.Y + dy);
+                    cellDistance++;
+                }
+                // Each cell is 1 world unit; contact at midpoint of the hit cell
+                float contactArcLength = cellDistance - 0.5f;
+                view.PlayBump(contactArcLength);
+            }
+            else
+            {
                 view.PlayRejectFlash();
+            }
             return false;
         }
 
-        RemoveArrow(arrow);
+        // Clearable: remove from domain immediately, play pull-out animation
+        _arrowViews.Remove(arrow);
+        _board.RemoveArrow(arrow);
+        view.PlayPullOut(onComplete: () => Destroy(view.gameObject));
         return true;
     }
 
@@ -57,15 +84,5 @@ public sealed class BoardView : MonoBehaviour
     public ArrowView GetArrowView(Arrow arrow)
     {
         return _arrowViews.TryGetValue(arrow, out ArrowView view) ? view : null;
-    }
-
-    private void RemoveArrow(Arrow arrow)
-    {
-        if (_arrowViews.TryGetValue(arrow, out ArrowView view))
-        {
-            _arrowViews.Remove(arrow);
-            Destroy(view.gameObject);
-        }
-        _board.RemoveArrow(arrow);
     }
 }
