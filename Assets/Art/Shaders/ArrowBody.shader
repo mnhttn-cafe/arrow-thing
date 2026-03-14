@@ -12,13 +12,15 @@ Shader "ArrowThing/ArrowBody"
 
     SubShader
     {
-        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "Queue" = "Geometry" }
+        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "Queue" = "Transparent" }
         LOD 100
 
         Pass
         {
             Name "ForwardLit"
-            Tags { "LightMode" = "UniversalForward" }
+            Tags { "LightMode" = "SRPDefaultUnlit" }
+            Cull Off
+            ZWrite Off
 
             HLSLPROGRAM
             #pragma vertex   vert
