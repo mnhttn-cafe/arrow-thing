@@ -6,7 +6,7 @@
 - Platform(s): Mobile first, desktop supported during development
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
 - Status: Draft v0.6
-- Last Updated: 2026-03-06
+- Last Updated: 2026-03-15
 
 ## High Concept
 - One-sentence pitch: Clear winding grid-based arrows as fast as possible, then weaponize your speed against opponents by sending garbage.
@@ -192,7 +192,7 @@
 
 ## Production Scope
 - MVP definition:
-  - Minimal start menu. **[Not started — scene exists but empty]**
+  - Minimal start menu. **[Done — UI Toolkit menu with Play/Mode Select/Settings screens, board-size presets]**
   - Procedural arrow generation. **[Done]**
   - Core click/tap clear loop with success/fail animations. **[Done]**
   - Timer UI. **[Not started]**

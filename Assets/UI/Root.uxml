@@ -1,0 +1,35 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="MainMenu.uss" />
+
+    <ui:VisualElement name="main-menu" class="screen">
+        <ui:Button name="quit-btn" class="quit-btn" text="✕" />
+        <ui:Label class="title" text="Arrow Thing" />
+        <ui:Button name="play-btn" class="menu-btn" text="Play" />
+        <ui:Button name="settings-btn" class="menu-btn" text="Settings" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="mode-select" class="screen screen--hidden">
+        <ui:Label class="section-label" text="Select Board Size" />
+        <ui:Button name="preset-small" class="preset-btn" text="Small — 10 × 10" />
+        <ui:Button name="preset-medium" class="preset-btn" text="Medium — 20 × 20" />
+        <ui:Button name="preset-large" class="preset-btn" text="Large — 40 × 40" />
+        <ui:Button name="start-btn" class="start-btn" text="Start" />
+        <ui:Button name="mode-back-btn" class="menu-btn" text="Back" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="settings" class="screen screen--hidden">
+        <ui:Label class="section-label" text="Settings" />
+        <ui:Label class="placeholder-text" text="Coming soon" />
+        <ui:Button name="settings-back-btn" class="menu-btn" text="Back" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="quit-modal" class="modal-overlay screen--hidden">
+        <ui:VisualElement class="modal-box">
+            <ui:Label class="modal-label" text="Quit game?" />
+            <ui:VisualElement class="modal-buttons">
+                <ui:Button name="quit-yes-btn" class="menu-btn" text="Yes" />
+                <ui:Button name="quit-no-btn" class="menu-btn" text="No" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
