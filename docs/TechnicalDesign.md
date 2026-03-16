@@ -57,6 +57,20 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - `IsInRay(Cell, Cell, Direction)` is a public static helper for ray geometry.
 - `InitializeForGeneration()` creates the candidate pool for arrow generation (only needed when generating, not for deserialized boards).
 
+### `GameTimer` (`sealed class`)
+
+- Two-phase timer: inspection countdown followed by solve timer. Pure C# — no Unity dependency.
+- Phases: `Inspection → Solving → Finished`. Driven by `Tick(double current)` for display updates.
+- `StartSolve(current, inputTimestamp)` transitions from inspection to solving. `Finish(current, inputTimestamp)` ends the solve.
+- Display during play uses frame time (`Time.timeAsDouble`). Final precise time uses input-event timestamps (via `InputAction.canceled` callback) to avoid frame-boundary imprecision.
+- Fires `PhaseChanged` event on transitions.
+
+### `ClearResult` (`enum`)
+
+- Return type of `BoardView.TryClearArrow`. Values: `Blocked = 0`, `Cleared`, `ClearedFirst`, `ClearedLast`.
+- `Blocked = 0` so all success values are nonzero for easy truthiness-style checks.
+- `ClearedFirst`/`ClearedLast` drive timer phase transitions in `InputHandler`.
+
 ### `BoardGeneration` (`static class`)
 
 - Procedurally fills a `Board` with acyclic arrows.
@@ -90,14 +104,15 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### Scene Wiring
 
-- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, and `VictoryController`. Reads board parameters from `GameSettings` when set (menu flow), otherwise from inspector fields (editor testing). Seed is randomized by default (`useRandomSeed` toggle); fixed seed available via inspector for deterministic debugging.
-- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence.
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, `GameTimerView`, and `VictoryController`. Creates the `GameTimer` domain model and passes it to both `InputHandler` (for input-precision timestamps) and `VictoryController` (for final time display). Sets up the HUD UIDocument with a leave-game confirmation modal. Reads board parameters from `GameSettings` when set (menu flow), otherwise from inspector fields (editor testing). Seed is randomized by default (`useRandomSeed` toggle); fixed seed available via inspector for deterministic debugging.
+- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On arrow clears, passes both frame time and input-precision timestamps (via `canceled` callback) to `GameTimer` for timer phase transitions.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom is derived from the initial fit (not configurable). Clamped to board bounds. `ZoomToFit` smoothly returns to the initial view with a SmoothStep coroutine.
-- **`VictoryController`** — handles the board-cleared sequence. `GameController` disables input then invokes `OnBoardCleared`, which runs: zoom-to-fit → grid fade → victory popup with a randomized playful message and Play Again / Menu buttons. Font size auto-scales for long messages.
+- **`GameTimerView`** — drives a `GameTimer` each frame and updates the HUD timer label. During inspection: grey whole-second countdown, turns red at a configurable warning threshold. During solving: white whole-second count-up. On finish: precise millisecond display.
+- **`VictoryController`** — handles the board-cleared sequence. `GameController` disables input then invokes `OnBoardCleared`, which runs: zoom-to-fit → grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu buttons. Font size auto-scales for long messages. Hides the game HUD when the popup appears.
 
 ### Board and Arrow Rendering
 
-- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, triggers pull-out or bump animation accordingly.
+- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, returns `ClearResult` (replacing the old `bool` return), and triggers pull-out or bump animation accordingly. Tracks clear count to distinguish `ClearedFirst` / `ClearedLast`.
 - **`BoardGridRenderer`** — spawns dot sprites at each cell center.
 - **`BoardCoords`** — static coordinate mapping between cell indices and world-space positions.
 - **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Manages reject flash and clear/bump animations.
@@ -165,7 +180,7 @@ The menu UI (UI Toolkit) is designed and tested for desktop resolutions only. On
 UI layout tests verify that all UI elements are visible and not clipped across multiple aspect ratios. Tests load UXML assets programmatically (via `AssetDatabase`) onto a runtime `UIDocument`, simulate different screen sizes by modifying `PanelSettings.referenceResolution`, and assert element bounds.
 
 - **`UILayoutTestHelper`** — reusable utilities: `AspectRatio` struct, `SetPanelReferenceResolution`, `AssertElementFullyVisible`, `WarnElementFullyVisible`, `AssertAllVisibleChildren`, `WaitForLayoutResolve`.
-- **`UILayoutTests`** — 7 UI states (main menu, mode select, settings, quit modal, 3 victory message tiers) tested across 5 aspect ratios (16:9, 4:3, 21:9, 9:16, 1:1) = 35 test cases. Portrait (9:16) failures are reported as warnings (not hard failures) since fixed-pixel CSS is a known limitation.
+- **`UILayoutTests`** — 10 UI states (main menu, mode select, settings, quit modal, 3 victory message tiers, game HUD, game HUD leave modal, victory with time) tested across 5 aspect ratios (16:9, 4:3, 21:9, 9:16, 1:1) = 50 test cases. Portrait (9:16) failures are reported as warnings (not hard failures) since fixed-pixel CSS is a known limitation.
 - PanelSettings is saved/restored in SetUp/TearDown to avoid polluting other tests.
 
 ## CI/CD
@@ -220,4 +235,5 @@ Three jobs run in parallel:
 - 2026-03-15: Added board clear screen. `VictoryController` drives zoom-to-fit → grid fade → victory popup sequence, connected via `BoardView.BoardCleared` event. Input is disabled during the entire sequence.
 - 2026-03-16: Camera max zoom derived from board fit; removed configurable `maxOrthoSize`. Drag threshold moved to `GameController` inspector field. `MainMenuController` preserves selected preset when returning from game.
 - 2026-03-16: Added PlayMode UI layout tests. 35 test cases across 7 UI states and 5 aspect ratios catch clipping/overflow regressions. Portrait (9:16) failures tracked as warnings pending responsive CSS work. `UILayoutTestHelper` utility makes adding tests for new screens trivial.
+- 2026-03-16: Added in-game HUD (`GameHud.uxml`) with back-to-menu button (with leave confirmation modal) and solve timer. `GameTimer` domain model tracks inspection/solve phases with input-precision timestamps for final time. `ClearResult` enum replaces `bool` return from `TryClearArrow`. `GameTimerView` drives the HUD label. Victory popup now shows final solve time.
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.
