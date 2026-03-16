@@ -136,6 +136,18 @@ This approach is necessary because arrows are polylines with bends — a rigid `
 - **Return phase**: `slideOffset` returns to `0` via `bumpReturnCurve`.
 - No domain state changes — the arrow stays on the board throughout.
 
+## Known Limitations
+
+### Mobile UI Scaling
+
+The menu UI (UI Toolkit) is designed and tested for desktop resolutions only. On mobile devices, the UI renders oversized and vertically cropped due to fixed pixel font sizes and padding that don't adapt to mobile DPI or aspect ratios.
+
+**What's broken:** buttons and title overflow the viewport on portrait mobile screens. The game scene (world-space rendering) scales fine since `CameraController` fits to board bounds — only the screen-space UI is affected.
+
+**Why it's deferred:** fixing this properly requires either responsive USS (viewport-relative units, media-query-like breakpoints) or a PanelSettings scale mode tuned per platform. Both approaches need dedicated design and testing across device sizes — it's a separate UX pass, not a quick CSS fix. The GDD targets mobile-first for shipping, but desktop is sufficient for MVP gameplay validation.
+
+**Unblocks:** all gameplay and input (including touch/pinch) work correctly on mobile. Only the menu UI is affected.
+
 ## Testing Strategy
 
 - Domain logic must be testable without Unity runtime dependencies.
@@ -194,4 +206,5 @@ Two jobs run in parallel:
 - 2026-03-06: `generation-rewrite` branch refactored away from `BoardModel`/`BoardGenerator` toward minimal model classes (`Cell`, `Arrow`, `Board`) with game logic in static classes (`BoardGeneration`). Model classes are now intentionally minimal and self-contained.
 - 2026-03-13: Occupancy and `IsClearable` moved into `Board`. View layer added: `GameController`, `CameraController`, `BoardView`, `BoardGridRenderer`, `ArrowView`, `InputHandler`, `BoardCoords`. Tests migrated from standalone .NET project to Unity Test Framework (`Assets/Tests/EditMode/`).
 - 2026-03-15: Added start menu (UI Toolkit). `MainMenuController` in `MainMenu` scene, `GameSettings` static class for scene-transition parameter passing, random seed by default with inspector override.
+- 2026-03-15: Deferred mobile UI support. See **Known Limitations > Mobile UI Scaling** for rationale.
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.
