@@ -6,13 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Arrow Thing** — a minimalist speed-clearing puzzle game (Unity 2D URP). Players tap arrows on a grid to clear them; an arrow is clearable only when the ray extending forward from its head to the board boundary contains no other arrow body cells. The dependency graph between arrows must be acyclic (DAG) for a board to be solvable. Competitive PvP with Tetris-like garbage mechanics is planned post-MVP. Board generation will run server-side for the networked game.
 
+The game is free and open-source (MIT). Primary distribution is WebGL on GitHub Pages, deployed automatically via CD pipeline on push to `main`.
+
 Docs: `docs/GDD.md` (game design), `docs/TechnicalDesign.md` (architecture — single source of truth for all technical decisions), `docs/BoardGeneration.md` (generator algorithm). See **Feature Workflow** below for how `docs/TODO.md` is used during feature development.
 
 ## Architecture
 
 The codebase is split into two layers:
 
-- **Domain layer** (`Assets/Scripts/`) — Unity-independent pure C#. Contains board state, arrow rules, clearability logic, and generation. Must be testable without Unity runtime.
+- **Domain layer** (`Assets/Scripts/Domain/`) — Unity-independent pure C#. Contains board state, arrow rules, clearability logic, and generation. Must be testable without Unity runtime.
 - **Unity adapter layer** — input handling, rendering, animation, scene wiring. Translates player actions into domain operations and reflects resulting state. Should not own gameplay rules. Unity is used for graphics only.
 
 The board interaction flow: `BoardGeneration` fills `Board` → Unity renders it → player selects arrow → Unity queries `Board.IsClearable` → Unity plays feedback.
@@ -31,7 +33,7 @@ View layer scripts live in `Assets/Scripts/View/`:
 - **`VisualSettings`** — `ScriptableObject` with colors, widths, animation curves, and durations.
 - **`BoardCoords`** — static coordinate mapping (cell ↔ world space).
 
-## Core Types (`Assets/Scripts/Models/`)
+## Core Types (`Assets/Scripts/Domain/Models/`)
 
 - **`Cell`** — immutable `(X, Y)` value struct with `IEquatable<Cell>`. Y increases **upward** (Unity convention): `Direction.Up → dy = +1`, `Direction.Down → dy = -1`.
 - **`Arrow`** — immutable ordered list of `Cell`s. `Cells[0]` is the head; `HeadDirection` is derived from the vector `Cells[0]→Cells[1]` and points **opposite** to that first segment (e.g., if next is to the right of head, the arrow faces Left).
@@ -41,7 +43,7 @@ View layer scripts live in `Assets/Scripts/View/`:
 
 Model classes are intentionally minimal and self-contained. Generation logic lives in `BoardGeneration`; clearability and dependency tracking are on `Board` since they're direct graph queries.
 
-## Board Generation (`Assets/Scripts/BoardGeneration.cs`)
+## Board Generation (`Assets/Scripts/Domain/BoardGeneration.cs`)
 
 Static class, purely algorithmic — all persistent state lives on `Board`. Key design points:
 

@@ -1,83 +1,21 @@
-Arrow Thing Source-Available License v2.0
+MIT License
 
-Copyright (c) 2026 Arrow Thing owners
+Copyright (c) 2026 Arrow Thing contributors
 
-This license grants broad access to the source code for personal and
-non-commercial use while reserving commercial distribution rights.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. Definitions
-
-"Software" means the Arrow Thing source code, assets, and associated files
-in this repository, including modified versions and compiled builds derived
-from it.
-
-"You" means any individual or legal entity exercising permissions under this
-license.
-
-"Commercial Use" means any activity primarily intended for or directed toward
-commercial advantage or monetary compensation. This includes, but is not
-limited to, selling, renting, licensing for a fee, or offering as a paid
-service.
-
-2. Permissions
-
-Subject to the terms below, you may:
-
-- Use, study, and modify the Software for any non-commercial purpose.
-- Build and compile the Software for your own use.
-- Share source code or compiled builds with others for non-commercial
-  purposes, provided this license is included with any copy and the
-  recipient is made aware of its terms.
-
-3. Restrictions
-
-Without prior written permission from the copyright holder, you may not:
-
-- Sell, sublicense, rent, or otherwise commercially distribute the Software,
-  its source code, or compiled builds, whether original or modified.
-- Offer the Software or any derivative work as a commercial product or paid
-  service, including as a hosted service where users interact with core
-  gameplay functionality.
-- Present the Software or derivative works as your own original creation,
-  or remove/alter copyright notices and license text.
-
-4. Commercial Distribution Rights
-
-All commercial distribution rights are exclusively reserved by the copyright
-holder. This includes the right to sell official builds through storefronts
-(e.g., Steam, Itch.io) or any other commercial channel.
-
-Commercial licensing inquiries may be directed to the copyright holder.
-
-5. Contributions
-
-By submitting code, assets, or other material to the official Arrow Thing
-repository (e.g., via pull request), you:
-
-- Grant the copyright holder a perpetual, worldwide, royalty-free,
-  irrevocable license to use, modify, sublicense, and distribute your
-  contribution under this license or any more permissive license the
-  project may adopt in the future.
-- Represent that you have the right to grant this license and that your
-  contribution does not infringe on any third-party rights.
-
-6. Termination
-
-Any violation of this license automatically terminates your rights under it.
-
-Upon termination, you must cease all use of the Software and delete your
-copies. Termination does not affect rights of others who received copies
-from you in compliance with this license before termination.
-
-7. No Warranty
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-
-8. Limitation of Liability
-
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
-CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT,
-OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
-THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

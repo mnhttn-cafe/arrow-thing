@@ -11,7 +11,7 @@ public class UILayoutTests
     private const string MainMenuUxmlPath = "Assets/UI/Root.uxml";
     private const string VictoryUxmlPath = "Assets/UI/VictoryPopup.uxml";
     private const string GameHudUxmlPath = "Assets/UI/GameHud.uxml";
-    private const string PanelSettingsPath = "Assets/UI Toolkit/PanelSettings.asset";
+    private const string PanelSettingsPath = "Assets/Settings/UI/PanelSettings.asset";
 
     // Representative messages for each font-size tier in VictoryController.
     private const string ShortMessage = "Nice!"; // len 5 → 40px

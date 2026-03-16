@@ -37,9 +37,9 @@ public sealed class MainMenuController : MonoBehaviour
         _mainMenu.Q<Button>("play-btn").clicked += OnPlay;
         _mainMenu.Q<Button>("settings-btn").clicked += OnSettings;
 
-        // Quit button — desktop only
+        // Quit button — desktop only (no quit action on mobile or web)
         var quitBtn = _mainMenu.Q<Button>("quit-btn");
-        if (Application.isMobilePlatform)
+        if (Application.isMobilePlatform || Application.platform == RuntimePlatform.WebGLPlayer)
         {
             quitBtn.style.display = DisplayStyle.None;
         }
