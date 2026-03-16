@@ -57,6 +57,15 @@ New features follow a three-phase workflow:
 2. **Implement** — Build the feature against the plan in `TODO.md`. Do not delete or simplify `TODO.md` mid-feature; it captures design decisions and context that inform implementation.
 3. **Clean up** — Update stale documentation, delete `TODO.md`, validate `docs/TechnicalDesign.md` reflects the current architecture. The TDD is the single source of truth for all technical decisions.
 
+## Pre-Commit / Pre-PR Checklist
+
+Before committing or opening a PR, verify changes abide by `CONTRIBUTING.md`:
+
+- Unity-independent domain classes have NUnit test coverage in `Assets/Tests/EditMode/`.
+- `docs/TechnicalDesign.md` is updated if architecture or class structure changed.
+- `docs/TODO.md` is deleted before the PR is merge-ready.
+- No docs inconsistencies introduced.
+
 ## Key Design Rules
 
 - Arrow minimum length: 2 cells. No hard maximum; practical caps are per-mode tuning variables.
