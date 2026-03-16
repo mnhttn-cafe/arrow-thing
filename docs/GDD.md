@@ -196,7 +196,7 @@
   - Procedural arrow generation. **[Done]**
   - Core click/tap clear loop with success/fail animations. **[Done]**
   - Timer UI. **[Not started]**
-  - Simple clear screen. **[Not started]**
+  - Simple clear screen. **[Done — grid fade + victory popup with randomized messages, Play Again / Menu]**
   - Audio feedback for success/fail/clear. **[Not started]**
   - Build configuration (all gameplay scenes in build settings). **[Not started]**
 - Stretch goals:

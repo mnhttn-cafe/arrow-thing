@@ -44,20 +44,52 @@ Assets/
 
 ## Implementation Plan
 
-- [ ] **1. Grid fade support** — Add a `FadeOut(float duration, System.Action onComplete)` method to `BoardGridRenderer`. Collects all child `SpriteRenderer`s and fades their alpha over `duration` using a coroutine.
-- [ ] **2. Victory UXML/USS** — `VictoryPopup.uxml` with a centered box containing a message label and two buttons (Play Again, Menu). `VictoryPopup.uss` for styling. Dark overlay background similar to quit modal.
-- [ ] **3. VictoryController** — MonoBehaviour on the Game scene. Holds a reference to `UIDocument` (for the popup), `BoardGridRenderer` (for the fade), and a `string[]` of messages. Exposes `OnBoardCleared()` which starts the fade, then shows the popup with a random message. Play Again reloads Game scene; Menu loads MainMenu scene.
-- [ ] **4. Wire into BoardView** — After a successful `TryClearArrow` where `_board.Arrows.Count == 0`, notify `VictoryController`. Use a callback/event so `BoardView` doesn't depend on `VictoryController` directly.
-- [ ] **5. Wire in GameController** — Create the `UIDocument` for the popup, instantiate `VictoryController`, connect the board-cleared event.
-- [ ] **6. Timing** — The victory sequence should wait for the last arrow's pull-out animation to finish before starting the grid fade. `ArrowView.PlayPullOut` already has an `onComplete` callback — use it.
-- [ ] **7. Manual test cases** — Add test cases to this TODO covering clear sequence timing, popup content, Play Again, Menu, edge cases.
+- [x] **1. Grid fade support** — `BoardGridRenderer.FadeOut` with coroutine-driven alpha fade.
+- [x] **2. Victory UXML/USS** — centered popup box with message, Play Again, Menu. Dark overlay.
+- [x] **3. VictoryController** — drives fade → popup sequence, random message with font scaling for long text.
+- [x] **4. Wire into BoardView** — `BoardCleared` event fires after last arrow's pull-out animation.
+- [x] **5. Wire in GameController** — UIDocument reference, VictoryController init, event subscription.
+- [x] **6. Timing** — uses `PlayPullOut` onComplete callback to trigger clear sequence after animation.
+- [x] **7. Manual test cases** — see below.
 - [ ] **8. Docs cleanup** — Update TechnicalDesign.md, CLAUDE.md. Delete this TODO.
 
 ---
 
 ## Manual Test Cases
 
-_To be filled after implementation._
+### Clear Sequence Timing
+
+- [ ] **CS-1: Grid fade starts after animation** — Clear the last arrow. The pull-out animation should fully complete before the grid dots begin fading.
+- [ ] **CS-2: Grid fade duration** — Grid dots fade smoothly to transparent over ~0.5s (no pop/snap).
+- [ ] **CS-3: Popup appears after fade** — Victory popup appears only after grid dots are fully transparent, not during the fade.
+
+### Victory Popup Content
+
+- [ ] **VP-1: Message displayed** — A message is visible in the popup after clearing the board.
+- [ ] **VP-2: Message randomization** — Clear the board multiple times. Different messages should appear (not always the same one).
+- [ ] **VP-3: Short message font** — Short messages (e.g. "Nice!", "woa") display at a large, readable font size.
+- [ ] **VP-4: Long message font** — Very long messages (e.g. the "DONT PRESS THAT BUTTON..." message) display at a smaller font size and wrap within the box without pushing buttons off-screen.
+- [ ] **VP-5: Buttons visible** — Both "Play Again" and "Menu" buttons are always visible and clickable, regardless of message length.
+
+### Play Again
+
+- [ ] **PA-1: Reloads with same preset** — Click Play Again. A new board loads with the same dimensions as the previous game.
+- [ ] **PA-2: New random seed** — Click Play Again twice. The two boards should be different.
+- [ ] **PA-3: Full loop** — Clear a board → Play Again → clear again → Play Again. Each cycle works without errors.
+
+### Menu Button
+
+- [ ] **MB-1: Returns to main menu** — Click Menu. The MainMenu scene loads with all screens functional.
+- [ ] **MB-2: Preset preserved** — After returning to menu via the victory screen, the previously selected preset should still be highlighted in Mode Select.
+
+### Input During Clear Sequence
+
+- [ ] **ID-1: No interaction during fade** — While the grid is fading, tapping the screen should not trigger any arrow interactions (there are no arrows, but ensure no errors).
+- [ ] **ID-2: No interaction behind popup** — While the victory popup is visible, camera pan/zoom should not respond.
+
+### Editor Workflow
+
+- [ ] **EW-1: No victoryUIDocument assigned** — Play the Game scene directly without assigning the victory UIDocument. Board should clear normally with no popup and no errors (graceful skip).
 
 ---
 

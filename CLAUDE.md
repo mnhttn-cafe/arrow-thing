@@ -20,11 +20,12 @@ The board interaction flow: `BoardGeneration` fills `Board` → Unity renders it
 View layer scripts live in `Assets/Scripts/View/`:
 
 - **`MainMenuController`** — drives main menu UI (UI Toolkit). Manages screen navigation, board-size preset selection, and scene transition to Game. Desktop-only quit button with confirmation modal.
-- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController` and `InputHandler`. Reads from `GameSettings` when coming from menu; uses inspector fields otherwise.
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, and `VictoryController`. Reads from `GameSettings` when coming from menu; uses inspector fields otherwise.
 - **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a screen-space distance threshold. Scroll wheel and pinch-to-zoom for camera zoom.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom` methods. Fits to board on init. Clamped to board bounds.
-- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, removes or flashes reject.
-- **`BoardGridRenderer`** — spawns dot sprites at each cell center.
+- **`VictoryController`** — handles board-cleared sequence: grid fade-out via `BoardGridRenderer.FadeOut`, then victory popup with randomized message and Play Again / Menu buttons. Font auto-scales for long messages.
+- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, removes or flashes reject. Fires `BoardCleared` event after last arrow's pull-out animation.
+- **`BoardGridRenderer`** — spawns dot sprites at each cell center. `FadeOut` coroutine fades all dots to transparent.
 - **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Reject flash, pull-out animation, and bump animation.
 - **`ArrowMeshBuilder`** — static builder for polyline body mesh with arc-length UV windowing.
 - **`VisualSettings`** — `ScriptableObject` with colors, widths, animation curves, and durations.

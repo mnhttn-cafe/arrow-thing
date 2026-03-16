@@ -90,9 +90,10 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### Scene Wiring
 
-- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController` and `InputHandler`. Reads board parameters from `GameSettings` when set (menu flow), otherwise from inspector fields (editor testing). Seed is randomized by default (`useRandomSeed` toggle); fixed seed available via inspector for deterministic debugging.
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, and `VictoryController`. Reads board parameters from `GameSettings` when set (menu flow), otherwise from inspector fields (editor testing). Seed is randomized by default (`useRandomSeed` toggle); fixed seed available via inspector for deterministic debugging.
 - **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a screen-space distance threshold. Scroll wheel and pinch-to-zoom for camera zoom.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom` methods. Fits to board on init. Clamped to board bounds.
+- **`VictoryController`** — handles the board-cleared sequence. Listens to `BoardView.BoardCleared` event, fades grid dots via `BoardGridRenderer.FadeOut`, then shows a UI Toolkit popup with a randomized playful message and Play Again / Menu buttons. Font size auto-scales for long messages.
 
 ### Board and Arrow Rendering
 
@@ -207,4 +208,5 @@ Two jobs run in parallel:
 - 2026-03-13: Occupancy and `IsClearable` moved into `Board`. View layer added: `GameController`, `CameraController`, `BoardView`, `BoardGridRenderer`, `ArrowView`, `InputHandler`, `BoardCoords`. Tests migrated from standalone .NET project to Unity Test Framework (`Assets/Tests/EditMode/`).
 - 2026-03-15: Added start menu (UI Toolkit). `MainMenuController` in `MainMenu` scene, `GameSettings` static class for scene-transition parameter passing, random seed by default with inspector override.
 - 2026-03-15: Deferred mobile UI support. See **Known Limitations > Mobile UI Scaling** for rationale.
+- 2026-03-15: Added board clear screen. `VictoryController` drives grid fade → victory popup sequence, connected via `BoardView.BoardCleared` event.
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.
