@@ -16,4 +16,12 @@ public static class GameSettings
         MaxArrowLength = 2 * (width > height ? width : height);
         IsSet = true;
     }
+
+    public static void Reset()
+    {
+        IsSet = false;
+        Width = 0;
+        Height = 0;
+        MaxArrowLength = 0;
+    }
 }
