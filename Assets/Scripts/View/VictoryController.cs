@@ -37,16 +37,25 @@ public sealed class VictoryController : MonoBehaviour
 
     private UIDocument _uiDocument;
     private BoardGridRenderer _gridRenderer;
+    private CameraController _camCtrl;
     private VisualElement _overlay;
     private Label _messageLabel;
 
     [SerializeField]
+    private float zoomOutDuration = 0.6f;
+
+    [SerializeField]
     private float gridFadeDuration = 0.5f;
 
-    public void Init(UIDocument uiDocument, BoardGridRenderer gridRenderer)
+    public void Init(
+        UIDocument uiDocument,
+        BoardGridRenderer gridRenderer,
+        CameraController camCtrl
+    )
     {
         _uiDocument = uiDocument;
         _gridRenderer = gridRenderer;
+        _camCtrl = camCtrl;
 
         var root = _uiDocument.rootVisualElement;
         _overlay = root.Q("victory-overlay");
@@ -62,7 +71,13 @@ public sealed class VictoryController : MonoBehaviour
     /// </summary>
     public void OnBoardCleared()
     {
-        _gridRenderer.FadeOut(gridFadeDuration, ShowPopup);
+        if (_camCtrl != null)
+            _camCtrl.ZoomToFit(
+                zoomOutDuration,
+                () => _gridRenderer.FadeOut(gridFadeDuration, ShowPopup)
+            );
+        else
+            _gridRenderer.FadeOut(gridFadeDuration, ShowPopup);
     }
 
     private void ShowPopup()

@@ -10,8 +10,7 @@ using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 /// </summary>
 public sealed class InputHandler : MonoBehaviour
 {
-    [SerializeField]
-    private float dragThresholdPixels = 10f;
+    private float _dragThresholdPixels;
 
     private Board _board = null!;
     private BoardView _boardView = null!;
@@ -25,20 +24,28 @@ public sealed class InputHandler : MonoBehaviour
     private Vector3 _pressStartWorld;
     private bool _isDragging;
     private bool _isPressed;
+    private bool _inputEnabled = true;
 
     // Pinch state
     private float _lastPinchDistance;
+
+    public void SetInputEnabled(bool enabled)
+    {
+        _inputEnabled = enabled;
+    }
 
     public void Init(
         Board board,
         BoardView boardView,
         CameraController camCtrl,
-        InputActionAsset inputActions
+        InputActionAsset inputActions,
+        float dragThresholdPixels = 15f
     )
     {
         _board = board;
         _boardView = boardView;
         _camCtrl = camCtrl;
+        _dragThresholdPixels = dragThresholdPixels;
 
         var gameplay = inputActions.FindActionMap("Gameplay", true);
         _pointAction = gameplay.FindAction("Point", true);
@@ -57,6 +64,9 @@ public sealed class InputHandler : MonoBehaviour
 
     private void Update()
     {
+        if (!_inputEnabled)
+            return;
+
         HandleTouchPinch();
         HandleScrollZoom();
         HandleSelectAndPan();
@@ -77,7 +87,7 @@ public sealed class InputHandler : MonoBehaviour
             Vector2 currentScreen = _pointAction.ReadValue<Vector2>();
             float dist = Vector2.Distance(_pressStartScreen, currentScreen);
 
-            if (!_isDragging && dist >= dragThresholdPixels)
+            if (!_isDragging && dist >= _dragThresholdPixels)
                 _isDragging = true;
 
             if (_isDragging)

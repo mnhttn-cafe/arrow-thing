@@ -325,7 +325,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ArrowThing::CameraController
   minOrthoSize: 2
-  maxOrthoSize: 20
   zoomSpeed: 1
   panBuffer: 2
 --- !u!1 &1767663918
@@ -361,10 +360,11 @@ MonoBehaviour:
   mainCamera: {fileID: 600507209}
   inputActions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   victoryUIDocument: {fileID: 338058734}
-  boardWidth: 1
-  boardHeight: 2
+  dragThresholdPixels: 20
+  boardWidth: 6
+  boardHeight: 6
   minArrowLength: 2
-  maxArrowLength: 2
+  maxArrowLength: 10
   useRandomSeed: 0
   seed: 69
 --- !u!4 &1767663920

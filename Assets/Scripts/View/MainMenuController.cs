@@ -69,7 +69,12 @@ public sealed class MainMenuController : MonoBehaviour
 
         // Start with main menu visible, everything else hidden
         ShowScreen(Screen.MainMenu);
-        SelectPreset(10, 10);
+
+        // Restore last selection if returning from a game, otherwise default to small
+        if (GameSettings.IsSet)
+            SelectPreset(GameSettings.Width, GameSettings.Height);
+        else
+            SelectPreset(10, 10);
     }
 
     // -- Screen navigation --------------------------------------------------

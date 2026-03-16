@@ -21,9 +21,9 @@ View layer scripts live in `Assets/Scripts/View/`:
 
 - **`MainMenuController`** — drives main menu UI (UI Toolkit). Manages screen navigation, board-size preset selection, and scene transition to Game. Desktop-only quit button with confirmation modal.
 - **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, and `VictoryController`. Reads from `GameSettings` when coming from menu; uses inspector fields otherwise.
-- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a screen-space distance threshold. Scroll wheel and pinch-to-zoom for camera zoom.
-- **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom` methods. Fits to board on init. Clamped to board bounds.
-- **`VictoryController`** — handles board-cleared sequence: grid fade-out via `BoardGridRenderer.FadeOut`, then victory popup with randomized message and Play Again / Menu buttons. Font auto-scales for long messages.
+- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. `SetInputEnabled` suppresses all input during the victory sequence.
+- **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom derived from initial fit. Clamped to board bounds.
+- **`VictoryController`** — handles board-cleared sequence: zoom-to-fit → grid fade-out → victory popup with randomized message and Play Again / Menu buttons. Input is disabled for the entire sequence. Font auto-scales for long messages.
 - **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, removes or flashes reject. Fires `BoardCleared` event after last arrow's pull-out animation.
 - **`BoardGridRenderer`** — spawns dot sprites at each cell center. `FadeOut` coroutine fades all dots to transparent.
 - **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Reject flash, pull-out animation, and bump animation.
