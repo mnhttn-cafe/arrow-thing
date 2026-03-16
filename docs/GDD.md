@@ -3,7 +3,7 @@
 ## Metadata
 - Working Title: Arrow Thing
 - Genre: Minimalist puzzle, speed-clearing, competitive PvP (planned)
-- Platform(s): Mobile first, desktop supported during development
+- Platform(s): Desktop for MVP; mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
 - Status: Draft v0.6
 - Last Updated: 2026-03-15
@@ -24,8 +24,8 @@
 4. Repeat until board is empty (MVP) or until match end conditions are met (PvP modes).
 
 ## Controls
-- Touch: Primary control target for shipping gameplay.
-- Mouse: Supported parity input for desktop testing/play.
+- Mouse: Primary control for MVP desktop build.
+- Touch: Gameplay input works (tap, drag-pan, pinch-zoom); menu UI needs responsive scaling pass.
 - Keyboard: No gameplay use.
 - Controller: Out of scope (not a design consideration).
 
@@ -226,3 +226,4 @@
 - 2026-02-25: Revised to v0.5 with JSON replay format, tie-allowed policy, and generator-playtest-driven arrow-count decision.
 - 2026-02-28: Revised to v0.6 with updated generation bounds language (minimum-only rule with mode-specific practical caps).
 - 2026-03-06: Closed open questions on arrow count and length distribution based on generation rewrite experience.
+- 2026-03-16: Updated platform target to desktop-first for MVP; mobile gameplay works but UI scaling deferred. Updated controls section accordingly.
