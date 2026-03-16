@@ -11,14 +11,21 @@ public sealed class BoardView : MonoBehaviour
     private VisualSettings _settings = null!;
     private readonly Dictionary<Arrow, ArrowView> _arrowViews = new();
 
+    /// <summary>
+    /// Fired after the last arrow's pull-out animation finishes (board fully cleared).
+    /// </summary>
+    public event System.Action BoardCleared;
+
+    public BoardGridRenderer GridRenderer { get; private set; }
+
     public void Init(Board board, VisualSettings settings)
     {
         _board = board;
         _settings = settings;
 
         // Grid
-        var grid = gameObject.AddComponent<BoardGridRenderer>();
-        grid.Init(board, settings);
+        GridRenderer = gameObject.AddComponent<BoardGridRenderer>();
+        GridRenderer.Init(board, settings);
 
         // Arrows
         var arrowParent = new GameObject("Arrows").transform;
@@ -74,7 +81,13 @@ public sealed class BoardView : MonoBehaviour
         // Clearable: remove from domain immediately, play pull-out animation
         _arrowViews.Remove(arrow);
         _board.RemoveArrow(arrow);
-        view.PlayPullOut(onComplete: () => Destroy(view.gameObject));
+        bool wasLast = _board.Arrows.Count == 0;
+        view.PlayPullOut(onComplete: () =>
+        {
+            Destroy(view.gameObject);
+            if (wasLast)
+                BoardCleared?.Invoke();
+        });
         return true;
     }
 

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -7,6 +8,7 @@ using UnityEngine;
 public sealed class BoardGridRenderer : MonoBehaviour
 {
     private Transform _dotParent;
+    private SpriteRenderer[] _dots;
 
     /// <summary>
     /// Creates the grid dots for the given board dimensions.
@@ -25,6 +27,8 @@ public sealed class BoardGridRenderer : MonoBehaviour
         }
 
         float dotScale = settings.gridDotScale;
+        _dots = new SpriteRenderer[board.Width * board.Height];
+        int i = 0;
 
         for (int x = 0; x < board.Width; x++)
         {
@@ -40,7 +44,35 @@ public sealed class BoardGridRenderer : MonoBehaviour
                 sr.sprite = settings.boardDotSprite;
                 sr.color = settings.gridDotColor;
                 sr.sortingOrder = 0;
+                _dots[i++] = sr;
             }
         }
+    }
+
+    /// <summary>
+    /// Fades all grid dots to transparent over the given duration.
+    /// </summary>
+    public void FadeOut(float duration, System.Action onComplete = null)
+    {
+        StartCoroutine(FadeOutCoroutine(duration, onComplete));
+    }
+
+    private IEnumerator FadeOutCoroutine(float duration, System.Action onComplete)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float alpha = 1f - t;
+            for (int i = 0; i < _dots.Length; i++)
+            {
+                Color c = _dots[i].color;
+                c.a = alpha;
+                _dots[i].color = c;
+            }
+            yield return null;
+        }
+        onComplete?.Invoke();
     }
 }

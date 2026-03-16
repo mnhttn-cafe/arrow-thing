@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -11,9 +12,6 @@ public sealed class CameraController : MonoBehaviour
     private float minOrthoSize = 2f;
 
     [SerializeField]
-    private float maxOrthoSize = 20f;
-
-    [SerializeField]
     private float zoomSpeed = 1f;
 
     [Header("Pan")]
@@ -22,6 +20,8 @@ public sealed class CameraController : MonoBehaviour
 
     private Camera _cam = null!;
     private Rect _panBounds;
+    private float _initialOrthoSize;
+    private float _maxOrthoSize;
 
     public Camera Cam => _cam;
 
@@ -37,6 +37,8 @@ public sealed class CameraController : MonoBehaviour
         float sizeForHeight = (boardH + buffer) * 0.5f;
         float sizeForWidth = (boardW + buffer) * 0.5f / _cam.aspect;
         _cam.orthographicSize = Mathf.Max(sizeForHeight, sizeForWidth);
+        _initialOrthoSize = _cam.orthographicSize;
+        _maxOrthoSize = _initialOrthoSize;
 
         // Pan bounds: board extents + panBuffer
         float halfW = boardW * 0.5f + panBuffer;
@@ -66,7 +68,7 @@ public sealed class CameraController : MonoBehaviour
         _cam.orthographicSize = Mathf.Clamp(
             _cam.orthographicSize - scrollDelta * zoomSpeed,
             minOrthoSize,
-            maxOrthoSize
+            _maxOrthoSize
         );
     }
 
@@ -78,7 +80,36 @@ public sealed class CameraController : MonoBehaviour
         _cam.orthographicSize = Mathf.Clamp(
             _cam.orthographicSize / ratio,
             minOrthoSize,
-            maxOrthoSize
+            _maxOrthoSize
         );
+    }
+
+    /// <summary>
+    /// Smoothly zooms out to the initial fit-to-board view and re-centers.
+    /// </summary>
+    public void ZoomToFit(float duration, System.Action onComplete = null)
+    {
+        StartCoroutine(ZoomToFitCoroutine(duration, onComplete));
+    }
+
+    private IEnumerator ZoomToFitCoroutine(float duration, System.Action onComplete)
+    {
+        float startSize = _cam.orthographicSize;
+        Vector3 startPos = transform.position;
+        Vector3 targetPos = new(0f, 0f, startPos.z);
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+            _cam.orthographicSize = Mathf.Lerp(startSize, _initialOrthoSize, t);
+            transform.position = Vector3.Lerp(startPos, targetPos, t);
+            yield return null;
+        }
+
+        _cam.orthographicSize = _initialOrthoSize;
+        transform.position = targetPos;
+        onComplete?.Invoke();
     }
 }

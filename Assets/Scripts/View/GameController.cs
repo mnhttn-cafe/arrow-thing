@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 /// <summary>
 /// Top-level scene controller. Creates the board, spawns the view, and wires input.
@@ -15,6 +16,14 @@ public sealed class GameController : MonoBehaviour
 
     [SerializeField]
     private InputActionAsset inputActions;
+
+    [SerializeField]
+    private UIDocument victoryUIDocument;
+
+    [Header("Input")]
+    [Tooltip("Screen-space distance in pixels before a click/tap becomes a drag instead of a tap.")]
+    [SerializeField]
+    private float dragThresholdPixels = 15f;
 
     [Header("Editor Overrides (ignored when launched from menu)")]
     [Tooltip(
@@ -111,6 +120,22 @@ public sealed class GameController : MonoBehaviour
 
         // Setup input
         var inputHandler = gameObject.AddComponent<InputHandler>();
-        inputHandler.Init(_board, _boardView, camCtrl, inputActions);
+        inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThresholdPixels);
+
+        // Setup victory screen
+        if (
+            victoryUIDocument != null
+            && victoryUIDocument.enabled
+            && victoryUIDocument.rootVisualElement != null
+        )
+        {
+            var victory = gameObject.AddComponent<VictoryController>();
+            victory.Init(victoryUIDocument, _boardView.GridRenderer, camCtrl);
+            _boardView.BoardCleared += () =>
+            {
+                inputHandler.SetInputEnabled(false);
+                victory.OnBoardCleared();
+            };
+        }
     }
 }
