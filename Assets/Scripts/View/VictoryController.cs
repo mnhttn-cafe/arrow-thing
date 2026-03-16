@@ -32,6 +32,7 @@ public sealed class VictoryController : MonoBehaviour
         "DONT PRESS THAT BUTTON DOWN THERE ITS A TRAP IT WILL MAKE YOU PLAY A DIFFERENT LEVEL ENTIRELY ITS DANGEROUS DONT DO IT NO!!!!!!!!!",
         "Wonderful.",
         "Wodnfeurl.",
+        "pees on you", // CELERY CAME UP WITH THIS IT WASNT ME I SWEAR https://discord.com/channels/1085366539437494272/1085366539974361151/1482950081031442605
     };
 
     private UIDocument _uiDocument;
