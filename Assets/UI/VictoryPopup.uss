@@ -33,6 +33,14 @@
     -unity-text-align: middle-center;
 }
 
+.victory-time {
+    font-size: 28px;
+    color: rgb(180, 180, 200);
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+    -unity-text-align: middle-center;
+}
+
 .victory-btn {
     width: 240px;
     padding: 14px 0;

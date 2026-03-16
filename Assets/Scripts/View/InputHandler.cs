@@ -15,6 +15,7 @@ public sealed class InputHandler : MonoBehaviour
     private Board _board = null!;
     private BoardView _boardView = null!;
     private CameraController _camCtrl = null!;
+    private GameTimer _timer;
 
     private InputAction _pointAction = null!;
     private InputAction _selectAction = null!;
@@ -25,6 +26,7 @@ public sealed class InputHandler : MonoBehaviour
     private bool _isDragging;
     private bool _isPressed;
     private bool _inputEnabled = true;
+    private double _lastReleaseTime;
 
     // Pinch state
     private float _lastPinchDistance;
@@ -39,19 +41,23 @@ public sealed class InputHandler : MonoBehaviour
         BoardView boardView,
         CameraController camCtrl,
         InputActionAsset inputActions,
-        float dragThresholdPixels = 15f
+        float dragThresholdPixels = 15f,
+        GameTimer timer = null
     )
     {
         _board = board;
         _boardView = boardView;
         _camCtrl = camCtrl;
         _dragThresholdPixels = dragThresholdPixels;
+        _timer = timer;
 
         var gameplay = inputActions.FindActionMap("Gameplay", true);
         _pointAction = gameplay.FindAction("Point", true);
         _selectAction = gameplay.FindAction("Select", true);
         _zoomAction = gameplay.FindAction("Zoom", true);
         gameplay.Enable();
+
+        _selectAction.canceled += ctx => _lastReleaseTime = ctx.time;
 
         EnhancedTouchSupport.Enable();
     }
@@ -114,7 +120,26 @@ public sealed class InputHandler : MonoBehaviour
                 {
                     Arrow arrow = _board.GetArrowAt(cell);
                     if (arrow != null)
-                        _boardView.TryClearArrow(arrow);
+                    {
+                        ClearResult result = _boardView.TryClearArrow(arrow);
+
+                        if (_timer != null && result != ClearResult.Blocked)
+                        {
+                            double frameTime = Time.timeAsDouble;
+                            double inputTime = _lastReleaseTime;
+                            switch (result)
+                            {
+                                case ClearResult.ClearedFirst:
+                                    _timer.StartSolve(frameTime, inputTime);
+                                    break;
+                                case ClearResult.ClearedLast:
+                                    if (!_timer.IsSolving)
+                                        _timer.StartSolve(frameTime, inputTime);
+                                    _timer.Finish(frameTime, inputTime);
+                                    break;
+                            }
+                        }
+                    }
                 }
             }
         }
