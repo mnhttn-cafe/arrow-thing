@@ -36,10 +36,13 @@ public sealed class VictoryController : MonoBehaviour
     };
 
     private UIDocument _uiDocument;
+    private UIDocument _hudDocument;
     private BoardGridRenderer _gridRenderer;
     private CameraController _camCtrl;
+    private GameTimer _timer;
     private VisualElement _overlay;
     private Label _messageLabel;
+    private Label _timeLabel;
 
     [SerializeField]
     private float zoomOutDuration = 0.6f;
@@ -50,16 +53,21 @@ public sealed class VictoryController : MonoBehaviour
     public void Init(
         UIDocument uiDocument,
         BoardGridRenderer gridRenderer,
-        CameraController camCtrl
+        CameraController camCtrl,
+        GameTimer timer = null,
+        UIDocument hudDocument = null
     )
     {
         _uiDocument = uiDocument;
+        _hudDocument = hudDocument;
         _gridRenderer = gridRenderer;
         _camCtrl = camCtrl;
+        _timer = timer;
 
         var root = _uiDocument.rootVisualElement;
         _overlay = root.Q("victory-overlay");
         _messageLabel = root.Q<Label>("victory-message");
+        _timeLabel = root.Q<Label>("victory-time");
 
         root.Q<Button>("play-again-btn").clicked += OnPlayAgain;
         root.Q<Button>("menu-btn").clicked += OnMenu;
@@ -94,7 +102,30 @@ public sealed class VictoryController : MonoBehaviour
         else
             _messageLabel.style.fontSize = 40;
 
+        if (_timeLabel != null && _timer != null)
+            _timeLabel.text = FormatTime(_timer.SolveElapsed);
+
+        if (_hudDocument != null)
+            _hudDocument.rootVisualElement.style.display = DisplayStyle.None;
+
         _overlay.RemoveFromClassList("victory--hidden");
+    }
+
+    private static string FormatTime(double seconds)
+    {
+        if (seconds < 0)
+            seconds = 0;
+        int totalMillis = (int)(seconds * 1000);
+        int hours = totalMillis / 3600000;
+        int mins = (totalMillis % 3600000) / 60000;
+        int secs = (totalMillis % 60000) / 1000;
+        int millis = totalMillis % 1000;
+
+        if (hours > 0)
+            return $"{hours}:{mins:D2}:{secs:D2}.{millis:D3}";
+        if (mins > 0)
+            return $"{mins}:{secs:D2}.{millis:D3}";
+        return $"{secs}.{millis:D3}";
     }
 
     private void OnPlayAgain()

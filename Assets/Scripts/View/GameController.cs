@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 /// <summary>
@@ -19,6 +20,18 @@ public sealed class GameController : MonoBehaviour
 
     [SerializeField]
     private UIDocument victoryUIDocument;
+
+    [SerializeField]
+    private UIDocument hudUIDocument;
+
+    [Header("Timer")]
+    [Tooltip("Inspection phase duration in seconds.")]
+    [SerializeField]
+    private float inspectionDuration = 15f;
+
+    [Tooltip("Inspection countdown turns red at this many seconds remaining.")]
+    [SerializeField]
+    private float inspectionWarningThreshold = 5f;
 
     [Header("Input")]
     [Tooltip("Screen-space distance in pixels before a click/tap becomes a drag instead of a tap.")]
@@ -118,9 +131,29 @@ public sealed class GameController : MonoBehaviour
             camCtrl.Init(_board);
         }
 
+        // Setup timer
+        var timer = new GameTimer(inspectionDuration);
+        GameTimerView timerView = null;
+
+        // Setup HUD
+        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
+        {
+            var hudRoot = hudUIDocument.rootVisualElement;
+            var leaveModal = hudRoot.Q("leave-modal");
+
+            hudRoot.Q<Button>("back-to-menu-btn").clicked += () =>
+                leaveModal.RemoveFromClassList("modal--hidden");
+            hudRoot.Q<Button>("leave-yes-btn").clicked += () => SceneManager.LoadScene("MainMenu");
+            hudRoot.Q<Button>("leave-no-btn").clicked += () =>
+                leaveModal.AddToClassList("modal--hidden");
+
+            timerView = gameObject.AddComponent<GameTimerView>();
+            timerView.Init(timer, hudUIDocument, inspectionWarningThreshold);
+        }
+
         // Setup input
         var inputHandler = gameObject.AddComponent<InputHandler>();
-        inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThresholdPixels);
+        inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThresholdPixels, timer);
 
         // Setup victory screen
         if (
@@ -130,7 +163,7 @@ public sealed class GameController : MonoBehaviour
         )
         {
             var victory = gameObject.AddComponent<VictoryController>();
-            victory.Init(victoryUIDocument, _boardView.GridRenderer, camCtrl);
+            victory.Init(victoryUIDocument, _boardView.GridRenderer, camCtrl, timer, hudUIDocument);
             _boardView.BoardCleared += () =>
             {
                 inputHandler.SetInputEnabled(false);

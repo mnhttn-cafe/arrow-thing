@@ -10,6 +10,7 @@ public class UILayoutTests
 {
     private const string MainMenuUxmlPath = "Assets/UI/Root.uxml";
     private const string VictoryUxmlPath = "Assets/UI/VictoryPopup.uxml";
+    private const string GameHudUxmlPath = "Assets/UI/GameHud.uxml";
     private const string PanelSettingsPath = "Assets/UI Toolkit/PanelSettings.asset";
 
     // Representative messages for each font-size tier in VictoryController.
@@ -218,6 +219,99 @@ public class UILayoutTests
     )
     {
         yield return RunVictoryTest(ratio, LongMessage, 20, "VictoryLong");
+    }
+
+    // ───────── Game HUD ─────────
+
+    [UnityTest]
+    public IEnumerator GameHud_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(GameHudUxmlPath, ratio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"GameHud @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            root,
+            panelBounds,
+            ctx,
+            warn,
+            root.Q<Button>("back-to-menu-btn"),
+            root.Q<Label>("timer-label")
+        );
+    }
+
+    // ───────── Game HUD — Leave Modal ─────────
+
+    [UnityTest]
+    public IEnumerator GameHudLeaveModal_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(GameHudUxmlPath, ratio);
+
+        root.Q("leave-modal").RemoveFromClassList("modal--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var modal = root.Q("leave-modal");
+        var panelBounds = root.worldBound;
+        string ctx = $"GameHudLeaveModal @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            modal,
+            panelBounds,
+            ctx,
+            warn,
+            modal.Q<Label>(className: "modal-label"),
+            modal.Q<Button>("leave-yes-btn"),
+            modal.Q<Button>("leave-no-btn")
+        );
+    }
+
+    // ───────── Victory Popup with Time ─────────
+
+    [UnityTest]
+    public IEnumerator VictoryWithTime_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(VictoryUxmlPath, ratio);
+
+        var overlay = root.Q("victory-overlay");
+        overlay.RemoveFromClassList("victory--hidden");
+
+        var msgLabel = root.Q<Label>("victory-message");
+        msgLabel.text = ShortMessage;
+        msgLabel.style.fontSize = 40;
+
+        var timeLabel = root.Q<Label>("victory-time");
+        timeLabel.text = "1:23.456";
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"VictoryWithTime @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            overlay,
+            panelBounds,
+            ctx,
+            warn,
+            msgLabel,
+            timeLabel,
+            root.Q<Button>("play-again-btn"),
+            root.Q<Button>("menu-btn")
+        );
     }
 
     // ───────── Helpers ─────────

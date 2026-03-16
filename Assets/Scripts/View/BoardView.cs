@@ -10,6 +10,7 @@ public sealed class BoardView : MonoBehaviour
     private Board _board = null!;
     private VisualSettings _settings = null!;
     private readonly Dictionary<Arrow, ArrowView> _arrowViews = new();
+    private int _clearedCount;
 
     /// <summary>
     /// Fired after the last arrow's pull-out animation finishes (board fully cleared).
@@ -43,12 +44,12 @@ public sealed class BoardView : MonoBehaviour
     }
 
     /// <summary>
-    /// Attempts to clear an arrow. Returns true if it was clearable and removed.
+    /// Attempts to clear an arrow. Returns a ClearResult indicating what happened.
     /// </summary>
-    public bool TryClearArrow(Arrow arrow)
+    public ClearResult TryClearArrow(Arrow arrow)
     {
         if (!_arrowViews.TryGetValue(arrow, out ArrowView view))
-            return false;
+            return ClearResult.Blocked;
 
         if (!_board.IsClearable(arrow))
         {
@@ -75,12 +76,14 @@ public sealed class BoardView : MonoBehaviour
             {
                 view.PlayRejectFlash();
             }
-            return false;
+            return ClearResult.Blocked;
         }
 
         // Clearable: remove from domain immediately, play pull-out animation
         _arrowViews.Remove(arrow);
         _board.RemoveArrow(arrow);
+        _clearedCount++;
+        bool wasFirst = _clearedCount == 1;
         bool wasLast = _board.Arrows.Count == 0;
         view.PlayPullOut(onComplete: () =>
         {
@@ -88,7 +91,12 @@ public sealed class BoardView : MonoBehaviour
             if (wasLast)
                 BoardCleared?.Invoke();
         });
-        return true;
+
+        if (wasLast)
+            return ClearResult.ClearedLast;
+        if (wasFirst)
+            return ClearResult.ClearedFirst;
+        return ClearResult.Cleared;
     }
 
     /// <summary>
