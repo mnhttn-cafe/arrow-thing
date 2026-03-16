@@ -160,6 +160,14 @@ The menu UI (UI Toolkit) is designed and tested for desktop resolutions only. On
   - occupancy and bounds invariants
   - generation performance benchmarks (to catch regressions)
 
+### PlayMode Tests (`Assets/Tests/PlayMode/`)
+
+UI layout tests verify that all UI elements are visible and not clipped across multiple aspect ratios. Tests load UXML assets programmatically (via `AssetDatabase`) onto a runtime `UIDocument`, simulate different screen sizes by modifying `PanelSettings.referenceResolution`, and assert element bounds.
+
+- **`UILayoutTestHelper`** — reusable utilities: `AspectRatio` struct, `SetPanelReferenceResolution`, `AssertElementFullyVisible`, `WarnElementFullyVisible`, `AssertAllVisibleChildren`, `WaitForLayoutResolve`.
+- **`UILayoutTests`** — 7 UI states (main menu, mode select, settings, quit modal, 3 victory message tiers) tested across 5 aspect ratios (16:9, 4:3, 21:9, 9:16, 1:1) = 35 test cases. Portrait (9:16) failures are reported as warnings (not hard failures) since fixed-pixel CSS is a known limitation.
+- PanelSettings is saved/restored in SetUp/TearDown to avoid polluting other tests.
+
 ## CI/CD
 
 ### Formatting
@@ -179,10 +187,11 @@ Activated via `git config core.hooksPath .githooks`. Setup: `dotnet tool restore
 
 ### GitHub Actions (`.github/workflows/ci.yml`)
 
-Two jobs run in parallel:
+Three jobs run in parallel:
 
 - **`format`**: CSharpier check, file size validation, meta file sync. Uses `dotnet tool restore` — no Unity license needed.
 - **`test`**: EditMode tests via [`game-ci/unity-test-runner@v4`](https://github.com/game-ci/unity-test-runner). Requires `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD` secrets.
+- **`test-playmode`**: PlayMode tests (UI layout) via `game-ci/unity-test-runner@v4`. Runs without `-nographics` to ensure UI Toolkit resolves layout correctly.
 
 ### Branch Protection
 
@@ -210,4 +219,5 @@ Two jobs run in parallel:
 - 2026-03-15: Deferred mobile UI support. See **Known Limitations > Mobile UI Scaling** for rationale.
 - 2026-03-15: Added board clear screen. `VictoryController` drives zoom-to-fit → grid fade → victory popup sequence, connected via `BoardView.BoardCleared` event. Input is disabled during the entire sequence.
 - 2026-03-16: Camera max zoom derived from board fit; removed configurable `maxOrthoSize`. Drag threshold moved to `GameController` inspector field. `MainMenuController` preserves selected preset when returning from game.
+- 2026-03-16: Added PlayMode UI layout tests. 35 test cases across 7 UI states and 5 aspect ratios catch clipping/overflow regressions. Portrait (9:16) failures tracked as warnings pending responsive CSS work. `UILayoutTestHelper` utility makes adding tests for new screens trivial.
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.
