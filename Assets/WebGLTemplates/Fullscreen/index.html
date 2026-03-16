@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }
+        #unity-canvas { width: 100%; height: 100%; display: block; }
+        #unity-loading-bar {
+            position: absolute;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        #unity-progress-bar-empty {
+            width: 200px; height: 12px;
+            border-radius: 6px;
+            background: #333;
+        }
+        #unity-progress-bar-full {
+            width: 0%; height: 100%;
+            border-radius: 6px;
+            background: #6c63ff;
+            transition: width 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-loading-bar">
+        <div id="unity-progress-bar-empty">
+            <div id="unity-progress-bar-full"></div>
+        </div>
+    </div>
+    <script>
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+        var config = {
+            dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+            frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+            codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#if MEMORY_FILENAME
+            memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+            symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "{{{ COMPANY_NAME }}}",
+            productName: "{{{ PRODUCT_NAME }}}",
+            productVersion: "{{{ PRODUCT_VERSION }}}",
+            devicePixelRatio: window.devicePixelRatio || 1,
+        };
+
+        var progressBar = document.getElementById("unity-progress-bar-full");
+        var loadingBar = document.getElementById("unity-loading-bar");
+
+        var script = document.createElement("script");
+        script.src = loaderUrl;
+        script.onload = function () {
+            createUnityInstance(document.getElementById("unity-canvas"), config, function (progress) {
+                progressBar.style.width = (100 * progress) + "%";
+            }).then(function (instance) {
+                loadingBar.style.display = "none";
+            }).catch(function (message) {
+                alert(message);
+            });
+        };
+        document.body.appendChild(script);
+    </script>
+</body>
+</html>

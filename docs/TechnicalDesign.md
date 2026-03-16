@@ -218,9 +218,14 @@ Three jobs run in parallel:
 - **`.gitignore`**: Unity-generated folders, IDE files, build outputs. Includes `![Aa]ssets/**/*.meta` safety rule to prevent accidentally ignoring Asset meta files.
 - **SmartMerge** (optional): `git config merge.unityyamlmerge.driver '<path>/UnityYAMLMerge merge -p %O %A %B %P'` for better Unity YAML conflict resolution.
 
-### Future: Builds and Deployment
+### WebGL Deployment (`.github/workflows/deploy.yml`)
 
-[Avalin/Unity-CI-CD](https://github.com/Avalin/Unity-CI-CD) — a modular GitHub Actions pipeline (test → build → release → deploy → notify) for Unity projects. Supports multi-platform builds, SemVer tagging, and deployment to itch.io, Steam, gh-pages, AWS S3, and more. Uses `game-ci` under the hood. Reference for when we need automated builds and deployment.
+Continuous deployment to GitHub Pages. Triggers automatically after the CI workflow succeeds on `main`, or manually via `workflow_dispatch`.
+
+- **`build-webgl`**: Checks out the repo, restores the Unity `Library/` cache, builds WebGL via [`game-ci/unity-builder@v4`](https://github.com/game-ci/unity-builder), and uploads the build as a Pages artifact. Cache key includes Unity version and a hash of `Assets/` + `Packages/manifest.json`.
+- **`deploy`**: Deploys the artifact to GitHub Pages via `actions/deploy-pages@v4`. Runs in the `github-pages` environment.
+
+WebGL player settings: Gzip compression, JS decompression fallback enabled, hash-based filenames for cache busting. Concurrency group `pages` prevents overlapping deploys.
 
 ## Decision Log
 
@@ -236,4 +241,5 @@ Three jobs run in parallel:
 - 2026-03-16: Camera max zoom derived from board fit; removed configurable `maxOrthoSize`. Drag threshold moved to `GameController` inspector field. `MainMenuController` preserves selected preset when returning from game.
 - 2026-03-16: Added PlayMode UI layout tests. 35 test cases across 7 UI states and 5 aspect ratios catch clipping/overflow regressions. Portrait (9:16) failures tracked as warnings pending responsive CSS work. `UILayoutTestHelper` utility makes adding tests for new screens trivial.
 - 2026-03-16: Added in-game HUD (`GameHud.uxml`) with back-to-menu button (with leave confirmation modal) and solve timer. `GameTimer` domain model tracks inspection/solve phases with input-precision timestamps for final time. `ClearResult` enum replaces `bool` return from `TryClearArrow`. `GameTimerView` drives the HUD label. Victory popup now shows final solve time.
+- 2026-03-16: License changed from Source-Available v2.0 to MIT. Game is free and open-source, distributed via WebGL on GitHub Pages. Added CD pipeline (`deploy.yml`) — builds WebGL after CI passes on main, deploys to GitHub Pages automatically.
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.

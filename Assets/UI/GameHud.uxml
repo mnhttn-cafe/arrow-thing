@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <Style src="GameHud.uss" />
 
-    <ui:Button name="back-to-menu-btn" class="hud-btn" text="✕" />
+    <ui:Button name="back-to-menu-btn" class="hud-btn" text="X" />
     <ui:Label name="timer-label" class="timer-label" text="15" />
 
     <ui:VisualElement name="leave-modal" class="modal-overlay modal--hidden">

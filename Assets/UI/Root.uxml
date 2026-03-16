@@ -2,7 +2,7 @@
     <Style src="MainMenu.uss" />
 
     <ui:VisualElement name="main-menu" class="screen">
-        <ui:Button name="quit-btn" class="quit-btn" text="✕" />
+        <ui:Button name="quit-btn" class="quit-btn" text="X" />
         <ui:Label class="title" text="Arrow Thing" />
         <ui:Button name="play-btn" class="menu-btn" text="Play" />
         <ui:Button name="settings-btn" class="menu-btn" text="Settings" />

@@ -155,6 +155,16 @@ public sealed class GameController : MonoBehaviour
         var inputHandler = gameObject.AddComponent<InputHandler>();
         inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThresholdPixels, timer);
 
+        // Wire leave modal to suppress input while visible
+        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
+        {
+            var leaveModal = hudUIDocument.rootVisualElement.Q("leave-modal");
+            hudUIDocument.rootVisualElement.Q<Button>("back-to-menu-btn").clicked += () =>
+                inputHandler.SetInputEnabled(false);
+            hudUIDocument.rootVisualElement.Q<Button>("leave-no-btn").clicked += () =>
+                inputHandler.SetInputEnabled(true);
+        }
+
         // Setup victory screen
         if (
             victoryUIDocument != null
