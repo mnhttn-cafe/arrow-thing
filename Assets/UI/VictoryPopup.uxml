@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="VictoryPopup.uss" />
+
+    <ui:VisualElement name="victory-overlay" class="victory-overlay victory--hidden">
+        <ui:VisualElement class="victory-box">
+            <ui:Label name="victory-message" class="victory-message" text="Nice!" />
+            <ui:Button name="play-again-btn" class="victory-btn victory-btn--primary" text="Play Again" />
+            <ui:Button name="menu-btn" class="victory-btn" text="Menu" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
