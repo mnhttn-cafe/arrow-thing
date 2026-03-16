@@ -56,9 +56,10 @@ Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unit
 
 New features follow a three-phase workflow:
 
-1. **Design** — Create `docs/TODO.md` with the feature design, implementation plan, and open questions. Resolve open questions before moving to implementation. When a `TODO.md` exists, treat it as the authoritative task list for the current feature.
+1. **Design** — Create `docs/TODO.md` with the feature design, implementation plan, and open questions. Resolve open questions before moving to implementation. When a `TODO.md` exists, treat it as the authoritative task list for the current feature. The plan must include a testing step — both automated tests for domain classes (per `CONTRIBUTING.md`) and manual test cases for user-facing behavior.
 2. **Implement** — Build the feature against the plan in `TODO.md`. Do not delete or simplify `TODO.md` mid-feature; it captures design decisions and context that inform implementation.
-3. **Clean up** — Update stale documentation, delete `TODO.md`, validate `docs/TechnicalDesign.md` reflects the current architecture. The TDD is the single source of truth for all technical decisions.
+3. **Test** — Add manual test cases to `TODO.md` after implementation. Run them and record pass/fail results before marking the feature as complete.
+4. **Clean up** — Update stale documentation, delete `TODO.md`, validate `docs/TechnicalDesign.md` reflects the current architecture. The TDD is the single source of truth for all technical decisions.
 
 ## Pre-Commit / Pre-PR Checklist
 
