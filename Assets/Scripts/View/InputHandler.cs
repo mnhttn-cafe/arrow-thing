@@ -44,7 +44,6 @@ public sealed class InputHandler : MonoBehaviour
         _pointAction = gameplay.FindAction("Point", true);
         _selectAction = gameplay.FindAction("Select", true);
         _zoomAction = gameplay.FindAction("Zoom", true);
-
         gameplay.Enable();
 
         EnhancedTouchSupport.Enable();

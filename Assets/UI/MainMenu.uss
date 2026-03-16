@@ -1,0 +1,164 @@
+/* Root containers */
+.screen {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 0;
+    background-color: rgb(24, 24, 32);
+}
+
+.screen--hidden {
+    display: none;
+}
+
+/* Title */
+.title {
+    font-size: 64px;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    margin-bottom: 60px;
+    letter-spacing: 4px;
+    flex-shrink: 1;
+}
+
+/* Standard menu button */
+.menu-btn {
+    width: 300px;
+    padding: 14px 0;
+    margin: 6px 0;
+    font-size: 28px;
+    color: rgb(255, 255, 255);
+    background-color: rgb(60, 60, 80);
+    border-radius: 8px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+    flex-shrink: 1;
+}
+
+.menu-btn:hover {
+    background-color: rgb(80, 80, 110);
+}
+
+.menu-btn:active {
+    background-color: rgb(100, 100, 140);
+}
+
+/* Preset button (mode select) */
+.preset-btn {
+    width: 300px;
+    padding: 16px 0;
+    margin: 6px 0;
+    font-size: 24px;
+    color: rgb(255, 255, 255);
+    background-color: rgb(50, 70, 90);
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.1);
+    -unity-text-align: middle-center;
+    flex-shrink: 1;
+}
+
+.preset-btn:hover {
+    background-color: rgb(60, 90, 120);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.preset-btn--selected {
+    background-color: rgb(70, 120, 160);
+    border-color: rgb(120, 180, 240);
+}
+
+/* Start button on mode select */
+.start-btn {
+    width: 300px;
+    padding: 14px 0;
+    margin-top: 16px;
+    font-size: 30px;
+    color: rgb(255, 255, 255);
+    background-color: rgb(40, 120, 60);
+    border-radius: 8px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+    flex-shrink: 1;
+}
+
+.start-btn:hover {
+    background-color: rgb(50, 150, 75);
+}
+
+.start-btn:active {
+    background-color: rgb(60, 180, 90);
+}
+
+/* Quit button (desktop only, top-left X) */
+.quit-btn {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    color: rgb(180, 180, 180);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.quit-btn:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Quit modal overlay */
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-box {
+    background-color: rgb(40, 40, 55);
+    border-radius: 12px;
+    padding: 32px 48px;
+    align-items: center;
+}
+
+.modal-label {
+    font-size: 28px;
+    color: rgb(255, 255, 255);
+    margin-bottom: 24px;
+}
+
+.modal-buttons {
+    flex-direction: row;
+}
+
+.modal-buttons .menu-btn {
+    width: 120px;
+    padding: 10px 0;
+    font-size: 22px;
+    margin: 0 8px;
+}
+
+/* Section label */
+.section-label {
+    font-size: 28px;
+    color: rgb(200, 200, 210);
+    margin-bottom: 16px;
+    flex-shrink: 1;
+}
+
+/* Subtitle / placeholder text */
+.placeholder-text {
+    font-size: 24px;
+    color: rgb(140, 140, 160);
+    margin-bottom: 32px;
+    flex-shrink: 1;
+}

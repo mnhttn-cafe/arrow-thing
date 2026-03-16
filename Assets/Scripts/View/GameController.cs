@@ -6,22 +6,6 @@ using UnityEngine.InputSystem;
 /// </summary>
 public sealed class GameController : MonoBehaviour
 {
-    [Header("Board")]
-    [SerializeField]
-    private int boardWidth = 6;
-
-    [SerializeField]
-    private int boardHeight = 6;
-
-    [SerializeField]
-    private int seed = 42;
-
-    [SerializeField]
-    private int minArrowLength = 2;
-
-    [SerializeField]
-    private int maxArrowLength = 5;
-
     [Header("References")]
     [SerializeField]
     private VisualSettings visualSettings;
@@ -31,6 +15,40 @@ public sealed class GameController : MonoBehaviour
 
     [SerializeField]
     private InputActionAsset inputActions;
+
+    [Header("Editor Overrides (ignored when launched from menu)")]
+    [Tooltip(
+        "Board width used when playing this scene directly. Ignored when coming from the main menu."
+    )]
+    [SerializeField]
+    private int boardWidth = 6;
+
+    [Tooltip(
+        "Board height used when playing this scene directly. Ignored when coming from the main menu."
+    )]
+    [SerializeField]
+    private int boardHeight = 6;
+
+    [SerializeField]
+    private int minArrowLength = 2;
+
+    [Tooltip(
+        "Max arrow length used when playing this scene directly. Ignored when coming from the main menu."
+    )]
+    [SerializeField]
+    private int maxArrowLength = 5;
+
+    [Tooltip(
+        "When checked, generates a random seed each run. When unchecked, uses the seed below. Only applies when playing this scene directly — menu always uses a random seed."
+    )]
+    [SerializeField]
+    private bool useRandomSeed = true;
+
+    [Tooltip(
+        "Fixed seed for reproducible boards. Only used when 'Use Random Seed' is unchecked and playing this scene directly."
+    )]
+    [SerializeField]
+    private int seed = 42;
 
     private Board _board = null!;
     private BoardView _boardView = null!;
@@ -56,9 +74,25 @@ public sealed class GameController : MonoBehaviour
         if (mainCamera != null)
             mainCamera.backgroundColor = visualSettings.backgroundColor;
 
+        // Resolve board parameters: menu overrides take priority, then inspector fields
+        int w = boardWidth;
+        int h = boardHeight;
+        int minLen = minArrowLength;
+        int maxLen = maxArrowLength;
+
+        if (GameSettings.IsSet)
+        {
+            w = GameSettings.Width;
+            h = GameSettings.Height;
+            maxLen = GameSettings.MaxArrowLength;
+        }
+
+        int activeSeed =
+            (GameSettings.IsSet || useRandomSeed) ? System.Environment.TickCount : seed;
+
         // Generate board
-        _board = new Board(boardWidth, boardHeight);
-        BoardGeneration.FillBoard(_board, minArrowLength, maxArrowLength, new System.Random(seed));
+        _board = new Board(w, h);
+        BoardGeneration.FillBoard(_board, minLen, maxLen, new System.Random(activeSeed));
 
         // Create board view
         var boardGo = new GameObject("BoardView");
