@@ -21,6 +21,7 @@ This project is early-stage, so keep contributions small, focused, and easy to r
 
 - If you spot a docs inconsistency, either fix it in the same PR or call it out in the PR and open an issue.
 - Keep `docs/TechnicalDesign.md` aligned with architecture/class-structure changes.
+- `docs/TODO.md` is used during feature development (see `CLAUDE.md` Feature Workflow). It must be deleted before a PR is merge-ready.
 
 ## Technical Design Document (TDDoc)
 
