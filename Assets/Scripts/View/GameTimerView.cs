@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -22,7 +23,7 @@ public sealed class GameTimerView : MonoBehaviour
         _label = hudDocument.rootVisualElement.Q<Label>("timer-label");
 
         _timer.PhaseChanged += OnPhaseChanged;
-        _timer.Start(Time.realtimeSinceStartupAsDouble);
+        _timer.Start(GetWallTime());
 
         UpdateLabel();
     }
@@ -32,7 +33,7 @@ public sealed class GameTimerView : MonoBehaviour
         if (_timer == null)
             return;
 
-        _timer.Tick(Time.realtimeSinceStartupAsDouble);
+        _timer.Tick(GetWallTime());
         UpdateLabel();
     }
 
@@ -101,6 +102,9 @@ public sealed class GameTimerView : MonoBehaviour
             return $"{mins}:{secs:D2}.{millis:D3}";
         return $"{secs}.{millis:D3}";
     }
+
+    private static double GetWallTime() =>
+        (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
 
     private void OnDestroy()
     {

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
@@ -26,7 +27,7 @@ public sealed class InputHandler : MonoBehaviour
     private bool _isDragging;
     private bool _isPressed;
     private bool _inputEnabled = true;
-    private double _lastReleaseTime;
+    private double _lastReleaseWallTime;
 
     // Pinch state
     private float _lastPinchDistance;
@@ -57,7 +58,9 @@ public sealed class InputHandler : MonoBehaviour
         _zoomAction = gameplay.FindAction("Zoom", true);
         gameplay.Enable();
 
-        _selectAction.canceled += ctx => _lastReleaseTime = ctx.time;
+        _selectAction.canceled += ctx =>
+            _lastReleaseWallTime =
+                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
 
         EnhancedTouchSupport.Enable();
     }
@@ -125,8 +128,10 @@ public sealed class InputHandler : MonoBehaviour
 
                         if (_timer != null && result != ClearResult.Blocked)
                         {
-                            double frameTime = Time.realtimeSinceStartupAsDouble;
-                            double inputTime = frameTime + (_lastReleaseTime - Time.timeAsDouble);
+                            double frameTime =
+                                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                                / 1000.0;
+                            double inputTime = _lastReleaseWallTime;
                             switch (result)
                             {
                                 case ClearResult.ClearedFirst:
