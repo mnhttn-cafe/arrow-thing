@@ -43,8 +43,6 @@ public sealed class GameTimerView : MonoBehaviour
         {
             case GameTimer.Phase.Inspection:
                 int ceilSeconds = Mathf.CeilToInt((float)_timer.InspectionRemaining);
-                if (ceilSeconds < 0)
-                    ceilSeconds = 0;
                 _label.text = ceilSeconds.ToString();
 
                 if (_timer.InspectionRemaining <= _warningThreshold)
