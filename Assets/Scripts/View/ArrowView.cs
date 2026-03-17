@@ -29,6 +29,8 @@ public sealed class ArrowView : MonoBehaviour
     private static readonly int FlashColorId = Shader.PropertyToID("_FlashColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
 
+    private GameObject _trajectoryLine;
+
     public Arrow Arrow { get; private set; } = null!;
 
     /// <summary>
@@ -91,6 +93,11 @@ public sealed class ArrowView : MonoBehaviour
         _headMaterialInstance.SetColor(ColorId, settings.arrowHeadColor);
         _headMaterialInstance.SetColor(FlashColorId, settings.rejectFlashColor);
         _headMaterialInstance.SetFloat(FlashTId, 0f);
+
+        // Trajectory highlight line (hidden by default)
+        _trajectoryLine = CreateTrajectoryLine(settings);
+        _trajectoryLine.transform.SetParent(transform, true);
+        _trajectoryLine.SetActive(false);
     }
 
     private static GameObject CreateArrowHead(Vector3[] path, VisualSettings settings)
@@ -126,6 +133,38 @@ public sealed class ArrowView : MonoBehaviour
         mr.sortingOrder = 2;
 
         return go;
+    }
+
+    private GameObject CreateTrajectoryLine(VisualSettings settings)
+    {
+        // Reuse the already-computed _path and _arcLengths.
+        // _path[0] is the exit point (head + headDir * extensionDist), _path[1] is the original head.
+        // The segment [0, extensionDist] is a straight line from the exit point back to the head,
+        // i.e. the full trajectory ray extending to the edge of the visible area.
+        float extensionDist = _arcLengths[1];
+        Mesh trajMesh = ArrowMeshBuilder.Build(_path, _bodyWidth * 0.3f, 0f, extensionDist);
+
+        var go = new GameObject("TrajectoryLine");
+        var mf = go.AddComponent<MeshFilter>();
+        mf.mesh = trajMesh;
+
+        var mr = go.AddComponent<MeshRenderer>();
+        mr.material = settings.arrowBodyMaterial;
+        mr.material.SetColor(ColorId, settings.trajectoryHighlightColor);
+        mr.sortingOrder = 0; // below arrow body (1) and head (2)
+
+        return go;
+    }
+
+    // ---- Public state methods ---------------------------------------------
+
+    /// <summary>
+    /// Shows or hides the trajectory highlight line extending from the arrow head.
+    /// </summary>
+    public void SetTrajectoryVisible(bool visible)
+    {
+        if (_trajectoryLine != null)
+            _trajectoryLine.SetActive(visible);
     }
 
     // ---- Animation helpers ------------------------------------------------

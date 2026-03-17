@@ -36,6 +36,9 @@ public sealed class VisualSettings : ScriptableObject
     public AnimationCurve clearSlideCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
     public float pathExtensionMultiplier = 1.5f;
 
+    [Header("Trajectory Highlight")]
+    public Color trajectoryHighlightColor = new Color(0.816f, 0.847f, 0.910f, 0.18f); // arrow color, low alpha
+
     [Header("Bump Animation")]
     public float bumpSlideDuration = 0.15f;
     public AnimationCurve bumpSlideCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);

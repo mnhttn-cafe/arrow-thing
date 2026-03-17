@@ -21,6 +21,22 @@
     background-color: rgba(255, 255, 255, 0.25);
 }
 
+.hud-btn--bottom-right {
+    top: auto;
+    left: auto;
+    bottom: 16px;
+    right: 16px;
+}
+
+.hud-btn--active {
+    color: rgb(120, 180, 240);
+    background-color: rgba(120, 180, 240, 0.15);
+}
+
+.hud-btn--active:hover {
+    background-color: rgba(120, 180, 240, 0.25);
+}
+
 .timer-label {
     position: absolute;
     bottom: 16px;

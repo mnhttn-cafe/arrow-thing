@@ -149,6 +149,24 @@ public sealed class GameController : MonoBehaviour
 
             timerView = gameObject.AddComponent<GameTimerView>();
             timerView.Init(timer, hudUIDocument, inspectionWarningThreshold);
+
+            // Trajectory toggle button (bottom-right)
+            var trajBtn = hudRoot.Q<Button>("trajectory-toggle-btn");
+            bool trajectoryOn = false;
+            trajBtn.clicked += () =>
+            {
+                trajectoryOn = !trajectoryOn;
+                _boardView.SetAllTrajectoriesVisible(trajectoryOn);
+                if (trajectoryOn)
+                    trajBtn.AddToClassList("hud-btn--active");
+                else
+                    trajBtn.RemoveFromClassList("hud-btn--active");
+            };
+            _boardView.TrajectoryAutoOff += () =>
+            {
+                trajectoryOn = false;
+                trajBtn.RemoveFromClassList("hud-btn--active");
+            };
         }
 
         // Setup input

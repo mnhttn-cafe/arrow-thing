@@ -12,10 +12,17 @@ public sealed class BoardView : MonoBehaviour
     private readonly Dictionary<Arrow, ArrowView> _arrowViews = new();
     private int _clearedCount;
 
+    private bool _trajectoryVisible;
+
     /// <summary>
     /// Fired after the last arrow's pull-out animation finishes (board fully cleared).
     /// </summary>
     public event System.Action BoardCleared;
+
+    /// <summary>
+    /// Fired when trajectory highlighting is auto-disabled (e.g. after a successful clear).
+    /// </summary>
+    public event System.Action TrajectoryAutoOff;
 
     public BoardGridRenderer GridRenderer { get; private set; }
 
@@ -85,6 +92,14 @@ public sealed class BoardView : MonoBehaviour
         _clearedCount++;
         bool wasFirst = _clearedCount == 1;
         bool wasLast = _board.Arrows.Count == 0;
+
+        // Auto-disable trajectory highlights when an arrow is cleared to avoid stale lines
+        if (_trajectoryVisible)
+        {
+            SetAllTrajectoriesVisible(false);
+            TrajectoryAutoOff?.Invoke();
+        }
+
         view.PlayPullOut(onComplete: () =>
         {
             Destroy(view.gameObject);
@@ -105,5 +120,15 @@ public sealed class BoardView : MonoBehaviour
     public ArrowView GetArrowView(Arrow arrow)
     {
         return _arrowViews.TryGetValue(arrow, out ArrowView view) ? view : null;
+    }
+
+    /// <summary>
+    /// Shows or hides trajectory highlight lines on all remaining arrows.
+    /// </summary>
+    public void SetAllTrajectoriesVisible(bool visible)
+    {
+        _trajectoryVisible = visible;
+        foreach (ArrowView view in _arrowViews.Values)
+            view.SetTrajectoryVisible(visible);
     }
 }
