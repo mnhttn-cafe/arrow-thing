@@ -1,11 +1,14 @@
-# v0.2 — Online & Polish
+# Roadmap — v0.2 through v1.0
 
 ## Version Scheme
 
-- **v0.1** — Current MVP (single-player, local-only, WebGL). Tag current `main`.
-- **v0.1.1** — Map-coloring arrow tinting for readability. Client-only, no server.
-- **v0.2** — Online release. Leaderboards, replays, accounts. This plan.
-- **v1.0** — PvP (real-time garbage mechanics, matchmaking). The original vision fulfilled. Builds on v0.2 server.
+- **v0.1** — Current MVP (single-player, local-only, WebGL). Tagged.
+- **v0.2** — Map-coloring arrow tinting for readability. Client-only, no server. (Phase 1)
+- **v0.3** — Local leaderboards & personal best. On-device storage, no server. (Phase 2)
+- **v0.4** — Input-based replay system & replay viewer. Client-only. (Phase 3)
+- **v0.5** — Server foundation. Auth, accounts, domain code sharing, hosting. (Phase 4)
+- **v0.6** — Game sessions, server-side verification, global leaderboards. (Phases 5–6)
+- **v1.0** — PvP (real-time garbage mechanics, matchmaking). The replay viewer is essentially a live opponent board — the framework from v0.4–v0.6 carries over directly.
 
 ## Features
 
@@ -15,7 +18,7 @@
 4. **Simple account system** — Username/password, JWT auth.
 5. **Offline-first client** — Game is always playable. Server connection is optional; offline games skip leaderboard submission.
 
-> **Map-coloring arrow tinting** is scoped to **v0.1.1** (client-only, no server dependency). See Phase 2 below.
+> Each phase ships as its own tagged release. By v0.6, the replay infrastructure doubles as the foundation for v1.0 PvP — displaying an opponent's board is essentially a live replay stream.
 
 ---
 
@@ -125,7 +128,7 @@ A dedicated scene for watching replays. Accessed via the play button on leaderbo
 - **Entity Framework Core** — ORM. PostgreSQL for production, SQLite for dev/testing.
 - **BCrypt** — password hashing.
 - **JWT** — stateless auth tokens.
-- **Hosting**: TBD (Fly.io, Railway, or a VPS). Must support PostgreSQL.
+- **Hosting**: Self-hosted VPS (Hetzner/DigitalOcean). Docker Compose (ASP.NET + PostgreSQL). Dedicated non-root user with scoped privileges runs the server. SSH key + password auth, no root SSH. Credentials and secrets via `.env` file on the host (not in repo). Deploy via GitHub Actions SSH step.
 
 ### Project Structure
 
@@ -242,7 +245,7 @@ Accessed via a button in the **top-right of the mode select screen**.
 - **Tabs** for each board size (Small / Medium / Large).
 - **Toggle**: Local vs Global leaderboards.
   - **Global**: fetched from server. Only verified online scores.
-  - **Local**: stored on-device (`PlayerPrefs` or local JSON). Includes both online and offline scores. Not synced to server.
+  - **Local**: stored on-device via `PlayerPrefs` (backed by `IndexedDB` on WebGL). Includes both online and offline scores. Not synced to server. Capped at top 50 entries + replays per board size to keep storage bounded.
 - **Play replay button** on each entry — loads the replay for that score. Replays for local scores are stored locally alongside the leaderboard data. Global replays are fetched via `GET /api/replays/{gameId}`.
 
 #### Victory Screen Leaderboard
@@ -346,7 +349,7 @@ Tint adjacent arrows with different colors so players can visually distinguish a
 
 ## Implementation Plan
 
-### Phase 1: Map Coloring (v0.1.1 — standalone, no server dependency)
+### Phase 1: Map Coloring → v0.2
 - [ ] Implement `ArrowColoring.AssignColors()` in domain layer
 - [ ] Write NUnit tests: adjacency detection, coloring validity (no adjacent same-color)
 - [ ] Add `arrowPalette` to `VisualSettings`
@@ -354,9 +357,9 @@ Tint adjacent arrows with different colors so players can visually distinguish a
 - [ ] Wire `ArrowView` to apply palette color
 - [ ] Manual test: verify visual distinction on all 3 board sizes
 - [ ] Tune palette colors for readability and aesthetics
-- [ ] Tag `v0.1.1`
+- [ ] Tag `v0.2`
 
-### Phase 2: Local Leaderboards & Personal Best (client-only, no server)
+### Phase 2: Local Leaderboards & Personal Best → v0.3
 - [ ] Build `LocalLeaderboard` — on-device JSON storage for local scores, partitioned by board size
 - [ ] Build dedicated leaderboard scene (`LeaderboardSceneController`)
   - [ ] Board size tabs (Small / Medium / Large)
@@ -370,7 +373,7 @@ Tint adjacent arrows with different colors so players can visually distinguish a
 - [ ] Wire leaderboard button into mode select screen (top-right)
 - [ ] Manual test: play multiple games, verify local ranking, personal best detection, gold highlights
 
-### Phase 3: Replay System (client-only, no server)
+### Phase 3: Replay System & Viewer → v0.4
 - [ ] Define `ReplayEvent` (with `Seq`) and `ReplayRecorder` in domain layer
 - [ ] Define `ReplayVerifier` in domain layer
 - [ ] Write NUnit tests: record events → verify replay → assert valid
@@ -387,7 +390,7 @@ Tint adjacent arrows with different colors so players can visually distinguish a
 - [ ] Add play replay button to leaderboard entries (local replays from disk)
 - [ ] Test: play a game, verify replay passes `ReplayVerifier`, watch it back in viewer
 
-### Phase 4: Server Foundation
+### Phase 4: Server Foundation → v0.5
 - [ ] Create `server/` directory with ASP.NET Core project
 - [ ] Set up `ArrowThing.Domain` shared project referencing domain source
 - [ ] Verify domain code compiles in both Unity and .NET 8 contexts
@@ -395,8 +398,20 @@ Tint adjacent arrows with different colors so players can visually distinguish a
 - [ ] Implement User model (username, display name, password hash) and auth endpoints (register, login, JWT)
 - [ ] Implement display name change endpoint (`PATCH /api/auth/me`)
 - [ ] Write integration tests for auth flow (including display name changes)
+- [ ] Provision VPS, create dedicated non-root deploy user with scoped privileges
+- [ ] Harden VPS: disable root SSH, Fail2ban, UFW (22/80/443 only), unattended security upgrades
+- [ ] Set up Docker Compose on VPS (ASP.NET + PostgreSQL), secrets in `.env`
+- [ ] HTTPS via Caddy or nginx reverse proxy + Let's Encrypt, redirect HTTP → HTTPS
+- [ ] Postgres: app connects with scoped DB user (SELECT/INSERT/UPDATE only, not superuser)
+- [ ] Postgres: automated backups (`pg_dump` cron, stored off-box)
+- [ ] Set up server CI pipeline (build, test, deploy via SSH)
+- [ ] Add server URL configuration to Unity build (environment-based)
+- [ ] Rate limiting on auth and submission endpoints (ASP.NET `RateLimiter` middleware)
+- [ ] CORS whitelist: GitHub Pages origin only
+- [ ] Input validation: max lengths on username/display name, cap replay event count by board size
+- [ ] JWT expiry (24h), re-login on expiry (no refresh tokens for v0.5)
 
-### Phase 5: Game Sessions & Verification
+### Phase 5: Game Sessions & Verification → v0.6
 - [ ] Implement game session creation endpoint (generate seed, store pending)
 - [ ] Implement replay submission endpoint (verify, store score + replay data)
 - [ ] Return `isPersonalBest` in submission response
@@ -405,7 +420,7 @@ Tint adjacent arrows with different colors so players can visually distinguish a
 - [ ] Write integration tests: valid replay accepted, tampered replay rejected
 - [ ] Add timing sanity checks (minimum inter-event gap)
 
-### Phase 6: Global Leaderboards & Online Integration
+### Phase 6: Global Leaderboards & Online Integration → v0.6
 - [ ] Implement leaderboard query endpoints (by board config, personal best, limit param)
 - [ ] Write integration tests for leaderboard ranking
 - [ ] Build `ApiClient` (HTTP via `UnityWebRequest`, JWT, error handling, timeout/failure detection)
@@ -422,25 +437,16 @@ Tint adjacent arrows with different colors so players can visually distinguish a
 - [ ] Manual test: offline flow (server down → local generation → play → local leaderboard only → no errors)
 - [ ] Manual test: account management (register, login, change display name, logout, re-login)
 
-### Phase 7: Deployment & CI
-- [ ] Choose hosting provider (Fly.io / Railway / VPS)
-- [ ] Set up server CI pipeline (build, test, deploy)
-- [ ] Configure production PostgreSQL
-- [ ] Add server URL configuration to Unity build (environment-based)
-- [ ] Update WebGL deploy pipeline to point to production server
-- [ ] Tag `v0.1` on current main before merging v0.2 work
-- [ ] Tag `v0.2` on release
-
 ---
 
 ## Open Questions
 
 1. ~~**Domain code sharing mechanism**~~ — **Resolved**: monorepo with shared `.csproj` using relative `<Compile Include>` paths. No symlinks, no NuGet.
-2. **Hosting provider**: Fly.io (free tier, good DX), Railway (simple), or self-hosted VPS? Cost and latency considerations.
+2. ~~**Hosting provider**~~ — **Resolved**: Self-hosted VPS with Docker Compose. Dedicated non-root user, SSH key + password, secrets in `.env` on host. Deploy via GitHub Actions SSH.
 3. **WebGL HTTP client**: Unity's `UnityWebRequest` works in WebGL but has CORS constraints. Server must set appropriate CORS headers. Any concerns with the target hosting setup?
 4. ~~**Leaderboard pagination**~~ — **Resolved**: Top 50 for dedicated view, top 10 inline on victory screen. No cursor pagination for v0.2.
 5. ~~**Replay storage**~~ — **Resolved**: Store full replay JSON in the database. Replays are viewable via play buttons on leaderboard entries. Local replays stored on-device alongside local leaderboard data.
-6. ~~**Version tagging**~~ — **Resolved**: tag current main as `v0.1`, this work is `v0.2`, PvP is `v1.0`.
+6. ~~**Version tagging**~~ — **Resolved**: each phase ships as its own semver (v0.2–v0.6), v1.0 is PvP.
 
 ---
 
