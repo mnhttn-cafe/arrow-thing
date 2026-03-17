@@ -68,6 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       unity-version: ${{ steps.parse.outputs.version }}
+      docker-image: ${{ steps.parse.outputs.image }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,6 +78,7 @@ jobs:
         run: |
           version=$(head -1 ProjectSettings/ProjectVersion.txt | sed 's/m_EditorVersion: //')
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=unityci/editor:ubuntu-${version}-webgl-3" >> "$GITHUB_OUTPUT"
 
   test:
     runs-on: ubuntu-latest
@@ -108,6 +110,7 @@ jobs:
           testMode: EditMode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: EditMode tests
+          customImage: ${{ needs.resolve-unity-version.outputs.docker-image }}
           customParameters: -nographics
 
       - name: Save Docker image to cache
@@ -120,7 +123,7 @@ jobs:
 
   test-playmode:
     runs-on: ubuntu-latest
-    needs: resolve-unity-version
+    needs: [resolve-unity-version, test]
 
     steps:
       - name: Checkout
@@ -148,6 +151,7 @@ jobs:
           testMode: PlayMode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: PlayMode tests
+          customImage: ${{ needs.resolve-unity-version.outputs.docker-image }}
           customParameters: --burst-disable-compilation
 
       - name: Save Docker image to cache
