@@ -20,7 +20,7 @@ public sealed class VictoryController : MonoBehaviour
         "Not a scratch.",
         "WAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         "buff CE",
-        "🐐",
+        "GOAT",
         "Victory Message.",
         "woa",
         "Where did my arrows go????? :(",
