@@ -92,7 +92,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/docker-cache/unity-editor.tar
-          key: docker-unity-${{ needs.resolve-unity-version.outputs.unity-version }}
+          key: docker-unity-webgl-${{ needs.resolve-unity-version.outputs.unity-version }}
 
       - name: Load cached Docker image
         run: |
@@ -133,7 +133,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/docker-cache/unity-editor.tar
-          key: docker-unity-${{ needs.resolve-unity-version.outputs.unity-version }}
+          key: docker-unity-webgl-${{ needs.resolve-unity-version.outputs.unity-version }}
 
       - name: Load cached Docker image
         run: |
