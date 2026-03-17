@@ -3,8 +3,7 @@ using System;
 /// <summary>
 /// Two-phase timer: inspection countdown followed by solve timer.
 /// Pure C# — no Unity dependency. All timestamps use the same clock
-/// (caller's responsibility). Input-precision timestamps are stored
-/// separately for the final solve time only.
+/// (caller's responsibility).
 /// </summary>
 public sealed class GameTimer
 {
@@ -18,11 +17,6 @@ public sealed class GameTimer
     private readonly double _inspectionDuration;
     private double _inspectionStart;
     private double _solveStart;
-
-    // Input-precision timestamps for final result
-    private double _inputStartTime;
-    private double _inputFinishTime;
-    private bool _hasInputStart;
 
     public Phase CurrentPhase { get; private set; }
     public bool IsSolving => CurrentPhase == Phase.Solving;
@@ -61,7 +55,10 @@ public sealed class GameTimer
                     _inspectionDuration - (current - _inspectionStart)
                 );
                 if (InspectionRemaining <= 0.0)
-                    StartSolve(current);
+                {
+                    StartSolve(_inspectionStart + _inspectionDuration);
+                    SolveElapsed = current - _solveStart;
+                }
                 break;
 
             case Phase.Solving:
@@ -72,9 +69,8 @@ public sealed class GameTimer
 
     /// <summary>
     /// Transition to solving. Uses the same clock as Tick.
-    /// Optionally stores an input-precision timestamp for the final result.
     /// </summary>
-    public void StartSolve(double current, double inputTimestamp = -1.0)
+    public void StartSolve(double current)
     {
         if (CurrentPhase != Phase.Inspection)
             return;
@@ -83,36 +79,18 @@ public sealed class GameTimer
         SolveElapsed = 0.0;
         InspectionRemaining = 0.0;
         CurrentPhase = Phase.Solving;
-
-        if (inputTimestamp >= 0.0)
-        {
-            _inputStartTime = inputTimestamp;
-            _hasInputStart = true;
-        }
-
         PhaseChanged?.Invoke(Phase.Solving);
     }
 
     /// <summary>
-    /// End the solve. If both input timestamps are available, uses them
-    /// for precise final time. Otherwise falls back to frame time.
+    /// End the solve. Uses the same clock as Tick.
     /// </summary>
-    public void Finish(double current, double inputTimestamp = -1.0)
+    public void Finish(double current)
     {
         if (CurrentPhase != Phase.Solving)
             return;
 
-        if (_hasInputStart && inputTimestamp >= 0.0)
-        {
-            _inputFinishTime = inputTimestamp;
-            double inputElapsed = _inputFinishTime - _inputStartTime;
-            SolveElapsed = inputElapsed >= 0.0 ? inputElapsed : current - _solveStart;
-        }
-        else
-        {
-            SolveElapsed = current - _solveStart;
-        }
-
+        SolveElapsed = current - _solveStart;
         CurrentPhase = Phase.Finished;
         PhaseChanged?.Invoke(Phase.Finished);
     }

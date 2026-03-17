@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
@@ -26,7 +27,6 @@ public sealed class InputHandler : MonoBehaviour
     private bool _isDragging;
     private bool _isPressed;
     private bool _inputEnabled = true;
-    private double _lastReleaseTime;
 
     // Pinch state
     private float _lastPinchDistance;
@@ -56,8 +56,6 @@ public sealed class InputHandler : MonoBehaviour
         _selectAction = gameplay.FindAction("Select", true);
         _zoomAction = gameplay.FindAction("Zoom", true);
         gameplay.Enable();
-
-        _selectAction.canceled += ctx => _lastReleaseTime = ctx.time;
 
         EnhancedTouchSupport.Enable();
     }
@@ -125,17 +123,18 @@ public sealed class InputHandler : MonoBehaviour
 
                         if (_timer != null && result != ClearResult.Blocked)
                         {
-                            double frameTime = Time.realtimeSinceStartupAsDouble;
-                            double inputTime = frameTime + (_lastReleaseTime - Time.timeAsDouble);
+                            double wallTime =
+                                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                                / 1000.0;
                             switch (result)
                             {
                                 case ClearResult.ClearedFirst:
-                                    _timer.StartSolve(frameTime, inputTime);
+                                    _timer.StartSolve(wallTime);
                                     break;
                                 case ClearResult.ClearedLast:
                                     if (!_timer.IsSolving)
-                                        _timer.StartSolve(frameTime, inputTime);
-                                    _timer.Finish(frameTime, inputTime);
+                                        _timer.StartSolve(wallTime);
+                                    _timer.Finish(wallTime);
                                     break;
                             }
                         }

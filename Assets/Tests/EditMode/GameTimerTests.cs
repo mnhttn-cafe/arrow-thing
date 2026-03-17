@@ -25,6 +25,19 @@ public class GameTimerTests
     }
 
     [Test]
+    public void Tick_InspectionExpiredDuringTabOut_SolveElapsedReflectsFullTime()
+    {
+        // Inspection = 15s. First Tick arrives 20s after Start (simulates tab-out).
+        // Solve should show 5s — the time since inspection actually expired.
+        var timer = new GameTimer(15.0);
+        timer.Start(0.0);
+        timer.Tick(20.0);
+
+        Assert.That(timer.CurrentPhase, Is.EqualTo(GameTimer.Phase.Solving));
+        Assert.That(timer.SolveElapsed, Is.EqualTo(5.0).Within(0.001));
+    }
+
+    [Test]
     public void Tick_InspectionExpires_TransitionsToSolving()
     {
         var timer = new GameTimer(5.0);
@@ -93,20 +106,6 @@ public class GameTimerTests
     }
 
     [Test]
-    public void Finish_WithInputTimestamps_UsesPreciseTiming()
-    {
-        var timer = new GameTimer(15.0);
-        timer.Start(0.0);
-        // Frame time = 2.0, input timestamp = 2.001
-        timer.StartSolve(2.0, 2.001);
-        // Frame time = 5.5, input timestamp = 5.502
-        timer.Finish(5.5, 5.502);
-
-        double expected = 5.502 - 2.001;
-        Assert.That(timer.SolveElapsed, Is.EqualTo(expected).Within(0.0000001));
-    }
-
-    [Test]
     public void Finish_FiresPhaseChangedEvent()
     {
         var timer = new GameTimer(15.0);
@@ -133,22 +132,6 @@ public class GameTimerTests
     }
 
     [Test]
-    public void Finish_WithInvertedInputTimestamps_FallsBackToFrameTime()
-    {
-        var timer = new GameTimer(15.0);
-        timer.Start(0.0);
-        // Input start at 2.5 (after frame time 2.0)
-        timer.StartSolve(2.0, 2.5);
-        // Input finish at 2.4 — earlier than input start (inverted); frame time is 5.0
-        timer.Finish(5.0, 2.4);
-
-        // Input elapsed would be 2.4 - 2.5 = -0.1 (negative), so falls back to 5.0 - 2.0 = 3.0
-        Assert.That(timer.SolveElapsed, Is.EqualTo(3.0).Within(0.001));
-        Assert.That(timer.SolveElapsed, Is.GreaterThanOrEqualTo(0.0));
-        Assert.That(timer.CurrentPhase, Is.EqualTo(GameTimer.Phase.Finished));
-    }
-
-    [Test]
     public void Tick_AfterFinished_DoesNotChangeSolveElapsed()
     {
         var timer = new GameTimer(15.0);
@@ -169,9 +152,9 @@ public class GameTimerTests
         timer.Start(0.0);
         timer.Tick(2.0);
 
-        // 1-arrow board: start and finish at same frame time, same input time
-        timer.StartSolve(2.0, 2.3);
-        timer.Finish(2.0, 2.3);
+        // 1-arrow board: start and finish at same timestamp
+        timer.StartSolve(2.0);
+        timer.Finish(2.0);
 
         Assert.That(timer.SolveElapsed, Is.EqualTo(0.0));
         Assert.That(timer.CurrentPhase, Is.EqualTo(GameTimer.Phase.Finished));

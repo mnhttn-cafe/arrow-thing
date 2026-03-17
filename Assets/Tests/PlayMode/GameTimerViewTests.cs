@@ -6,13 +6,18 @@ using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// PlayMode tests verifying that GameTimerView uses real time (realtimeSinceStartupAsDouble)
-/// rather than Unity game time (timeAsDouble), so the timer is not paused when the player
-/// tabs out of the window.
+/// PlayMode tests verifying that GameTimerView uses DateTimeOffset.UtcNow (wall-clock
+/// time) rather than Unity internal time, so the timer advances correctly regardless of
+/// how Unity's time progresses.
 ///
-/// Time.timeScale = 0 is used as a proxy for focus loss: it freezes Time.timeAsDouble
-/// while Time.realtimeSinceStartupAsDouble continues to advance, which is exactly
-/// the divergence that occurs when the application loses focus in WebGL.
+/// In WebGL, Unity's requestAnimationFrame-based loop is suspended when the browser tab
+/// is hidden, which freezes both Time.timeAsDouble and Time.realtimeSinceStartupAsDouble.
+/// DateTimeOffset.UtcNow maps to JS Date.now() and continues to advance during tab-out,
+/// correctly expiring the inspection countdown and accumulating solve time.
+///
+/// Time.timeScale = 0 freezes Time.timeAsDouble to confirm that the timer is unaffected
+/// by Unity's internal time scale. The WebGL-specific suspended-loop scenario requires
+/// browser testing.
 /// </summary>
 [TestFixture]
 public class GameTimerViewTests
@@ -42,9 +47,9 @@ public class GameTimerViewTests
     }
 
     /// <summary>
-    /// Solve timer must keep running while Time.timeScale is 0 (simulates tab-out).
-    /// If GameTimerView used Time.timeAsDouble, SolveElapsed would stay near zero
-    /// during the freeze.
+    /// Solve timer must keep running while Time.timeScale is 0.
+    /// DateTimeOffset.UtcNow is unaffected by Unity's time scale, so SolveElapsed
+    /// continues to grow even when Unity internal time is frozen.
     /// </summary>
     [UnityTest]
     public IEnumerator SolveTimer_ContinuesAdvancing_WhenTimescaleIsZero()
@@ -68,12 +73,14 @@ public class GameTimerViewTests
         Assert.That(
             timer.SolveElapsed,
             Is.GreaterThan(RealWaitSeconds * 0.5),
-            "Solve timer must not pause when Time.timeScale is 0 (simulates window focus loss)"
+            "Solve timer must not pause when Time.timeScale is 0"
         );
     }
 
     /// <summary>
     /// Inspection countdown must keep running while Time.timeScale is 0.
+    /// DateTimeOffset.UtcNow is unaffected by Unity's time scale, so the inspection
+    /// remaining continues to decrease even when Unity internal time is frozen.
     /// </summary>
     [UnityTest]
     public IEnumerator InspectionTimer_ContinuesCountingDown_WhenTimescaleIsZero()
