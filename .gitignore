@@ -70,5 +70,9 @@ Desktop.ini
 .claude/
 .mcp.json
 
+# CI-injected build artifact (entire folder is transient)
+Assets/Resources/
+Assets/Resources.meta
+
 # Keep package lock file tracked
 ![Pp]ackages/packages-lock.json
