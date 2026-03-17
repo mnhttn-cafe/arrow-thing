@@ -16,11 +16,12 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 - [`GDD.md`](GDD.md): game design goals and player-facing behavior.
 - [`BoardGeneration.md`](BoardGeneration.md): generator algorithm, dependency graph maintenance, and cycle detection.
+- [`OnlineRoadmap.md`](OnlineRoadmap.md): v0.2 online features plan (server, leaderboards, replays, accounts).
 
 ## Architecture Overview
 
 - Domain layer (Unity-independent):
-  - Location: `Assets/Scripts/`
+  - Location: `Assets/Scripts/Domain/`
   - Contains board state, arrow data, and generation logic.
   - Must be testable without Unity runtime dependencies (tests use Unity Test Framework / NUnit in `Assets/Tests/EditMode/`).
 - Unity adapter layer (Unity-dependent):
@@ -243,3 +244,4 @@ WebGL player settings: Gzip compression, JS decompression fallback enabled, hash
 - 2026-03-16: Added in-game HUD (`GameHud.uxml`) with back-to-menu button (with leave confirmation modal) and solve timer. `GameTimer` domain model tracks inspection/solve phases with input-precision timestamps for final time. `ClearResult` enum replaces `bool` return from `TryClearArrow`. `GameTimerView` drives the HUD label. Victory popup now shows final solve time.
 - 2026-03-16: License changed from Source-Available v2.0 to MIT. Game is free and open-source, distributed via WebGL on GitHub Pages. Added CD pipeline (`deploy.yml`) — builds WebGL after CI passes on main, deploys to GitHub Pages automatically.
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.
+- 2026-03-16: MVP (v0.1) declared complete. v0.2 planning started: authoritative ASP.NET Core server sharing domain code via monorepo shared `.csproj`, input-based replay system with sequence-numbered events, size-partitioned leaderboards (local + global), simple account system (username/display name/JWT). Offline-first design — game always playable without server. See [`OnlineRoadmap.md`](OnlineRoadmap.md).

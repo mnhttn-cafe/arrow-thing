@@ -1,6 +1,6 @@
 # Contributing
 
-This project is early-stage, so keep contributions small, focused, and easy to review.
+Keep contributions small, focused, and easy to review.
 
 ## Core Expectations
 

@@ -3,10 +3,10 @@
 ## Metadata
 - Working Title: Arrow Thing
 - Genre: Minimalist puzzle, speed-clearing, competitive PvP (planned)
-- Platform(s): Desktop for MVP; mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
+- Platform(s): WebGL (primary, deployed via GitHub Pages); mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
-- Status: Draft v0.6
-- Last Updated: 2026-03-15
+- Status: v0.1 — MVP complete, online features in progress
+- Last Updated: 2026-03-16
 
 ## High Concept
 - One-sentence pitch: Clear winding grid-based arrows as fast as possible, then weaponize your speed against opponents by sending garbage.
@@ -68,8 +68,8 @@
 ## Board / Playfield
 - Board topology:
   - Grid-based rectangular board for MVP and initial competitive modes.
-- MVP target:
-  - Start with a 20x20 playable area and tune from there.
+- Board size presets:
+  - Small (10×10), Medium (20×20), Large (40×40). Player selects from mode menu.
 - Occupancy and collision:
   - Cell occupancy is exclusive per arrow body segment.
   - Obstruction checks use arrowhead ray-to-edge logic.
@@ -191,23 +191,33 @@
   - Replay file format: JSON.
 
 ## Production Scope
-- MVP definition:
-  - Minimal start menu. **[Done — UI Toolkit menu with Play/Mode Select/Settings screens, board-size presets]**
-  - Procedural arrow generation. **[Done]**
-  - Core click/tap clear loop with success/fail animations. **[Done]**
-  - Timer UI. **[Not started]**
-  - Simple clear screen. **[Done — grid fade + victory popup with randomized messages, Play Again / Menu]**
-  - Audio feedback for success/fail/clear. **[Not started]**
-  - Build configuration (all gameplay scenes in build settings). **[Not started]**
-- Stretch goals:
-  - Fixed-count challenge variants.
-  - Leaderboards by board profile.
-  - Early local garbage simulation.
-- Non-goals:
-  - Full online PvP in first implementation pass.
+
+### v0.1 — MVP **[Complete]**
+  - Minimal start menu (UI Toolkit: Play/Mode Select/Settings, board-size presets).
+  - Procedural arrow generation with solvability guarantee.
+  - Core click/tap clear loop with success/fail animations.
+  - Timer UI (inspection countdown + solve timer with input-precision final time).
+  - Victory screen (grid fade + victory popup with randomized messages, Play Again / Menu).
+  - WebGL deployment via GitHub Pages with CD pipeline.
+  - Audio feedback for success/fail/clear. **[Not started — deferred to post-MVP]**
+
+### v0.1.1 — Visual Polish
+  - Map-coloring arrow tinting (graph coloring for adjacent arrow readability).
+
+### v0.2 — Online (see [`docs/OnlineRoadmap.md`](OnlineRoadmap.md))
+  - Authoritative server (ASP.NET Core, shared domain code).
+  - Input-based replay system with server-side verification.
+  - Size-partitioned leaderboards (local + global).
+  - Simple account system (username/display name/JWT).
+  - Offline-first — game always playable without server connection.
+
+### v1.0 — PvP
+  - Real-time garbage mechanics, matchmaking.
+  - The original competitive vision fulfilled.
+
+### Non-goals (current)
   - Controller support.
-  - Local persistence/profile systems in first pass.
-  - Heavy art polish before rule/generation validation.
+  - Heavy art polish before gameplay validation.
 - Note on endless mode:
   - Not a current explicit target, but may emerge naturally during mode and multiplayer testing.
 
@@ -226,4 +236,5 @@
 - 2026-02-25: Revised to v0.5 with JSON replay format, tie-allowed policy, and generator-playtest-driven arrow-count decision.
 - 2026-02-28: Revised to v0.6 with updated generation bounds language (minimum-only rule with mode-specific practical caps).
 - 2026-03-06: Closed open questions on arrow count and length distribution based on generation rewrite experience.
-- 2026-03-16: Updated platform target to desktop-first for MVP; mobile gameplay works but UI scaling deferred. Updated controls section accordingly.
+- 2026-03-16: Updated platform target to WebGL-first for MVP; mobile gameplay works but UI scaling deferred. Updated controls section accordingly.
+- 2026-03-16: MVP (v0.1) declared complete. Replaced MVP checklist with version-based production scope (v0.1 → v0.1.1 → v0.2 → v1.0). Online roadmap documented in `OnlineRoadmap.md`.

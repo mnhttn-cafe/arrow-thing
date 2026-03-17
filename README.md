@@ -6,16 +6,17 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
 
 ## Project Status
 
-- Current phase: MVP foundations
+- Current version: **v0.1** — MVP complete, playable on [GitHub Pages](https://vicplusplus.github.io/arrow-thing/)
+- Next milestone: v0.1.1 (map-coloring for readability), then v0.2 (online leaderboards, replays, accounts)
 - Design docs:
   - [`docs/GDD.md`](docs/GDD.md) (game design)
   - [`docs/TechnicalDesign.md`](docs/TechnicalDesign.md) (technical architecture and class structure)
-- Focus: deterministic board logic, procedural generation, and fast clear validation
+  - [`docs/OnlineRoadmap.md`](docs/OnlineRoadmap.md) (v0.2 online features plan)
 
 ## Tech Stack
 
 - Unity `6000.3.8f1`
-- C# models under `Assets/Scripts/Models`
+- C# domain logic under `Assets/Scripts/Domain`
 - NUnit tests via Unity Test Framework in `Assets/Tests/EditMode`
 
 ## Local Development
@@ -49,16 +50,9 @@ git config merge.unityyamlmerge.driver '<path-to-Unity>/Editor/Data/Tools/UnityY
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for expectations around architecture, tests, and coverage standards.
 
-## Licensing and Monetization
+## License
 
-This project uses a source-available license:
-
-- Source code is available to read, modify, build, and share for any non-commercial purpose.
-- Commercial distribution of source code or builds (original or modified) requires written permission.
-- Contributions are licensed under the same or more permissive terms (see the license for details).
-- Official distributable builds are sold through storefronts.
-
-See [`LICENSE`](LICENSE) for exact terms.
+This project is licensed under the [MIT License](LICENSE).
 
 ## Acknowledgements
 
@@ -66,7 +60,10 @@ Git configuration (`.gitattributes`, `.gitignore`, git hooks) is based on [NYU G
 
 ## Repository Layout
 
-- `Assets/Scripts/Models` - Core board/arrow domain logic
+- `Assets/Scripts/Domain` - Core board/arrow domain logic
+- `Assets/Scripts/View` - Unity rendering, input, UI
 - `Assets/Tests/EditMode` - Unit tests (Unity Test Framework)
 - `docs/GDD.md` - Game design direction and scope
 - `docs/TechnicalDesign.md` - Architecture and class-structure decisions
+- `docs/OnlineRoadmap.md` - v0.2 online features plan
+- `docs/BoardGeneration.md` - Board generation algorithm
