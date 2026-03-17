@@ -86,7 +86,7 @@ public class UILayoutTests
             panelBounds,
             ctx,
             warn,
-            mainMenu.Q<Label>(className: "title"),
+            mainMenu.Q(className: "title"),
             mainMenu.Q<Button>("play-btn"),
             mainMenu.Q<Button>("settings-btn"),
             mainMenu.Q<Button>("quit-btn")
