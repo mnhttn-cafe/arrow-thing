@@ -53,8 +53,11 @@ public class GameTimerViewTests
 
         yield return null; // First Update: zero-duration inspection expires → Solving
 
-        Assert.That(timer.CurrentPhase, Is.EqualTo(GameTimer.Phase.Solving),
-            "Timer should enter Solving phase immediately after zero-duration inspection");
+        Assert.That(
+            timer.CurrentPhase,
+            Is.EqualTo(GameTimer.Phase.Solving),
+            "Timer should enter Solving phase immediately after zero-duration inspection"
+        );
 
         Time.timeScale = 0f;
         yield return new WaitForSecondsRealtime(RealWaitSeconds);
@@ -62,8 +65,11 @@ public class GameTimerViewTests
 
         yield return null; // One more Update to tick
 
-        Assert.That(timer.SolveElapsed, Is.GreaterThan(RealWaitSeconds * 0.5),
-            "Solve timer must not pause when Time.timeScale is 0 (simulates window focus loss)");
+        Assert.That(
+            timer.SolveElapsed,
+            Is.GreaterThan(RealWaitSeconds * 0.5),
+            "Solve timer must not pause when Time.timeScale is 0 (simulates window focus loss)"
+        );
     }
 
     /// <summary>
@@ -87,8 +93,11 @@ public class GameTimerViewTests
         yield return null; // One more Update to tick
 
         double consumed = remainingBefore - timer.InspectionRemaining;
-        Assert.That(consumed, Is.GreaterThan(RealWaitSeconds * 0.5),
-            "Inspection countdown must not pause when Time.timeScale is 0 (simulates window focus loss)");
+        Assert.That(
+            consumed,
+            Is.GreaterThan(RealWaitSeconds * 0.5),
+            "Inspection countdown must not pause when Time.timeScale is 0 (simulates window focus loss)"
+        );
     }
 
     // ───────── Helpers ─────────
