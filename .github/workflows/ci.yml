@@ -114,7 +114,8 @@ jobs:
         run: |
           if [ ! -f ~/docker-cache/unity-editor.tar ]; then
             mkdir -p ~/docker-cache
-            docker save -o ~/docker-cache/unity-editor.tar unityci/editor:ubuntu-${{ needs.resolve-unity-version.outputs.unity-version }}-linux-il2cpp-3
+            image=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^unityci/editor:' | head -1)
+            docker save -o ~/docker-cache/unity-editor.tar "$image"
           fi
 
   test-playmode:
@@ -153,5 +154,6 @@ jobs:
         run: |
           if [ ! -f ~/docker-cache/unity-editor.tar ]; then
             mkdir -p ~/docker-cache
-            docker save -o ~/docker-cache/unity-editor.tar unityci/editor:ubuntu-${{ needs.resolve-unity-version.outputs.unity-version }}-linux-il2cpp-3
+            image=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^unityci/editor:' | head -1)
+            docker save -o ~/docker-cache/unity-editor.tar "$image"
           fi
