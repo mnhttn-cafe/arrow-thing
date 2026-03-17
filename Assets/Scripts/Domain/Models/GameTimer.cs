@@ -105,7 +105,8 @@ public sealed class GameTimer
         if (_hasInputStart && inputTimestamp >= 0.0)
         {
             _inputFinishTime = inputTimestamp;
-            SolveElapsed = _inputFinishTime - _inputStartTime;
+            double inputElapsed = _inputFinishTime - _inputStartTime;
+            SolveElapsed = inputElapsed >= 0.0 ? inputElapsed : current - _solveStart;
         }
         else
         {
