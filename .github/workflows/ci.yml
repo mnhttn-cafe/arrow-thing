@@ -100,3 +100,4 @@ jobs:
           testMode: PlayMode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: PlayMode tests
+          customParameters: --burst-disable-compilation
