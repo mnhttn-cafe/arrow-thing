@@ -22,7 +22,7 @@ public sealed class GameTimerView : MonoBehaviour
         _label = hudDocument.rootVisualElement.Q<Label>("timer-label");
 
         _timer.PhaseChanged += OnPhaseChanged;
-        _timer.Start(Time.timeAsDouble);
+        _timer.Start(Time.realtimeSinceStartupAsDouble);
 
         UpdateLabel();
     }
@@ -32,7 +32,7 @@ public sealed class GameTimerView : MonoBehaviour
         if (_timer == null)
             return;
 
-        _timer.Tick(Time.timeAsDouble);
+        _timer.Tick(Time.realtimeSinceStartupAsDouble);
         UpdateLabel();
     }
 
