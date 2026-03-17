@@ -55,7 +55,10 @@ public sealed class GameTimer
                     _inspectionDuration - (current - _inspectionStart)
                 );
                 if (InspectionRemaining <= 0.0)
-                    StartSolve(current);
+                {
+                    StartSolve(_inspectionStart + _inspectionDuration);
+                    SolveElapsed = current - _solveStart;
+                }
                 break;
 
             case Phase.Solving:

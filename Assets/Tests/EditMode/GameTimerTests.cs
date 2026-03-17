@@ -25,6 +25,19 @@ public class GameTimerTests
     }
 
     [Test]
+    public void Tick_InspectionExpiredDuringTabOut_SolveElapsedReflectsFullTime()
+    {
+        // Inspection = 15s. First Tick arrives 20s after Start (simulates tab-out).
+        // Solve should show 5s — the time since inspection actually expired.
+        var timer = new GameTimer(15.0);
+        timer.Start(0.0);
+        timer.Tick(20.0);
+
+        Assert.That(timer.CurrentPhase, Is.EqualTo(GameTimer.Phase.Solving));
+        Assert.That(timer.SolveElapsed, Is.EqualTo(5.0).Within(0.001));
+    }
+
+    [Test]
     public void Tick_InspectionExpires_TransitionsToSolving()
     {
         var timer = new GameTimer(5.0);
