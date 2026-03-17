@@ -126,7 +126,7 @@ public sealed class InputHandler : MonoBehaviour
                         if (_timer != null && result != ClearResult.Blocked)
                         {
                             double frameTime = Time.realtimeSinceStartupAsDouble;
-                            double inputTime = Time.realtimeSinceStartupAsDouble + (_lastReleaseTime - Time.timeAsDouble);
+                            double inputTime = frameTime + (_lastReleaseTime - Time.timeAsDouble);
                             switch (result)
                             {
                                 case ClearResult.ClearedFirst:
