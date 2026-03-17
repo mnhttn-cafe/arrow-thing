@@ -21,6 +21,7 @@
         <ui:Button name="preset-small" class="preset-btn" text="Small — 10 × 10" />
         <ui:Button name="preset-medium" class="preset-btn" text="Medium — 20 × 20" />
         <ui:Button name="preset-large" class="preset-btn" text="Large — 40 × 40" />
+        <ui:Button name="preset-xlarge" class="preset-btn" text="Extra Large — 100 × 100" />
         <ui:Button name="start-btn" class="start-btn" text="Start" />
         <ui:Button name="mode-back-btn" class="menu-btn" text="Back" />
     </ui:VisualElement>

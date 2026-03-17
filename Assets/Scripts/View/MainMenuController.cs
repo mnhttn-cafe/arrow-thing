@@ -23,6 +23,7 @@ public sealed class MainMenuController : MonoBehaviour
     private Button _presetSmall;
     private Button _presetMedium;
     private Button _presetLarge;
+    private Button _presetXLarge;
 
     // Currently selected board size (default to small)
     private int _selectedWidth = 10;
@@ -55,10 +56,12 @@ public sealed class MainMenuController : MonoBehaviour
         _presetSmall = _modeSelect.Q<Button>("preset-small");
         _presetMedium = _modeSelect.Q<Button>("preset-medium");
         _presetLarge = _modeSelect.Q<Button>("preset-large");
+        _presetXLarge = _modeSelect.Q<Button>("preset-xlarge");
 
         _presetSmall.clicked += () => SelectPreset(10, 10);
         _presetMedium.clicked += () => SelectPreset(20, 20);
         _presetLarge.clicked += () => SelectPreset(40, 40);
+        _presetXLarge.clicked += () => SelectPreset(100, 100);
 
         _modeSelect.Q<Button>("start-btn").clicked += OnStart;
         _modeSelect.Q<Button>("mode-back-btn").clicked += OnModeBack;
@@ -129,6 +132,7 @@ public sealed class MainMenuController : MonoBehaviour
         UpdatePresetHighlight(_presetSmall, 10, 10);
         UpdatePresetHighlight(_presetMedium, 20, 20);
         UpdatePresetHighlight(_presetLarge, 40, 40);
+        UpdatePresetHighlight(_presetXLarge, 100, 100);
     }
 
     private void UpdatePresetHighlight(Button btn, int w, int h)
