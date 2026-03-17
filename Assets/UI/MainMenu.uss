@@ -13,12 +13,13 @@
 
 /* Title */
 .title {
-    font-size: 64px;
-    color: rgb(255, 255, 255);
-    -unity-font-style: bold;
+    width: 80%;
+    max-width: 500px;
+    height: 100px;
     margin-bottom: 60px;
-    letter-spacing: 4px;
     flex-shrink: 1;
+    background-image: url("/Assets/Art/title.png");
+    -unity-background-scale-mode: scale-to-fit;
 }
 
 /* Standard menu button */
