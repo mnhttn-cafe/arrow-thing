@@ -103,7 +103,7 @@ public class GameTimerViewTests
         Assert.That(
             consumed,
             Is.GreaterThan(RealWaitSeconds * 0.5),
-            "Inspection countdown must not pause when Time.timeScale is 0 (simulates window focus loss)"
+            "Inspection countdown must not pause when Time.timeScale is 0"
         );
     }
 
