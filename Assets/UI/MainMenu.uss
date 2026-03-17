@@ -112,6 +112,65 @@
     background-color: rgba(255, 255, 255, 0.15);
 }
 
+/* Info button (bottom-right) */
+.info-btn {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    color: rgb(180, 180, 180);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold-and-italic;
+}
+
+.info-btn:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Info panel (anchored above the info button) */
+.info-panel {
+    position: absolute;
+    bottom: 72px;
+    right: 16px;
+    background-color: rgb(40, 40, 55);
+    border-radius: 10px;
+    padding: 16px 20px;
+    align-items: flex-end;
+}
+
+.info-text {
+    font-size: 16px;
+    color: rgb(160, 160, 175);
+    margin-bottom: 4px;
+    -unity-text-align: upper-right;
+}
+
+.info-credit {
+    color: rgb(200, 200, 210);
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
+.info-link {
+    font-size: 16px;
+    color: rgb(120, 180, 240);
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    padding: 4px 0;
+    -unity-text-align: upper-right;
+    cursor: link;
+}
+
+.info-link:hover {
+    color: rgb(160, 210, 255);
+}
+
 /* Quit modal overlay */
 .modal-overlay {
     position: absolute;

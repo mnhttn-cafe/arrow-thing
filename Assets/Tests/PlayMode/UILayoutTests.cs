@@ -89,7 +89,8 @@ public class UILayoutTests
             mainMenu.Q(className: "title"),
             mainMenu.Q<Button>("play-btn"),
             mainMenu.Q<Button>("settings-btn"),
-            mainMenu.Q<Button>("quit-btn")
+            mainMenu.Q<Button>("quit-btn"),
+            mainMenu.Q<Button>("info-btn")
         );
     }
 

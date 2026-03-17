@@ -3,9 +3,17 @@
 
     <ui:VisualElement name="main-menu" class="screen">
         <ui:Button name="quit-btn" class="quit-btn" text="X" />
+        <ui:Button name="info-btn" class="info-btn" text="i" />
         <ui:VisualElement class="title" />
         <ui:Button name="play-btn" class="menu-btn" text="Play" />
         <ui:Button name="settings-btn" class="menu-btn" text="Settings" />
+
+        <ui:VisualElement name="info-panel" class="info-panel screen--hidden">
+            <ui:Label name="info-version" class="info-text" />
+            <ui:Label class="info-text" text="Thanks to Yuki (mnhttn-cafe)" />
+            <ui:Button name="info-github-btn" class="info-link" text="GitHub" />
+            <ui:Label class="info-text info-credit" text="Made with &lt;3 by vicplusplus" />
+        </ui:VisualElement>
     </ui:VisualElement>
 
     <ui:VisualElement name="mode-select" class="screen screen--hidden">

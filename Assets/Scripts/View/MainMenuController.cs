@@ -11,10 +11,13 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField]
     private UIDocument uiDocument;
 
+    private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
+
     private VisualElement _mainMenu;
     private VisualElement _modeSelect;
     private VisualElement _settings;
     private VisualElement _quitModal;
+    private VisualElement _infoPanel;
 
     // Preset buttons for selection highlight
     private Button _presetSmall;
@@ -62,6 +65,12 @@ public sealed class MainMenuController : MonoBehaviour
 
         // Settings buttons
         _settings.Q<Button>("settings-back-btn").clicked += OnSettingsBack;
+
+        // Info button + panel
+        _infoPanel = _mainMenu.Q("info-panel");
+        _mainMenu.Q<Button>("info-btn").clicked += OnInfoToggle;
+        _mainMenu.Q<Button>("info-github-btn").clicked += OnGitHub;
+        _mainMenu.Q<Label>("info-version").text = $"v{Application.version} ({GitCommitHash()})";
 
         // Quit modal buttons
         _quitModal.Q<Button>("quit-yes-btn").clicked += OnQuitConfirm;
@@ -152,5 +161,24 @@ public sealed class MainMenuController : MonoBehaviour
     private void OnQuitCancel()
     {
         SetVisible(_quitModal, false);
+    }
+
+    private void OnInfoToggle()
+    {
+        bool isHidden = _infoPanel.ClassListContains("screen--hidden");
+        SetVisible(_infoPanel, isHidden);
+    }
+
+    private void OnGitHub()
+    {
+        Application.OpenURL(GitHubUrl);
+    }
+
+    private static string GitCommitHash()
+    {
+        var asset = Resources.Load<TextAsset>("git-commit");
+        if (asset != null)
+            return asset.text.Trim();
+        return "dev";
     }
 }
