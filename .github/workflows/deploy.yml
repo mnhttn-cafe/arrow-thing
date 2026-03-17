@@ -30,25 +30,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve Unity Docker image
-        id: unity
-        run: |
-          version=$(head -1 ProjectSettings/ProjectVersion.txt | sed 's/m_EditorVersion: //')
-          echo "image=unityci/editor:ubuntu-${version}-webgl-3" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Unity Docker image
-        uses: actions/cache@v4
-        with:
-          path: ~/docker-cache/unity-editor.tar
-          key: docker-unity-webgl-${{ steps.unity.outputs.version }}
-
-      - name: Load cached Docker image
-        run: |
-          if [ -f ~/docker-cache/unity-editor.tar ]; then
-            docker load -i ~/docker-cache/unity-editor.tar
-          fi
-
       - name: Cache Unity Library
         uses: actions/cache@v4
         with:
@@ -71,15 +52,6 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL
-          customImage: ${{ steps.unity.outputs.image }}
-
-      - name: Save Docker image to cache
-        run: |
-          if [ ! -f ~/docker-cache/unity-editor.tar ]; then
-            mkdir -p ~/docker-cache
-            image=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^unityci/editor:' | head -1)
-            docker save -o ~/docker-cache/unity-editor.tar "$image"
-          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
