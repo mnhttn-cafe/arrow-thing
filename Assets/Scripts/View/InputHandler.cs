@@ -124,8 +124,7 @@ public sealed class InputHandler : MonoBehaviour
                         if (_timer != null && result != ClearResult.Blocked)
                         {
                             double wallTime =
-                                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                                / 1000.0;
+                                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
                             switch (result)
                             {
                                 case ClearResult.ClearedFirst:
