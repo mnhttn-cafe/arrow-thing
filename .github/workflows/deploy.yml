@@ -39,6 +39,11 @@ jobs:
             Library-WebGL-6000.3.8f1-
             Library-WebGL-
 
+      - name: Inject git commit hash
+        run: |
+          mkdir -p Assets/Resources
+          git rev-parse --short HEAD > Assets/Resources/git-commit.txt
+
       - name: Build WebGL
         uses: game-ci/unity-builder@v4
         env:
