@@ -133,6 +133,22 @@ public class GameTimerTests
     }
 
     [Test]
+    public void Finish_WithInvertedInputTimestamps_FallsBackToFrameTime()
+    {
+        var timer = new GameTimer(15.0);
+        timer.Start(0.0);
+        // Input start at 2.5 (after frame time 2.0)
+        timer.StartSolve(2.0, 2.5);
+        // Input finish at 2.4 — earlier than input start (inverted); frame time is 5.0
+        timer.Finish(5.0, 2.4);
+
+        // Input elapsed would be 2.4 - 2.5 = -0.1 (negative), so falls back to 5.0 - 2.0 = 3.0
+        Assert.That(timer.SolveElapsed, Is.EqualTo(3.0).Within(0.001));
+        Assert.That(timer.SolveElapsed, Is.GreaterThanOrEqualTo(0.0));
+        Assert.That(timer.CurrentPhase, Is.EqualTo(GameTimer.Phase.Finished));
+    }
+
+    [Test]
     public void Tick_AfterFinished_DoesNotChangeSolveElapsed()
     {
         var timer = new GameTimer(15.0);
