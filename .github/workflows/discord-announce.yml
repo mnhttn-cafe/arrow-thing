@@ -36,12 +36,15 @@ jobs:
       - name: Post to Discord
         run: |
           TAG="${{ steps.notes.outputs.tag }}"
-          NOTES=$(cat /tmp/release_notes.txt)
 
-          # Build the JSON payload
-          PAYLOAD=$(jq -n \
-            --arg content "**Arrow Thing $TAG** is out!\n\n$NOTES\n\nPlay now: https://vicplusplus.github.io/arrow-thing/" \
-            '{content: $content}')
+          # Build message with real newlines, then let jq handle JSON escaping
+          {
+            printf '**Arrow Thing %s** is out!\n\n' "$TAG"
+            cat /tmp/release_notes.txt
+            printf '\nPlay now: https://vicplusplus.github.io/arrow-thing/'
+          } > /tmp/discord_message.txt
+
+          PAYLOAD=$(jq -n --rawfile content /tmp/discord_message.txt '{content: $content}')
 
           curl -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
