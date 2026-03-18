@@ -24,6 +24,11 @@ public sealed class CameraController : MonoBehaviour
     private float _maxOrthoSize;
 
     public Camera Cam => _cam;
+    public float ZoomSpeed
+    {
+        get => zoomSpeed;
+        set => zoomSpeed = value;
+    }
 
     public void Init(Board board, float bufferFraction = 0.1f)
     {
@@ -65,8 +70,11 @@ public sealed class CameraController : MonoBehaviour
     /// </summary>
     public void Zoom(float scrollDelta)
     {
+        // Scale by current ortho size so each scroll step is a proportional zoom,
+        // giving consistent feel across board sizes (6x6 through 100x100).
+        float scaledSpeed = zoomSpeed * _cam.orthographicSize * 0.1f;
         _cam.orthographicSize = Mathf.Clamp(
-            _cam.orthographicSize - scrollDelta * zoomSpeed,
+            _cam.orthographicSize - scrollDelta * scaledSpeed,
             minOrthoSize,
             _maxOrthoSize
         );

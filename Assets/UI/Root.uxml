@@ -11,8 +11,16 @@
         <ui:VisualElement name="info-panel" class="info-panel screen--hidden">
             <ui:Label name="info-version" class="info-text" />
             <ui:Label class="info-text" text="Thanks to Yuki (mnhttn-cafe)" />
-            <ui:Button name="info-github-btn" class="info-link" text="GitHub" />
             <ui:Label class="info-text info-credit" text="Made with &lt;3 by vicplusplus" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="link-row" class="link-row">
+            <ui:Button name="link-github-btn" class="link-icon-btn">
+                <ui:VisualElement class="link-icon link-icon--github" />
+            </ui:Button>
+            <ui:Button name="link-discord-btn" class="link-icon-btn">
+                <ui:VisualElement class="link-icon link-icon--discord" />
+            </ui:Button>
         </ui:VisualElement>
     </ui:VisualElement>
 
@@ -33,6 +41,12 @@
             <ui:Label class="setting-label" text="Drag Threshold" />
             <ui:Slider name="drag-threshold-slider" class="setting-slider" low-value="5" high-value="60" value="15" />
             <ui:Label name="drag-threshold-value" class="setting-value" text="15" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="setting-row">
+            <ui:Label class="setting-label" text="Zoom Speed" />
+            <ui:Slider name="zoom-speed-slider" class="setting-slider" low-value="0.2" high-value="5" value="1" />
+            <ui:Label name="zoom-speed-value" class="setting-value" text="1.0" />
         </ui:VisualElement>
 
         <ui:VisualElement class="setting-row">

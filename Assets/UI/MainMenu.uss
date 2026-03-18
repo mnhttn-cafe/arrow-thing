@@ -164,11 +164,53 @@
     border-width: 0;
     padding: 4px 0;
     -unity-text-align: upper-right;
-    cursor: link;
+
 }
 
 .info-link:hover {
     color: rgb(160, 210, 255);
+}
+
+/* Bottom-left link row */
+.link-row {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.link-icon-btn {
+    width: 48px;
+    height: 48px;
+    margin-left: 8px;
+    padding: 7px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    border-width: 0;
+
+}
+
+.link-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.link-icon-btn:hover .link-icon {
+    -unity-background-image-tint-color: rgb(220, 220, 230);
+}
+
+.link-icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(160, 160, 175);
+}
+
+.link-icon--github {
+    background-image: url("/Assets/Art/Octicons-mark-github.svg.png");
+}
+
+.link-icon--discord {
+    background-image: url("/Assets/Art/discord-white-icon.png");
 }
 
 /* Quit modal overlay */
