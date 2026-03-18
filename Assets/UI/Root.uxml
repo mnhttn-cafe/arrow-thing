@@ -11,8 +11,12 @@
         <ui:VisualElement name="info-panel" class="info-panel screen--hidden">
             <ui:Label name="info-version" class="info-text" />
             <ui:Label class="info-text" text="Thanks to Yuki (mnhttn-cafe)" />
-            <ui:Button name="info-github-btn" class="info-link" text="GitHub" />
             <ui:Label class="info-text info-credit" text="Made with &lt;3 by vicplusplus" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="link-row" class="link-row">
+            <ui:Button name="link-github-btn" class="link-icon-btn" />
+            <ui:Button name="link-discord-btn" class="link-icon-btn" />
         </ui:VisualElement>
     </ui:VisualElement>
 

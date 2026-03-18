@@ -12,6 +12,7 @@ public sealed class MainMenuController : MonoBehaviour
     private UIDocument uiDocument;
 
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
+    private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
     private const string DragThresholdPrefKey = "DragThreshold";
     private const string ArrowColoringPrefKey = "ArrowColoring";
 
@@ -105,8 +106,11 @@ public sealed class MainMenuController : MonoBehaviour
         // Info button + panel
         _infoPanel = _mainMenu.Q("info-panel");
         _mainMenu.Q<Button>("info-btn").clicked += OnInfoToggle;
-        _mainMenu.Q<Button>("info-github-btn").clicked += OnGitHub;
         _mainMenu.Q<Label>("info-version").text = $"v{Application.version} ({GitCommitHash()})";
+
+        // Bottom-right link buttons
+        _mainMenu.Q<Button>("link-github-btn").clicked += () => Application.OpenURL(GitHubUrl);
+        _mainMenu.Q<Button>("link-discord-btn").clicked += () => Application.OpenURL(DiscordUrl);
 
         // Quit modal buttons
         _quitModal.Q<Button>("quit-yes-btn").clicked += OnQuitConfirm;
@@ -204,11 +208,6 @@ public sealed class MainMenuController : MonoBehaviour
     {
         bool isHidden = _infoPanel.ClassListContains("screen--hidden");
         SetVisible(_infoPanel, isHidden);
-    }
-
-    private void OnGitHub()
-    {
-        Application.OpenURL(GitHubUrl);
     }
 
     private static string GitCommitHash()

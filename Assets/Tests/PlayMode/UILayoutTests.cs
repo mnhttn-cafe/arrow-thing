@@ -90,7 +90,9 @@ public class UILayoutTests
             mainMenu.Q<Button>("play-btn"),
             mainMenu.Q<Button>("settings-btn"),
             mainMenu.Q<Button>("quit-btn"),
-            mainMenu.Q<Button>("info-btn")
+            mainMenu.Q<Button>("info-btn"),
+            mainMenu.Q<Button>("link-github-btn"),
+            mainMenu.Q<Button>("link-discord-btn")
         );
     }
 
