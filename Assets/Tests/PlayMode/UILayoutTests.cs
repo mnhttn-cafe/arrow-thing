@@ -125,6 +125,8 @@ public class UILayoutTests
             modeSelect.Q<Button>("preset-small"),
             modeSelect.Q<Button>("preset-medium"),
             modeSelect.Q<Button>("preset-large"),
+            modeSelect.Q<Button>("preset-xlarge"),
+            modeSelect.Q("preset-custom"),
             modeSelect.Q<Button>("start-btn"),
             modeSelect.Q<Button>("mode-back-btn")
         );

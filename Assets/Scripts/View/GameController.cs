@@ -125,11 +125,15 @@ public sealed class GameController : MonoBehaviour
 
         // Generate board, overlapping with loading overlay fade when needed
         VisualElement loadingOverlay = null;
+        VisualElement loadingBarFill = null;
         if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
         {
             loadingOverlay = hudUIDocument.rootVisualElement.Q("loading-overlay");
             if (loadingOverlay != null)
+            {
                 loadingOverlay.style.display = DisplayStyle.None;
+                loadingBarFill = loadingOverlay.Q("loading-bar-fill");
+            }
         }
 
         _board = new Board(w, h);
@@ -156,6 +160,11 @@ public sealed class GameController : MonoBehaviour
                 float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
                 loadingOverlay.style.opacity = t;
                 generating = generator.MoveNext();
+                if (loadingBarFill != null)
+                {
+                    float progress = (float)_board.OccupiedCellCount / (w * h);
+                    loadingBarFill.style.width = new StyleLength(new Length(progress * 100f, LengthUnit.Percent));
+                }
                 yield return null;
             }
 

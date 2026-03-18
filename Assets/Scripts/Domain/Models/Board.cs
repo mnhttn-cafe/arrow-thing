@@ -14,6 +14,7 @@ public sealed class Board
     public IReadOnlyList<Arrow> Arrows => _arrows;
     public int Width { get; }
     public int Height { get; }
+    public int OccupiedCellCount { get; private set; }
 
     public Board(int width, int height)
     {
@@ -57,6 +58,7 @@ public sealed class Board
         _arrows.Add(arrow);
         foreach (Cell c in arrow.Cells)
             _occupancy[c.X, c.Y] = arrow;
+        OccupiedCellCount += arrow.Cells.Count;
 
         // Forward deps: this arrow depends on all existing arrows in its ray
         var deps = new HashSet<Arrow>();
@@ -119,6 +121,7 @@ public sealed class Board
         _arrows.Remove(arrow);
         foreach (Cell c in arrow.Cells)
             _occupancy[c.X, c.Y] = null;
+        OccupiedCellCount -= arrow.Cells.Count;
 
         // Remove forward edges: arrow depended on these
         if (_dependsOn.TryGetValue(arrow, out var deps))
