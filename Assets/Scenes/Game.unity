@@ -416,13 +416,16 @@ MonoBehaviour:
   inputActions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   victoryUIDocument: {fileID: 338058734}
   hudUIDocument: {fileID: 1011308178}
+  inspectionDuration: 15
+  inspectionWarningThreshold: 5
   dragThresholdPixels: 20
-  boardWidth: 6
-  boardHeight: 6
+  boardWidth: 20
+  boardHeight: 20
   minArrowLength: 2
-  maxArrowLength: 10
-  useRandomSeed: 0
+  maxArrowLength: 30
+  useRandomSeed: 1
   seed: 69
+  loadingFadeDuration: 0.3
 --- !u!4 &1767663920
 Transform:
   m_ObjectHideFlags: 0

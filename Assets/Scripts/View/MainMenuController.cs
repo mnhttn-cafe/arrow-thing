@@ -13,6 +13,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
     private const string DragThresholdPrefKey = "DragThreshold";
+    private const string ArrowColoringPrefKey = "ArrowColoring";
 
     private VisualElement _mainMenu;
     private VisualElement _modeSelect;
@@ -84,6 +85,18 @@ public sealed class MainMenuController : MonoBehaviour
             GameSettings.DragThreshold = val;
             dragValueLabel.text = Mathf.RoundToInt(val).ToString();
             PlayerPrefs.SetFloat(DragThresholdPrefKey, val);
+        });
+
+        // Settings: arrow coloring toggle
+        bool savedColoring = PlayerPrefs.GetInt(ArrowColoringPrefKey, 0) == 1;
+        GameSettings.ArrowColoring = savedColoring;
+
+        var coloringToggle = _settings.Q<Toggle>("arrow-coloring-toggle");
+        coloringToggle.value = savedColoring;
+        coloringToggle.RegisterValueChangedCallback(evt =>
+        {
+            GameSettings.ArrowColoring = evt.newValue;
+            PlayerPrefs.SetInt(ArrowColoringPrefKey, evt.newValue ? 1 : 0);
         });
 
         // Settings buttons

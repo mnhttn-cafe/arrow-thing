@@ -13,6 +13,8 @@ public sealed class BoardView : MonoBehaviour
     private int _clearedCount;
 
     private bool _trailVisible;
+    private ArrowView _tintedSource;
+    private ArrowView _tintedBlocker;
 
     /// <summary>
     /// Fired after the last arrow's pull-out animation finishes (board fully cleared).
@@ -48,6 +50,17 @@ public sealed class BoardView : MonoBehaviour
             view.Init(arrow, board.Width, board.Height, settings);
             _arrowViews[arrow] = view;
         }
+
+        // Apply map-coloring palette if enabled
+        if (GameSettings.ArrowColoring && settings.arrowPalette.Count > 0)
+        {
+            int[] colors = ArrowColoring.AssignColors(board, settings.arrowPalette.Count);
+            for (int i = 0; i < board.Arrows.Count; i++)
+            {
+                Color c = settings.arrowPalette[colors[i]];
+                _arrowViews[board.Arrows[i]].SetBaseColor(c, c);
+            }
+        }
     }
 
     /// <summary>
@@ -57,6 +70,9 @@ public sealed class BoardView : MonoBehaviour
     {
         if (!_arrowViews.TryGetValue(arrow, out ArrowView view))
             return ClearResult.Blocked;
+
+        // Reset any previously tinted arrows before applying new feedback.
+        ClearPreviousTints();
 
         if (!_board.IsClearable(arrow))
         {
@@ -77,6 +93,19 @@ public sealed class BoardView : MonoBehaviour
                 }
                 // Each cell is 1 world unit; contact at midpoint of the hit cell
                 float contactArcLength = cellDistance - 0.5f;
+
+                // Persistent tint on source and blocker (clears on next selection)
+                view.SetBlockedTint(_settings.blockedTintIntensity, _settings.rejectFlashColor);
+                _tintedSource = view;
+                if (_arrowViews.TryGetValue(blocker, out ArrowView blockerView))
+                {
+                    blockerView.SetBlockedTint(
+                        _settings.blockedTintIntensity,
+                        _settings.rejectFlashColor
+                    );
+                    _tintedBlocker = blockerView;
+                }
+
                 view.PlayBump(contactArcLength);
             }
             else
@@ -112,6 +141,20 @@ public sealed class BoardView : MonoBehaviour
         if (wasFirst)
             return ClearResult.ClearedFirst;
         return ClearResult.Cleared;
+    }
+
+    private void ClearPreviousTints()
+    {
+        if (_tintedSource != null)
+        {
+            _tintedSource.ClearBlockedTint();
+            _tintedSource = null;
+        }
+        if (_tintedBlocker != null)
+        {
+            _tintedBlocker.ClearBlockedTint();
+            _tintedBlocker = null;
+        }
     }
 
     /// <summary>
