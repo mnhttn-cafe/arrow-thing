@@ -29,6 +29,8 @@ public sealed class ArrowView : MonoBehaviour
     private static readonly int FlashColorId = Shader.PropertyToID("_FlashColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
 
+    private Color _baseBodyColor;
+    private Color _baseHeadColor;
     private GameObject _trailLine;
 
     public Arrow Arrow { get; private set; } = null!;
@@ -49,7 +51,8 @@ public sealed class ArrowView : MonoBehaviour
         _meshRenderer.material = settings.arrowBodyMaterial;
         _materialInstance = _meshRenderer.material;
 
-        _materialInstance.SetColor(ColorId, settings.arrowBodyColor);
+        _baseBodyColor = settings.arrowBodyColor;
+        _materialInstance.SetColor(ColorId, _baseBodyColor);
         _materialInstance.SetColor(FlashColorId, settings.rejectFlashColor);
         _materialInstance.SetFloat(FlashTId, 0f);
 
@@ -90,7 +93,8 @@ public sealed class ArrowView : MonoBehaviour
         _arrowHead.transform.SetParent(transform, true);
 
         _headMaterialInstance = _arrowHead.GetComponent<MeshRenderer>().material;
-        _headMaterialInstance.SetColor(ColorId, settings.arrowHeadColor);
+        _baseHeadColor = settings.arrowHeadColor;
+        _headMaterialInstance.SetColor(ColorId, _baseHeadColor);
         _headMaterialInstance.SetColor(FlashColorId, settings.rejectFlashColor);
         _headMaterialInstance.SetFloat(FlashTId, 0f);
 
@@ -160,6 +164,38 @@ public sealed class ArrowView : MonoBehaviour
     }
 
     // ---- Public state methods ---------------------------------------------
+
+    /// <summary>
+    /// Overrides the base body and head colors (e.g. for map-coloring palette).
+    /// </summary>
+    public void SetBaseColor(Color bodyColor, Color headColor)
+    {
+        _baseBodyColor = bodyColor;
+        _baseHeadColor = headColor;
+        _materialInstance.SetColor(ColorId, _baseBodyColor);
+        _headMaterialInstance.SetColor(ColorId, _baseHeadColor);
+    }
+
+    /// <summary>
+    /// Applies a persistent tint toward the reject flash color to indicate a blocked attempt.
+    /// The tint blends on top of _Color only — _FlashT animations play independently.
+    /// </summary>
+    public void SetBlockedTint(float intensity, Color tintColor)
+    {
+        Color body = Color.Lerp(_baseBodyColor, tintColor, intensity);
+        Color head = Color.Lerp(_baseHeadColor, tintColor, intensity);
+        _materialInstance.SetColor(ColorId, body);
+        _headMaterialInstance.SetColor(ColorId, head);
+    }
+
+    /// <summary>
+    /// Restores the arrow to its base color, clearing any blocked tint.
+    /// </summary>
+    public void ClearBlockedTint()
+    {
+        _materialInstance.SetColor(ColorId, _baseBodyColor);
+        _headMaterialInstance.SetColor(ColorId, _baseHeadColor);
+    }
 
     /// <summary>
     /// Shows or hides the trail line extending from the arrow head.

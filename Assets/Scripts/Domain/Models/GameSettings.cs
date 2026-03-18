@@ -14,6 +14,11 @@ public static class GameSettings
     /// </summary>
     public static float DragThreshold { get; set; } = DefaultDragThreshold;
 
+    /// <summary>
+    /// Whether to tint arrows with map-coloring. Persisted via PlayerPrefs.
+    /// </summary>
+    public static bool ArrowColoring { get; set; } = false;
+
     public const float DefaultDragThreshold = 15f;
     public const float MinDragThreshold = 5f;
     public const float MaxDragThreshold = 60f;

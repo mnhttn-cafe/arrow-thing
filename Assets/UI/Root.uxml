@@ -35,6 +35,11 @@
             <ui:Label name="drag-threshold-value" class="setting-value" text="15" />
         </ui:VisualElement>
 
+        <ui:VisualElement class="setting-row">
+            <ui:Label class="setting-label" text="Arrow Coloring" />
+            <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
+        </ui:VisualElement>
+
         <ui:Button name="settings-back-btn" class="menu-btn" text="Back" />
     </ui:VisualElement>
 

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "VisualSettings", menuName = "Arrow Thing/Visual Settings")]
@@ -7,6 +8,15 @@ public sealed class VisualSettings : ScriptableObject
     public Color backgroundColor = new Color(0.102f, 0.102f, 0.180f); // #1A1A2E
     public Color gridDotColor = new Color(0.180f, 0.227f, 0.349f); // #2E3A59
     public Color arrowBodyColor = new Color(0.816f, 0.847f, 0.910f); // #D0D8E8
+    public List<Color> arrowPalette = new()
+    {
+        new Color(0.396f, 0.573f, 0.816f), // #6592D0 — soft blue
+        new Color(0.878f, 0.718f, 0.380f), // #E0B761 — warm amber
+        new Color(0.467f, 0.757f, 0.537f), // #77C189 — soft green
+        new Color(0.753f, 0.576f, 0.824f), // #C093D2 — light purple
+        new Color(0.659f, 0.812f, 0.812f), // #A8CFCF — soft teal
+        new Color(0.816f, 0.620f, 0.475f), // #D09E79 — warm tan
+    };
 
     [Header("Sprites")]
     public Sprite boardDotSprite;
@@ -39,6 +49,10 @@ public sealed class VisualSettings : ScriptableObject
 
     [Header("Trail")]
     public Color trailColor = new Color(0.816f, 0.847f, 0.910f, 0.18f); // arrow color, low alpha
+
+    [Header("Blocked Tint")]
+    [Range(0f, 1f)]
+    public float blockedTintIntensity = 0.28f;
 
     [Header("Bump Animation")]
     public float bumpSlideDuration = 0.15f;
