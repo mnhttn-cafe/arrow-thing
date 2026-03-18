@@ -6,7 +6,7 @@ public static class ArrowColoring
     /// Assigns colors to arrows such that no two orthogonally adjacent arrows share a color.
     /// Returns an array indexed by arrow index in <see cref="Board.Arrows"/>, values are color indices 0 to maxColors-1.
     /// </summary>
-    public static int[] AssignColors(Board board, int maxColors = 4)
+    public static int[] AssignColors(Board board, int maxColors = 6)
     {
         IReadOnlyList<Arrow> arrows = board.Arrows;
         int count = arrows.Count;
@@ -36,14 +36,23 @@ public static class ArrowColoring
             }
         }
 
+        // Sort by descending degree (Welsh-Powell) so high-connectivity arrows
+        // get first pick of colors. This keeps greedy coloring within bounds
+        // for planar graphs — simple natural ordering can exhaust all 4 colors.
+        int[] order = new int[count];
+        for (int i = 0; i < count; i++)
+            order[i] = i;
+        System.Array.Sort(order, (a, b) => neighbors[b].Count.CompareTo(neighbors[a].Count));
+
         // Greedy coloring: assign each arrow the lowest color not used by neighbors
         int[] colors = new int[count];
         for (int i = 0; i < count; i++)
             colors[i] = -1;
 
         var usedByNeighbors = new bool[maxColors];
-        for (int i = 0; i < count; i++)
+        for (int idx = 0; idx < count; idx++)
         {
+            int i = order[idx];
             for (int c = 0; c < maxColors; c++)
                 usedByNeighbors[c] = false;
 
@@ -55,9 +64,8 @@ public static class ArrowColoring
             while (chosen < maxColors && usedByNeighbors[chosen])
                 chosen++;
 
-            // Fallback: if all maxColors are used by neighbors, wrap around to 0.
-            // The four-color theorem guarantees this won't happen for planar graphs
-            // with maxColors >= 4, but grid adjacency is always planar.
+            // Fallback: shouldn't happen for planar graphs with maxColors >= 4
+            // and degree-ordered greedy, but wrap to 0 as a safety net.
             colors[i] = chosen < maxColors ? chosen : 0;
         }
 

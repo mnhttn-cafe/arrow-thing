@@ -14,6 +14,8 @@ public sealed class VisualSettings : ScriptableObject
         new Color(0.878f, 0.718f, 0.380f), // #E0B761 — warm amber
         new Color(0.467f, 0.757f, 0.537f), // #77C189 — soft green
         new Color(0.753f, 0.576f, 0.824f), // #C093D2 — light purple
+        new Color(0.659f, 0.812f, 0.812f), // #A8CFCF — soft teal
+        new Color(0.816f, 0.620f, 0.475f), // #D09E79 — warm tan
     };
 
     [Header("Sprites")]
