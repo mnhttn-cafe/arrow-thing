@@ -71,6 +71,7 @@ New features follow a three-phase workflow:
 Before committing or opening a PR, verify changes abide by `CONTRIBUTING.md`:
 
 - Unity-independent domain classes have NUnit test coverage in `Assets/Tests/EditMode/`.
+- UI changes (UXML/USS) are reflected in PlayMode layout tests in `Assets/Tests/PlayMode/UILayoutTests.cs` — add new elements to the relevant `AssertElements` call.
 - `docs/TechnicalDesign.md` is updated if architecture or class structure changed.
 - `docs/TODO.md` is deleted before the PR is merge-ready.
 - No docs inconsistencies introduced.

@@ -202,6 +202,8 @@ public sealed class GameController : MonoBehaviour
             if (camCtrl == null)
                 camCtrl = mainCamera.gameObject.AddComponent<CameraController>();
             camCtrl.Init(_board);
+            if (GameSettings.IsSet)
+                camCtrl.ZoomSpeed = GameSettings.ZoomSpeed;
         }
 
         // Setup timer

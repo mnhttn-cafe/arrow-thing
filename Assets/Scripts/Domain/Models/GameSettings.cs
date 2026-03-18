@@ -23,6 +23,15 @@ public static class GameSettings
     public const float MinDragThreshold = 5f;
     public const float MaxDragThreshold = 60f;
 
+    /// <summary>
+    /// Zoom speed multiplier. Persisted via PlayerPrefs.
+    /// </summary>
+    public static float ZoomSpeed { get; set; } = DefaultZoomSpeed;
+
+    public const float DefaultZoomSpeed = 1f;
+    public const float MinZoomSpeed = 0.2f;
+    public const float MaxZoomSpeed = 3f;
+
     public static void Apply(int width, int height)
     {
         Width = width;

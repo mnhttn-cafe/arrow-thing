@@ -24,6 +24,11 @@ public sealed class CameraController : MonoBehaviour
     private float _maxOrthoSize;
 
     public Camera Cam => _cam;
+    public float ZoomSpeed
+    {
+        get => zoomSpeed;
+        set => zoomSpeed = value;
+    }
 
     public void Init(Board board, float bufferFraction = 0.1f)
     {

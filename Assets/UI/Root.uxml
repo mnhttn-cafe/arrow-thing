@@ -44,6 +44,12 @@
         </ui:VisualElement>
 
         <ui:VisualElement class="setting-row">
+            <ui:Label class="setting-label" text="Zoom Speed" />
+            <ui:Slider name="zoom-speed-slider" class="setting-slider" low-value="0.2" high-value="3" value="1" />
+            <ui:Label name="zoom-speed-value" class="setting-value" text="1.0" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="setting-row">
             <ui:Label class="setting-label" text="Arrow Coloring" />
             <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
         </ui:VisualElement>

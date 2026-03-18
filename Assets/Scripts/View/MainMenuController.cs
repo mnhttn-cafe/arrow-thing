@@ -14,6 +14,7 @@ public sealed class MainMenuController : MonoBehaviour
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
     private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
     private const string DragThresholdPrefKey = "DragThreshold";
+    private const string ZoomSpeedPrefKey = "ZoomSpeed";
     private const string ArrowColoringPrefKey = "ArrowColoring";
 
     private VisualElement _mainMenu;
@@ -86,6 +87,22 @@ public sealed class MainMenuController : MonoBehaviour
             GameSettings.DragThreshold = val;
             dragValueLabel.text = Mathf.RoundToInt(val).ToString();
             PlayerPrefs.SetFloat(DragThresholdPrefKey, val);
+        });
+
+        // Settings: zoom speed slider
+        float savedZoom = PlayerPrefs.GetFloat(ZoomSpeedPrefKey, GameSettings.DefaultZoomSpeed);
+        GameSettings.ZoomSpeed = savedZoom;
+
+        var zoomSlider = _settings.Q<Slider>("zoom-speed-slider");
+        var zoomValueLabel = _settings.Q<Label>("zoom-speed-value");
+        zoomSlider.value = savedZoom;
+        zoomValueLabel.text = savedZoom.ToString("F1");
+        zoomSlider.RegisterValueChangedCallback(evt =>
+        {
+            float val = evt.newValue;
+            GameSettings.ZoomSpeed = val;
+            zoomValueLabel.text = val.ToString("F1");
+            PlayerPrefs.SetFloat(ZoomSpeedPrefKey, val);
         });
 
         // Settings: arrow coloring toggle
