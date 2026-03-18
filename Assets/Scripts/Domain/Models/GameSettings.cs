@@ -30,7 +30,7 @@ public static class GameSettings
 
     public const float DefaultZoomSpeed = 1f;
     public const float MinZoomSpeed = 0.2f;
-    public const float MaxZoomSpeed = 3f;
+    public const float MaxZoomSpeed = 5f;
 
     public static void Apply(int width, int height)
     {
