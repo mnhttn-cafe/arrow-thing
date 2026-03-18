@@ -106,8 +106,8 @@ public class ReplayRecorderTests
     public void StartSolveAndClear_SameTimestamp_OrderedBySeq()
     {
         var rec = new ReplayRecorder();
-        rec.RecordStartSolve(0.0, 2f, 3f);  // seq 0, t = 0
-        rec.RecordClear(0.0, 2f, 3f);        // seq 1, t = 0
+        rec.RecordStartSolve(0.0, 2f, 3f); // seq 0, t = 0
+        rec.RecordClear(0.0, 2f, 3f); // seq 1, t = 0
 
         Assert.AreEqual(2, rec.Events.Count);
         Assert.AreEqual(0, rec.Events[0].seq);
@@ -184,8 +184,18 @@ public class ReplayRecorderTests
     {
         var prior = new List<ReplayEvent>
         {
-            new ReplayEvent { seq = 0, type = ReplayEventType.SessionStart, wallTime = "t0" },
-            new ReplayEvent { seq = 1, type = ReplayEventType.Clear, t = 0.5 },
+            new ReplayEvent
+            {
+                seq = 0,
+                type = ReplayEventType.SessionStart,
+                wallTime = "t0",
+            },
+            new ReplayEvent
+            {
+                seq = 1,
+                type = ReplayEventType.Clear,
+                t = 0.5,
+            },
         };
 
         var rec = new ReplayRecorder(prior, nextSeq: 2);

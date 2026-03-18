@@ -17,6 +17,9 @@ public sealed class MainMenuController : MonoBehaviour
     private const string ZoomSpeedPrefKey = "ZoomSpeed";
     private const string ArrowColoringPrefKey = "ArrowColoring";
 
+    private const int CustomDimMin = 2;
+    private const int CustomDimMax = 400;
+
     private VisualElement _mainMenu;
     private VisualElement _modeSelect;
     private VisualElement _settings;
@@ -29,6 +32,14 @@ public sealed class MainMenuController : MonoBehaviour
     private Button _presetMedium;
     private Button _presetLarge;
     private Button _presetXLarge;
+
+    // Custom preset card
+    private VisualElement _presetCustom;
+    private SliderInt _customWidthSlider;
+    private SliderInt _customHeightSlider;
+    private Label _customWidthValue;
+    private Label _customHeightValue;
+    private bool _isCustomSelected;
 
     // Currently selected board size (default to small)
     private int _selectedWidth = 10;
@@ -70,7 +81,7 @@ public sealed class MainMenuController : MonoBehaviour
             quitBtn.clicked += OnQuitPressed;
         }
 
-        // Mode select buttons
+        // Preset grid buttons
         _presetSmall = _modeSelect.Q<Button>("preset-small");
         _presetMedium = _modeSelect.Q<Button>("preset-medium");
         _presetLarge = _modeSelect.Q<Button>("preset-large");
@@ -80,6 +91,25 @@ public sealed class MainMenuController : MonoBehaviour
         _presetMedium.clicked += () => SelectPreset(20, 20);
         _presetLarge.clicked += () => SelectPreset(40, 40);
         _presetXLarge.clicked += () => SelectPreset(100, 100);
+
+        // Custom preset card
+        _presetCustom = _modeSelect.Q("preset-custom");
+        _customWidthSlider = _modeSelect.Q<SliderInt>("custom-width-slider");
+        _customHeightSlider = _modeSelect.Q<SliderInt>("custom-height-slider");
+        _customWidthValue = _modeSelect.Q<Label>("custom-width-value");
+        _customHeightValue = _modeSelect.Q<Label>("custom-height-value");
+
+        _presetCustom.RegisterCallback<ClickEvent>(_ => SelectCustom());
+        _customWidthSlider.RegisterValueChangedCallback(evt =>
+        {
+            _customWidthValue.text = evt.newValue.ToString();
+            SelectCustom();
+        });
+        _customHeightSlider.RegisterValueChangedCallback(evt =>
+        {
+            _customHeightValue.text = evt.newValue.ToString();
+            SelectCustom();
+        });
 
         _modeSelect.Q<Button>("start-btn").clicked += OnStart;
         _modeSelect.Q<Button>("mode-back-btn").clicked += OnModeBack;
@@ -156,7 +186,23 @@ public sealed class MainMenuController : MonoBehaviour
 
         // Restore last selection if returning from a game, otherwise default to small
         if (GameSettings.IsSet)
-            SelectPreset(GameSettings.Width, GameSettings.Height);
+        {
+            bool matchesPreset =
+                (GameSettings.Width == 10 && GameSettings.Height == 10)
+                || (GameSettings.Width == 20 && GameSettings.Height == 20)
+                || (GameSettings.Width == 40 && GameSettings.Height == 40)
+                || (GameSettings.Width == 100 && GameSettings.Height == 100);
+            if (matchesPreset)
+                SelectPreset(GameSettings.Width, GameSettings.Height);
+            else
+            {
+                _customWidthSlider.SetValueWithoutNotify(GameSettings.Width);
+                _customHeightSlider.SetValueWithoutNotify(GameSettings.Height);
+                _customWidthValue.text = GameSettings.Width.ToString();
+                _customHeightValue.text = GameSettings.Height.ToString();
+                SelectCustom();
+            }
+        }
         else
             SelectPreset(10, 10);
     }
@@ -218,18 +264,36 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void SelectPreset(int width, int height)
     {
+        _isCustomSelected = false;
         _selectedWidth = width;
         _selectedHeight = height;
+        UpdateAllPresetHighlights();
+    }
 
+    private void SelectCustom()
+    {
+        _isCustomSelected = true;
+        _selectedWidth = _customWidthSlider.value;
+        _selectedHeight = _customHeightSlider.value;
+        UpdateAllPresetHighlights();
+    }
+
+    private void UpdateAllPresetHighlights()
+    {
         UpdatePresetHighlight(_presetSmall, 10, 10);
         UpdatePresetHighlight(_presetMedium, 20, 20);
         UpdatePresetHighlight(_presetLarge, 40, 40);
         UpdatePresetHighlight(_presetXLarge, 100, 100);
+
+        if (_isCustomSelected)
+            _presetCustom.AddToClassList("preset-btn--selected");
+        else
+            _presetCustom.RemoveFromClassList("preset-btn--selected");
     }
 
     private void UpdatePresetHighlight(Button btn, int w, int h)
     {
-        if (w == _selectedWidth && h == _selectedHeight)
+        if (!_isCustomSelected && w == _selectedWidth && h == _selectedHeight)
             btn.AddToClassList("preset-btn--selected");
         else
             btn.RemoveFromClassList("preset-btn--selected");

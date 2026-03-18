@@ -31,12 +31,14 @@ public sealed class ReplayRecorder
 
     public void RecordSessionStart()
     {
-        _events.Add(new ReplayEvent
-        {
-            seq = _nextSeq++,
-            type = ReplayEventType.SessionStart,
-            wallTime = DateTime.UtcNow.ToString("O"),
-        });
+        _events.Add(
+            new ReplayEvent
+            {
+                seq = _nextSeq++,
+                type = ReplayEventType.SessionStart,
+                wallTime = DateTime.UtcNow.ToString("O"),
+            }
+        );
     }
 
     /// <summary>
@@ -44,23 +46,27 @@ public sealed class ReplayRecorder
     /// </summary>
     public void RecordSessionLeave(double solveElapsed)
     {
-        _events.Add(new ReplayEvent
-        {
-            seq = _nextSeq++,
-            type = ReplayEventType.SessionLeave,
-            solveElapsed = solveElapsed,
-            wallTime = DateTime.UtcNow.ToString("O"),
-        });
+        _events.Add(
+            new ReplayEvent
+            {
+                seq = _nextSeq++,
+                type = ReplayEventType.SessionLeave,
+                solveElapsed = solveElapsed,
+                wallTime = DateTime.UtcNow.ToString("O"),
+            }
+        );
     }
 
     public void RecordSessionRejoin()
     {
-        _events.Add(new ReplayEvent
-        {
-            seq = _nextSeq++,
-            type = ReplayEventType.SessionRejoin,
-            wallTime = DateTime.UtcNow.ToString("O"),
-        });
+        _events.Add(
+            new ReplayEvent
+            {
+                seq = _nextSeq++,
+                type = ReplayEventType.SessionRejoin,
+                wallTime = DateTime.UtcNow.ToString("O"),
+            }
+        );
     }
 
     /// <param name="t">Seconds since solve start.</param>
@@ -68,40 +74,46 @@ public sealed class ReplayRecorder
     /// <param name="posY">World-space Y of the tap.</param>
     public void RecordStartSolve(double t, float posX, float posY)
     {
-        _events.Add(new ReplayEvent
-        {
-            seq = _nextSeq++,
-            type = ReplayEventType.StartSolve,
-            t = t,
-            posX = posX,
-            posY = posY,
-        });
+        _events.Add(
+            new ReplayEvent
+            {
+                seq = _nextSeq++,
+                type = ReplayEventType.StartSolve,
+                t = t,
+                posX = posX,
+                posY = posY,
+            }
+        );
     }
 
     /// <param name="t">Seconds since solve start.</param>
     public void RecordClear(double t, float posX, float posY)
     {
-        _events.Add(new ReplayEvent
-        {
-            seq = _nextSeq++,
-            type = ReplayEventType.Clear,
-            t = t,
-            posX = posX,
-            posY = posY,
-        });
+        _events.Add(
+            new ReplayEvent
+            {
+                seq = _nextSeq++,
+                type = ReplayEventType.Clear,
+                t = t,
+                posX = posX,
+                posY = posY,
+            }
+        );
     }
 
     /// <param name="t">Seconds since solve start.</param>
     public void RecordReject(double t, float posX, float posY)
     {
-        _events.Add(new ReplayEvent
-        {
-            seq = _nextSeq++,
-            type = ReplayEventType.Reject,
-            t = t,
-            posX = posX,
-            posY = posY,
-        });
+        _events.Add(
+            new ReplayEvent
+            {
+                seq = _nextSeq++,
+                type = ReplayEventType.Reject,
+                t = t,
+                posX = posX,
+                posY = posY,
+            }
+        );
     }
 
     /// <summary>

@@ -37,6 +37,29 @@
     background-color: rgba(255, 255, 255, 0.28);
 }
 
+.loading-bar-track {
+    width: 300px;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    margin-top: 20px;
+    overflow: hidden;
+}
+
+.loading-bar-fill {
+    height: 100%;
+    width: 0%;
+    background-color: rgb(80, 160, 220);
+    border-radius: 4px;
+}
+
+.loading-percent {
+    font-size: 18px;
+    color: rgb(140, 140, 160);
+    margin-top: 8px;
+    -unity-text-align: middle-center;
+}
+
 .hud-btn {
     position: absolute;
     top: 16px;
