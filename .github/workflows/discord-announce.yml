@@ -15,25 +15,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch tag objects
+        run: git fetch origin --tags --force
+
       - name: Get release notes
         id: notes
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-          # Use GitHub release body if it exists, otherwise fall back to tag annotation
-          BODY=$(gh release view "$TAG" --json body --jq '.body' 2>/dev/null || echo "")
-          if [ -z "$BODY" ]; then
-            BODY=$(git tag -l --format='%(contents)' "$TAG" 2>/dev/null || echo "")
-          fi
+          # Extract annotated tag message via cat-file (skip header, keep everything after first blank line)
+          BODY=$(git cat-file tag "$TAG" 2>/dev/null | sed '1,/^$/d')
           if [ -z "$BODY" ]; then
             BODY="No release notes provided."
           fi
 
           # Write to file to preserve newlines
-          echo "$BODY" > /tmp/release_notes.txt
-        env:
-          GH_TOKEN: ${{ github.token }}
+          printf '%s' "$BODY" > /tmp/release_notes.txt
 
       - name: Post to Discord
         run: |
