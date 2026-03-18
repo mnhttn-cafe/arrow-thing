@@ -8,7 +8,7 @@ public class PerformanceTests
     {
         var board = new Board(w, h);
         var sw = Stopwatch.StartNew();
-        BoardGeneration.FillBoard(board, minLen, maxLen, new System.Random(seed), deadEndLimit);
+        TestBoardHelper.FillBoard(board, minLen, maxLen, new System.Random(seed), deadEndLimit);
         sw.Stop();
         UnityEngine.Debug.Log(
             $"{w}x{h}  len=[{minLen},{maxLen}]  deadEnds={deadEndLimit, -5}  arrows={board.Arrows.Count}  cells={TotalCells(board)}  time={sw.ElapsedMilliseconds}ms"
@@ -63,7 +63,7 @@ public class PerformanceTests
         for (int seed = 0; seed < 500; seed++)
         {
             var board = new Board(10, 10);
-            BoardGeneration.FillBoard(board, 2, 5, new System.Random(seed));
+            TestBoardHelper.FillBoard(board, 2, 5, new System.Random(seed));
             totalArrows += board.Arrows.Count;
             AssertFullyClearable(board, seed);
         }
@@ -81,7 +81,7 @@ public class PerformanceTests
         for (int seed = 0; seed < 100; seed++)
         {
             var board = new Board(20, 20);
-            BoardGeneration.FillBoard(board, 2, 10, new System.Random(seed));
+            TestBoardHelper.FillBoard(board, 2, 10, new System.Random(seed));
             totalArrows += board.Arrows.Count;
             AssertFullyClearable(board, seed);
         }
@@ -99,7 +99,7 @@ public class PerformanceTests
         for (int seed = 0; seed < 20; seed++)
         {
             var board = new Board(50, 50);
-            BoardGeneration.FillBoard(board, 2, 20, new System.Random(seed));
+            TestBoardHelper.FillBoard(board, 2, 20, new System.Random(seed));
             totalArrows += board.Arrows.Count;
             AssertFullyClearable(board, seed);
         }

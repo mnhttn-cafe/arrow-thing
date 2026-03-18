@@ -1,3 +1,21 @@
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(26, 26, 46);
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-label {
+    font-size: 32px;
+    color: rgb(180, 180, 200);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+}
+
 .hud-btn {
     position: absolute;
     top: 16px;

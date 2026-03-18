@@ -12,7 +12,7 @@ Shader "ArrowThing/ArrowBody"
 
     SubShader
     {
-        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "Queue" = "Transparent" }
+        Tags { "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" "Queue" = "Transparent" }
         LOD 100
 
         Pass
@@ -21,6 +21,7 @@ Shader "ArrowThing/ArrowBody"
             Tags { "LightMode" = "SRPDefaultUnlit" }
             Cull Off
             ZWrite Off
+            Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
             #pragma vertex   vert
