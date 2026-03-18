@@ -179,6 +179,16 @@ public sealed class GameController : MonoBehaviour
             }
         }
 
+        // Guard: empty board means generation params are too restrictive
+        if (_board.Arrows.Count == 0)
+        {
+            Debug.LogWarning(
+                $"BoardGeneration produced 0 arrows (board {w}x{h}, minLen={minLen}, maxLen={maxLen}, seed={activeSeed}). Returning to menu."
+            );
+            SceneManager.LoadScene("MainMenu");
+            yield break;
+        }
+
         // Create board view
         var boardGo = new GameObject("BoardView");
         _boardView = boardGo.AddComponent<BoardView>();

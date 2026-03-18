@@ -124,23 +124,21 @@ public sealed class InputHandler : MonoBehaviour
                     Arrow arrow = _board.GetArrowAt(cell);
                     if (arrow != null)
                     {
-                        ClearResult result = _boardView.TryClearArrow(arrow);
-
-                        if (_timer != null && result != ClearResult.Blocked)
+                        // Any arrow tap starts the solve timer (ends inspection)
+                        if (_timer != null && !_timer.IsSolving)
                         {
                             double wallTime =
                                 (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
-                            switch (result)
-                            {
-                                case ClearResult.ClearedFirst:
-                                    _timer.StartSolve(wallTime);
-                                    break;
-                                case ClearResult.ClearedLast:
-                                    if (!_timer.IsSolving)
-                                        _timer.StartSolve(wallTime);
-                                    _timer.Finish(wallTime);
-                                    break;
-                            }
+                            _timer.StartSolve(wallTime);
+                        }
+
+                        ClearResult result = _boardView.TryClearArrow(arrow);
+
+                        if (_timer != null && result == ClearResult.ClearedLast)
+                        {
+                            double wallTime =
+                                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+                            _timer.Finish(wallTime);
                         }
                     }
                 }
