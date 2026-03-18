@@ -1,0 +1,48 @@
+name: Discord Announcement
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+"
+      - "!v*.*.*"
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          # Use GitHub release body if it exists, otherwise fall back to tag annotation
+          BODY=$(gh release view "$TAG" --json body --jq '.body' 2>/dev/null || echo "")
+          if [ -z "$BODY" ]; then
+            BODY=$(git tag -l --format='%(contents)' "$TAG" 2>/dev/null || echo "")
+          fi
+          if [ -z "$BODY" ]; then
+            BODY="No release notes provided."
+          fi
+
+          # Write to file to preserve newlines
+          echo "$BODY" > /tmp/release_notes.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Post to Discord
+        run: |
+          TAG="${{ steps.notes.outputs.tag }}"
+          NOTES=$(cat /tmp/release_notes.txt)
+
+          # Build the JSON payload
+          PAYLOAD=$(jq -n \
+            --arg content "**Arrow Thing $TAG** is out!\n\n$NOTES\n\nPlay now: https://vicplusplus.github.io/arrow-thing/" \
+            '{content: $content}')
+
+          curl -H "Content-Type: application/json" \
+               -d "$PAYLOAD" \
+               "${{ secrets.DISCORD_WEBHOOK_URL }}"
