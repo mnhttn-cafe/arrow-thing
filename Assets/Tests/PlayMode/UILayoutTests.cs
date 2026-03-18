@@ -154,7 +154,8 @@ public class UILayoutTests
             ctx,
             warn,
             settings.Q<Label>(className: "section-label"),
-            settings.Q<Label>(className: "placeholder-text"),
+            settings.Q<Slider>("drag-threshold-slider"),
+            settings.Q<Toggle>("arrow-coloring-toggle"),
             settings.Q<Button>("settings-back-btn")
         );
     }
