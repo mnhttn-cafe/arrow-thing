@@ -164,7 +164,7 @@
     border-width: 0;
     padding: 4px 0;
     -unity-text-align: upper-right;
-    cursor: link;
+
 }
 
 .info-link:hover {
@@ -181,25 +181,35 @@
 }
 
 .link-icon-btn {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
     margin-left: 8px;
-    background-color: rgba(0, 0, 0, 0);
+    padding: 7px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
     border-width: 0;
-    -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: rgb(160, 160, 175);
-    cursor: link;
+
 }
 
 .link-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.link-icon-btn:hover .link-icon {
     -unity-background-image-tint-color: rgb(220, 220, 230);
 }
 
-#link-github-btn {
+.link-icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(160, 160, 175);
+}
+
+.link-icon--github {
     background-image: url("/Assets/Art/Octicons-mark-github.svg.png");
 }
 
-#link-discord-btn {
+.link-icon--discord {
     background-image: url("/Assets/Art/discord-white-icon.png");
 }
 

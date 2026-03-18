@@ -15,8 +15,12 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="link-row" class="link-row">
-            <ui:Button name="link-github-btn" class="link-icon-btn" />
-            <ui:Button name="link-discord-btn" class="link-icon-btn" />
+            <ui:Button name="link-github-btn" class="link-icon-btn">
+                <ui:VisualElement class="link-icon link-icon--github" />
+            </ui:Button>
+            <ui:Button name="link-discord-btn" class="link-icon-btn">
+                <ui:VisualElement class="link-icon link-icon--discord" />
+            </ui:Button>
         </ui:VisualElement>
     </ui:VisualElement>
 
