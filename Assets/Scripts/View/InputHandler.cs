@@ -94,7 +94,12 @@ public sealed class InputHandler : MonoBehaviour
             float dist = Vector2.Distance(_pressStartScreen, currentScreen);
 
             if (!_isDragging && dist >= _dragThresholdPixels)
+            {
                 _isDragging = true;
+                // Reset origin to current position so the camera doesn't snap
+                // by the full threshold distance on the first drag frame.
+                _pressStartWorld = _camCtrl.Cam.ScreenToWorldPoint(currentScreen);
+            }
 
             if (_isDragging)
             {

@@ -222,3 +222,26 @@
     margin-bottom: 32px;
     flex-shrink: 1;
 }
+
+/* Settings rows */
+.setting-row {
+    width: 300px;
+    margin-bottom: 24px;
+    align-items: center;
+}
+
+.setting-label {
+    font-size: 20px;
+    color: rgb(200, 200, 210);
+    margin-bottom: 8px;
+}
+
+.setting-slider {
+    width: 100%;
+}
+
+.setting-value {
+    font-size: 18px;
+    color: rgb(140, 140, 160);
+    margin-top: 4px;
+}

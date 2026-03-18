@@ -232,9 +232,10 @@ public sealed class GameController : MonoBehaviour
             };
         }
 
-        // Setup input
+        // Setup input — use player's saved drag threshold if coming from menu, otherwise inspector default
+        float dragThreshold = GameSettings.IsSet ? GameSettings.DragThreshold : dragThresholdPixels;
         var inputHandler = gameObject.AddComponent<InputHandler>();
-        inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThresholdPixels, timer);
+        inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThreshold, timer);
 
         // Wire leave modal to suppress input while visible
         if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
