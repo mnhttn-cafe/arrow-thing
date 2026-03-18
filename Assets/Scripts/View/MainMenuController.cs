@@ -21,6 +21,7 @@ public sealed class MainMenuController : MonoBehaviour
     private VisualElement _modeSelect;
     private VisualElement _settings;
     private VisualElement _quitModal;
+    private VisualElement _newBoardModal;
     private VisualElement _infoPanel;
 
     // Preset buttons for selection highlight
@@ -40,9 +41,22 @@ public sealed class MainMenuController : MonoBehaviour
         _modeSelect = root.Q("mode-select");
         _settings = root.Q("settings");
         _quitModal = root.Q("quit-modal");
+        _newBoardModal = root.Q("new-board-modal");
 
         // Main menu buttons
-        _mainMenu.Q<Button>("play-btn").clicked += OnPlay;
+        var playBtn = _mainMenu.Q<Button>("play-btn");
+        var continueBtn = _mainMenu.Q<Button>("continue-btn");
+
+        bool hasSave = SaveManager.HasSave();
+        if (hasSave)
+        {
+            playBtn.text = "New Board";
+            SetVisible(continueBtn, true);
+        }
+
+        playBtn.clicked += OnPlayOrNewBoard;
+        continueBtn.clicked += OnContinue;
+
         _mainMenu.Q<Button>("settings-btn").clicked += OnSettings;
 
         // Quit button — desktop only (no quit action on mobile or web)
@@ -133,6 +147,10 @@ public sealed class MainMenuController : MonoBehaviour
         _quitModal.Q<Button>("quit-yes-btn").clicked += OnQuitConfirm;
         _quitModal.Q<Button>("quit-no-btn").clicked += OnQuitCancel;
 
+        // New board modal buttons
+        _newBoardModal.Q<Button>("new-board-yes-btn").clicked += OnNewBoardConfirm;
+        _newBoardModal.Q<Button>("new-board-no-btn").clicked += OnNewBoardCancel;
+
         // Start with main menu visible, everything else hidden
         ShowScreen(Screen.MainMenu);
 
@@ -158,6 +176,7 @@ public sealed class MainMenuController : MonoBehaviour
         SetVisible(_modeSelect, screen == Screen.ModeSelect);
         SetVisible(_settings, screen == Screen.Settings);
         SetVisible(_quitModal, false);
+        SetVisible(_newBoardModal, false);
     }
 
     private static void SetVisible(VisualElement el, bool visible)
@@ -170,7 +189,26 @@ public sealed class MainMenuController : MonoBehaviour
 
     // -- Callbacks -----------------------------------------------------------
 
-    private void OnPlay() => ShowScreen(Screen.ModeSelect);
+    private void OnPlayOrNewBoard()
+    {
+        if (SaveManager.HasSave())
+            SetVisible(_newBoardModal, true);
+        else
+            ShowScreen(Screen.ModeSelect);
+    }
+
+    private void OnContinue()
+    {
+        ReplayData data = SaveManager.Load();
+        if (data == null)
+        {
+            // Save was corrupted — fall back to fresh game
+            ShowScreen(Screen.ModeSelect);
+            return;
+        }
+        GameSettings.Resume(data);
+        SceneManager.LoadScene("Game");
+    }
 
     private void OnSettings() => ShowScreen(Screen.Settings);
 
@@ -201,6 +239,18 @@ public sealed class MainMenuController : MonoBehaviour
     {
         GameSettings.Apply(_selectedWidth, _selectedHeight);
         SceneManager.LoadScene("Game");
+    }
+
+    private void OnNewBoardConfirm()
+    {
+        SaveManager.Delete();
+        SetVisible(_newBoardModal, false);
+        ShowScreen(Screen.ModeSelect);
+    }
+
+    private void OnNewBoardCancel()
+    {
+        SetVisible(_newBoardModal, false);
     }
 
     private void OnQuitPressed()

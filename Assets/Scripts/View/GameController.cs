@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -78,8 +79,23 @@ public sealed class GameController : MonoBehaviour
     [SerializeField]
     private float loadingFadeDuration = 0.3f;
 
+    // Fields shared between GenerateAndSetup and save/focus-loss callbacks
     private Board _board = null!;
     private BoardView _boardView = null!;
+    private GameTimer _timer;
+    private ReplayRecorder _recorder;
+    private string _gameId;
+    private int _activeSeed;
+    private int _w;
+    private int _h;
+    private int _maxLen;
+    private float _inspectionDur;
+
+    /// <summary>True once generation is done and gameplay has started.</summary>
+    private bool _generationComplete;
+
+    /// <summary>Set to true by the Cancel button during generation.</summary>
+    private bool _cancelGeneration;
 
     private void Awake()
     {
@@ -108,20 +124,31 @@ public sealed class GameController : MonoBehaviour
     private IEnumerator GenerateAndSetup()
     {
         // Resolve board parameters: menu overrides take priority, then inspector fields
-        int w = boardWidth;
-        int h = boardHeight;
+        _w = boardWidth;
+        _h = boardHeight;
         int minLen = minArrowLength;
-        int maxLen = maxArrowLength;
+        _maxLen = maxArrowLength;
+        _inspectionDur = inspectionDuration;
+
+        ReplayData priorData = null;
 
         if (GameSettings.IsSet)
         {
-            w = GameSettings.Width;
-            h = GameSettings.Height;
-            maxLen = GameSettings.MaxArrowLength;
+            _w = GameSettings.Width;
+            _h = GameSettings.Height;
+            _maxLen = GameSettings.MaxArrowLength;
+
+            if (GameSettings.IsResuming)
+            {
+                priorData = GameSettings.ResumeData;
+                _inspectionDur = priorData.inspectionDuration;
+            }
         }
 
-        int activeSeed =
-            (GameSettings.IsSet || useRandomSeed) ? System.Environment.TickCount : seed;
+        _activeSeed =
+            (priorData != null) ? priorData.seed
+            : (GameSettings.IsSet || useRandomSeed) ? Environment.TickCount
+            : seed;
 
         // Generate board, overlapping with loading overlay fade when needed
         VisualElement loadingOverlay = null;
@@ -132,18 +159,23 @@ public sealed class GameController : MonoBehaviour
                 loadingOverlay.style.display = DisplayStyle.None;
         }
 
-        _board = new Board(w, h);
+        _board = new Board(_w, _h);
         var generator = BoardGeneration.FillBoardIncremental(
             _board,
             minLen,
-            maxLen,
-            new System.Random(activeSeed)
+            _maxLen,
+            new System.Random(_activeSeed)
         );
 
         bool generating = generator.MoveNext();
 
         if (generating && loadingOverlay != null)
         {
+            // Wire cancel button before the generation loop
+            var cancelBtn = loadingOverlay.Q<Button>("cancel-generation-btn");
+            if (cancelBtn != null)
+                cancelBtn.clicked += () => _cancelGeneration = true;
+
             // Generation needs multiple frames — fade in overlay while generating
             loadingOverlay.style.display = DisplayStyle.Flex;
             loadingOverlay.style.opacity = 0f;
@@ -152,6 +184,11 @@ public sealed class GameController : MonoBehaviour
             // Fade in + generate simultaneously
             while (generating)
             {
+                if (_cancelGeneration)
+                {
+                    SceneManager.LoadScene("MainMenu");
+                    yield break;
+                }
                 fadeIn += Time.deltaTime;
                 float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
                 loadingOverlay.style.opacity = t;
@@ -183,10 +220,58 @@ public sealed class GameController : MonoBehaviour
         if (_board.Arrows.Count == 0)
         {
             Debug.LogWarning(
-                $"BoardGeneration produced 0 arrows (board {w}x{h}, minLen={minLen}, maxLen={maxLen}, seed={activeSeed}). Returning to menu."
+                $"BoardGeneration produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
             );
             SceneManager.LoadScene("MainMenu");
             yield break;
+        }
+
+        // --- Resume: apply prior clears with no animation ---
+        bool resumeSolving = false;
+        double resumeSolveElapsed = 0.0;
+
+        if (priorData != null)
+        {
+            _gameId = priorData.gameId;
+
+            foreach (ReplayEvent evt in priorData.events)
+            {
+                if (evt.type == ReplayEventType.Clear)
+                {
+                    var worldPos = new UnityEngine.Vector3(evt.posX, evt.posY, 0f);
+                    Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
+                    if (_board.Contains(cell))
+                    {
+                        Arrow arrow = _board.GetArrowAt(cell);
+                        if (arrow != null && _board.IsClearable(arrow))
+                            _board.RemoveArrow(arrow);
+                    }
+                }
+                if (evt.type == ReplayEventType.StartSolve)
+                    resumeSolving = true;
+                if (evt.type == ReplayEventType.SessionLeave)
+                    resumeSolveElapsed = evt.solveElapsed;
+            }
+
+            int nextSeq = priorData.events.Count > 0
+                ? priorData.events[priorData.events.Count - 1].seq + 1
+                : 0;
+            _recorder = new ReplayRecorder(priorData.events, nextSeq);
+            _recorder.RecordSessionRejoin();
+
+            // Safety: if all arrows were somehow already cleared, wipe the save and go back
+            if (_board.Arrows.Count == 0)
+            {
+                SaveManager.Delete();
+                SceneManager.LoadScene("MainMenu");
+                yield break;
+            }
+        }
+        else
+        {
+            _gameId = System.Guid.NewGuid().ToString();
+            _recorder = new ReplayRecorder();
+            _recorder.RecordSessionStart();
         }
 
         // Create board view
@@ -207,7 +292,13 @@ public sealed class GameController : MonoBehaviour
         }
 
         // Setup timer
-        var timer = new GameTimer(inspectionDuration);
+        _timer = new GameTimer(_inspectionDur);
+        double wallNow = (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+        if (resumeSolving && resumeSolveElapsed > 0.0)
+            _timer.Resume(wallNow, resumeSolveElapsed);
+        else
+            _timer.Start(wallNow);
+
         GameTimerView timerView = null;
 
         // Setup HUD
@@ -218,12 +309,13 @@ public sealed class GameController : MonoBehaviour
 
             hudRoot.Q<Button>("back-to-menu-btn").clicked += () =>
                 leaveModal.RemoveFromClassList("modal--hidden");
-            hudRoot.Q<Button>("leave-yes-btn").clicked += () => SceneManager.LoadScene("MainMenu");
+
+            hudRoot.Q<Button>("leave-yes-btn").clicked += OnLeaveConfirmed;
             hudRoot.Q<Button>("leave-no-btn").clicked += () =>
                 leaveModal.AddToClassList("modal--hidden");
 
             timerView = gameObject.AddComponent<GameTimerView>();
-            timerView.Init(timer, hudUIDocument, inspectionWarningThreshold);
+            timerView.Init(_timer, hudUIDocument, inspectionWarningThreshold);
 
             // Trail toggle button (bottom-right)
             var trailBtn = hudRoot.Q<Button>("trail-toggle-btn");
@@ -247,7 +339,7 @@ public sealed class GameController : MonoBehaviour
         // Setup input — use player's saved drag threshold if coming from menu, otherwise inspector default
         float dragThreshold = GameSettings.IsSet ? GameSettings.DragThreshold : dragThresholdPixels;
         var inputHandler = gameObject.AddComponent<InputHandler>();
-        inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThreshold, timer);
+        inputHandler.Init(_board, _boardView, camCtrl, inputActions, dragThreshold, _timer, _recorder);
 
         // Wire leave modal to suppress input while visible
         if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
@@ -271,16 +363,50 @@ public sealed class GameController : MonoBehaviour
                 victoryUIDocument,
                 _boardView.GridRenderer,
                 camCtrl,
-                w,
-                h,
-                timer,
+                _w,
+                _h,
+                _timer,
                 hudUIDocument
             );
             _boardView.BoardCleared += () =>
             {
                 inputHandler.SetInputEnabled(false);
+                // Board fully cleared — save is no longer needed
+                SaveManager.Delete();
                 victory.OnBoardCleared();
             };
+        }
+
+        _generationComplete = true;
+    }
+
+    private void OnLeaveConfirmed()
+    {
+        if (_recorder != null && _timer != null && _board != null && _board.Arrows.Count > 0)
+        {
+            _recorder.RecordSessionLeave(_timer.SolveElapsed);
+            SaveManager.Save(
+                _recorder.ToReplayData(_gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur)
+            );
+        }
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!_generationComplete || _recorder == null || _board == null || _board.Arrows.Count == 0)
+            return;
+
+        if (!hasFocus)
+        {
+            _recorder.RecordSessionLeave(_timer?.SolveElapsed ?? 0.0);
+            SaveManager.Save(
+                _recorder.ToReplayData(_gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur)
+            );
+        }
+        else
+        {
+            _recorder.RecordSessionRejoin();
         }
     }
 

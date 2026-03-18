@@ -14,6 +14,27 @@
     color: rgb(180, 180, 200);
     -unity-font-style: bold;
     letter-spacing: 2px;
+    margin-bottom: 24px;
+}
+
+.cancel-generation-btn {
+    width: 200px;
+    padding: 12px 0;
+    font-size: 22px;
+    color: rgb(200, 200, 210);
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.cancel-generation-btn:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.cancel-generation-btn:active {
+    background-color: rgba(255, 255, 255, 0.28);
 }
 
 .hud-btn {

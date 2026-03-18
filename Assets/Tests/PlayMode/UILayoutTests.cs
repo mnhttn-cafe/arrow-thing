@@ -251,6 +251,99 @@ public class UILayoutTests
         );
     }
 
+    // ───────── Main Menu — With Save (Continue button visible) ─────────
+
+    [UnityTest]
+    public IEnumerator MainMenu_WithSave_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+
+        // Simulate the state when a save exists: continue-btn is visible
+        root.Q<Button>("continue-btn").RemoveFromClassList("screen--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var mainMenu = root.Q("main-menu");
+        var panelBounds = root.worldBound;
+        string ctx = $"MainMenu_WithSave @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            mainMenu,
+            panelBounds,
+            ctx,
+            warn,
+            mainMenu.Q<Button>("play-btn"),
+            mainMenu.Q<Button>("continue-btn"),
+            mainMenu.Q<Button>("settings-btn")
+        );
+    }
+
+    // ───────── Main Menu — New Board Modal ─────────
+
+    [UnityTest]
+    public IEnumerator MainMenu_NewBoardModal_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+
+        root.Q("new-board-modal").RemoveFromClassList("screen--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var modal = root.Q("new-board-modal");
+        var panelBounds = root.worldBound;
+        string ctx = $"NewBoardModal @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            modal,
+            panelBounds,
+            ctx,
+            warn,
+            modal.Q<Label>(className: "modal-label"),
+            modal.Q<Label>(className: "modal-sublabel"),
+            modal.Q<Button>("new-board-yes-btn"),
+            modal.Q<Button>("new-board-no-btn")
+        );
+    }
+
+    // ───────── Game HUD — Generation Loading (Cancel button visible) ─────────
+
+    [UnityTest]
+    public IEnumerator GameHud_CancelGeneration_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(GameHudUxmlPath, ratio);
+
+        // Show the loading overlay as GameController does during generation
+        var loadingOverlay = root.Q("loading-overlay");
+        loadingOverlay.style.display = StyleKeyword.Null; // clear any inline display:none
+        loadingOverlay.style.opacity = 1f;
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"GameHud_CancelGeneration @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            loadingOverlay,
+            panelBounds,
+            ctx,
+            warn,
+            root.Q<Label>("loading-label"),
+            root.Q<Button>("cancel-generation-btn")
+        );
+    }
+
     // ───────── Game HUD — Leave Modal ─────────
 
     [UnityTest]

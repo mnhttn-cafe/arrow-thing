@@ -6,6 +6,7 @@
         <ui:Button name="info-btn" class="info-btn" text="i" />
         <ui:VisualElement class="title" />
         <ui:Button name="play-btn" class="menu-btn" text="Play" />
+        <ui:Button name="continue-btn" class="menu-btn continue-btn screen--hidden" text="Continue" />
         <ui:Button name="settings-btn" class="menu-btn" text="Settings" />
 
         <ui:VisualElement name="info-panel" class="info-panel screen--hidden">
@@ -63,6 +64,17 @@
             <ui:VisualElement class="modal-buttons">
                 <ui:Button name="quit-yes-btn" class="menu-btn" text="Yes" />
                 <ui:Button name="quit-no-btn" class="menu-btn" text="No" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="new-board-modal" class="modal-overlay screen--hidden">
+        <ui:VisualElement class="modal-box">
+            <ui:Label class="modal-label" text="Start a new board?" />
+            <ui:Label class="modal-sublabel" text="Your current game will be lost." />
+            <ui:VisualElement class="modal-buttons">
+                <ui:Button name="new-board-yes-btn" class="menu-btn" text="Yes" />
+                <ui:Button name="new-board-no-btn" class="menu-btn" text="No" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

@@ -62,9 +62,38 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 - Two-phase timer: inspection countdown followed by solve timer. Pure C# — no Unity dependency.
 - Phases: `Inspection → Solving → Finished`. Driven by `Tick(double current)` for display updates.
-- `StartSolve(current, inputTimestamp)` transitions from inspection to solving. `Finish(current, inputTimestamp)` ends the solve.
+- `StartSolve(current)` transitions from inspection to solving. `Finish(current)` ends the solve.
+- `Resume(current, priorElapsed)` skips inspection and restores the timer to a previously saved solve-elapsed offset, used when loading a saved game.
 - Display during play uses frame time (`Time.timeAsDouble`). Final precise time uses input-event timestamps (via `InputAction.canceled` callback) to avoid frame-boundary imprecision.
 - Fires `PhaseChanged` event on transitions.
+
+### `ReplayEvent` (`sealed class`, `[Serializable]`)
+
+- One entry in the save/replay event log. Fields vary by event type; unused fields default to 0/null.
+- `seq` — monotonically increasing, defines event order (timestamps can tie at e.g. `start_solve + clear`).
+- `type` — string constant from `ReplayEventType` (e.g. `"clear"`, `"session_leave"`).
+- `t` — solve-relative seconds (for `start_solve`, `clear`, `reject`).
+- `solveElapsed` — snapshot of SolveElapsed at leave time (for `session_leave`, used to restore the timer on resume).
+- `posX`, `posY` — world-space tap position (for `start_solve`, `clear`, `reject`). Cell derived via `BoardCoords.WorldToCell`.
+- `wallTime` — ISO 8601 UTC string (for session events).
+
+### `ReplayEventType` (`static class`)
+
+- String constants for all event types: `session_start`, `session_leave`, `session_rejoin`, `start_solve`, `clear`, `reject`.
+- Uses strings (not enum) so that `JsonUtility` serializes human-readable JSON.
+
+### `ReplayData` (`sealed class`, `[Serializable]`)
+
+- Full save/replay record for one game session.
+- Contains: `version`, `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
+- Serializes to JSON via Unity's `JsonUtility`. Stored at `Application.persistentDataPath/savegame.json`.
+
+### `ReplayRecorder` (`sealed class`)
+
+- Accumulates `ReplayEvent`s during play, auto-increments `seq`.
+- Constructor overload accepts prior events + `nextSeq` for resuming a saved game.
+- `ToReplayData(...)` returns a snapshot (copy) of all accumulated events as a `ReplayData`.
+- Pure C# — no Unity dependency.
 
 ### `ClearResult` (`enum`)
 
@@ -100,13 +129,14 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### Main Menu (`MainMenu` Scene)
 
-- **`MainMenuController`** — drives the main menu UI via UI Toolkit. Manages three screens (Main Menu, Mode Select, Settings) toggled via USS `display: none`. Mode Select offers board-size presets (Small 10×10, Medium 20×20, Large 40×40). On Start, writes chosen dimensions to `GameSettings` and loads the Game scene. Desktop-only quit button (top-left X) opens a confirmation modal; hidden on mobile via `Application.isMobilePlatform`.
-- **`GameSettings`** (static class, domain layer) — holds `Width`, `Height`, `MaxArrowLength` (derived as `2 * max(w, h)`), and `IsSet` flag. `GameController` reads from it when `IsSet` is true; otherwise uses its serialized inspector fields, preserving the editor testing workflow.
+- **`MainMenuController`** — drives the main menu UI via UI Toolkit. Manages three screens (Main Menu, Mode Select, Settings) toggled via USS `display: none`. Mode Select offers board-size presets (Small 10×10, Medium 20×20, Large 40×40). On Start, writes chosen dimensions to `GameSettings` and loads the Game scene. Desktop-only quit button (top-left X) opens a confirmation modal; hidden on mobile via `Application.isMobilePlatform`. When a saved game exists (`SaveManager.HasSave()`): "Play" reads "New Board" and a teal "Continue" button appears; clicking "New Board" shows a confirmation modal warning the save will be lost; clicking "Continue" calls `GameSettings.Resume()` and loads the Game scene.
+- **`GameSettings`** (static class, domain layer) — holds `Width`, `Height`, `MaxArrowLength`, `IsSet`, `IsResuming`, and `ResumeData`. `GameController` reads from it when `IsSet` is true. `Apply()` sets board params for a new game; `Resume(ReplayData)` sets params and flags a resume; `Reset()` clears all.
+- **`SaveManager`** (static class, view layer) — saves/loads/deletes the in-progress game JSON at `Application.persistentDataPath/savegame.json`. Wraps `JsonUtility` serialization. Safe: catches I/O exceptions, logs warnings, auto-deletes on corruption.
 
 ### Scene Wiring
 
-- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, `GameTimerView`, and `VictoryController`. Creates the `GameTimer` domain model and passes it to both `InputHandler` (for input-precision timestamps) and `VictoryController` (for final time display). Sets up the HUD UIDocument with a leave-game confirmation modal and trajectory toggle button (bottom-right). Reads board parameters from `GameSettings` when set (menu flow), otherwise from inspector fields (editor testing). Seed is randomized by default (`useRandomSeed` toggle); fixed seed available via inspector for deterministic debugging.
-- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On arrow clears, passes both frame time and input-precision timestamps (via `canceled` callback) to `GameTimer` for timer phase transitions.
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, `GameTimerView`, and `VictoryController`. Creates the `GameTimer` domain model and passes it to both `InputHandler` and `VictoryController`. Creates a `ReplayRecorder` and passes it to `InputHandler` to capture all tap events. Sets up the HUD UIDocument with a leave-game confirmation modal and trajectory toggle button. Reads board parameters from `GameSettings`; when `IsResuming`, loads `ResumeData` from `GameSettings`, regenerates the board with the saved seed, applies prior cleared arrows (no animation), and restores the timer via `GameTimer.Resume()`. A **Cancel** button inside the loading overlay aborts generation and returns to the main menu. The leave-yes HUD button saves the current `ReplayData` before scene transition. `OnApplicationFocus(false)` auto-saves (records `session_leave`) for tab-switching coverage; `OnApplicationFocus(true)` records `session_rejoin` if the player returns without reloading. Board completion deletes the save file.
+- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On each tap: records `start_solve` (if transitioning from inspection), then `clear` or `reject` to the optional `ReplayRecorder`. Timer phase transitions driven by input-precision wall-clock timestamps.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom is derived from the initial fit (not configurable). Clamped to board bounds. `ZoomToFit` smoothly returns to the initial view with a SmoothStep coroutine.
 - **`GameTimerView`** — drives a `GameTimer` each frame and updates the HUD timer label. During inspection: grey whole-second countdown, turns red at a configurable warning threshold. During solving: white whole-second count-up. On finish: precise millisecond display.
 - **`VictoryController`** — handles the board-cleared sequence. `GameController` disables input then invokes `OnBoardCleared`, which runs: zoom-to-fit → grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu buttons. Font size auto-scales for long messages. Hides the game HUD when the popup appears.
@@ -181,7 +211,7 @@ The menu UI (UI Toolkit) is designed and tested for desktop resolutions only. On
 UI layout tests verify that all UI elements are visible and not clipped across multiple aspect ratios. Tests load UXML assets programmatically (via `AssetDatabase`) onto a runtime `UIDocument`, simulate different screen sizes by modifying `PanelSettings.referenceResolution`, and assert element bounds.
 
 - **`UILayoutTestHelper`** — reusable utilities: `AspectRatio` struct, `SetPanelReferenceResolution`, `AssertElementFullyVisible`, `WarnElementFullyVisible`, `AssertAllVisibleChildren`, `WaitForLayoutResolve`.
-- **`UILayoutTests`** — 10 UI states (main menu, mode select, settings, quit modal, 3 victory message tiers, game HUD, game HUD leave modal, victory with time) tested across 5 aspect ratios (16:9, 4:3, 21:9, 9:16, 1:1) = 50 test cases. Portrait (9:16) failures are reported as warnings (not hard failures) since fixed-pixel CSS is a known limitation.
+- **`UILayoutTests`** — 13 UI states (main menu, main menu with save/continue, new-board modal, mode select, settings, quit modal, 3 victory message tiers, game HUD, game HUD cancel-generation, game HUD leave modal, victory with time) tested across 5 aspect ratios (16:9, 4:3, 21:9, 9:16, 1:1) = 65 test cases. Portrait (9:16) failures are reported as warnings (not hard failures) since fixed-pixel CSS is a known limitation.
 - PanelSettings is saved/restored in SetUp/TearDown to avoid polluting other tests.
 
 ## CI/CD
@@ -246,3 +276,4 @@ WebGL player settings: Gzip compression, JS decompression fallback enabled, hash
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.
 - 2026-03-17: Added trajectory highlight toggle for playability on large boards. Trajectory lines reuse the already-computed extended path in `ArrowView` (window `[0, extensionDist]`), requiring no new geometry code. Auto-disables on successful clear to avoid stale lines.
 - 2026-03-16: MVP (v0.1) declared complete. v0.2 planning started: authoritative ASP.NET Core server sharing domain code via monorepo shared `.csproj`, input-based replay system with sequence-numbered events, size-partitioned leaderboards (local + global), simple account system (username/display name/JWT). Offline-first design — game always playable without server. See [`OnlineRoadmap.md`](OnlineRoadmap.md).
+- 2026-03-18: Added save-game and cancel-generation QoL features. Save uses the same event-log format as the planned v0.4 replay system (`ReplayEvent`, `ReplayData`, `ReplayRecorder`) — the save file doubles as a partial replay. `SaveManager` persists to `Application.persistentDataPath/savegame.json`. Resume regenerates the board from seed, applies prior clears via `BoardCoords.WorldToCell`, and restores the solve timer via `GameTimer.Resume()`. Cancel generation: a Cancel button in the loading overlay sets a flag checked each generation frame; on cancel, the scene returns to the main menu. `InputHandler` now records all tap events (start_solve, clear, reject) to the `ReplayRecorder` for live-session capture. Auto-save on `OnApplicationFocus(false)` ensures saves survive WebGL tab switches.

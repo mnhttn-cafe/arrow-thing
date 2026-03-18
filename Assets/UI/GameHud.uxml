@@ -3,6 +3,7 @@
 
     <ui:VisualElement name="loading-overlay" class="loading-overlay">
         <ui:Label name="loading-label" class="loading-label" text="Generating..." />
+        <ui:Button name="cancel-generation-btn" class="cancel-generation-btn" text="Cancel" />
     </ui:VisualElement>
 
     <ui:Button name="back-to-menu-btn" class="hud-btn" text="X" />
