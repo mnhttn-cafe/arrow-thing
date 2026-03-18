@@ -33,6 +33,12 @@ public sealed class VictoryController : MonoBehaviour
         "Wonderful.",
         "Wodnfeurl.",
         "pees on you", // CELERY CAME UP WITH THIS IT WASNT ME I SWEAR https://discord.com/channels/1085366539437494272/1085366539974361151/1482950081031442605
+        "why so slow?",
+        "ok, now do it again but faster",
+        "sorry, time below is wrong. you actually took 2 hours. my bad.",
+        "Incredible.",
+        "Clearly cheated.",
+        "huh",
     };
 
     private UIDocument _uiDocument;
@@ -40,6 +46,8 @@ public sealed class VictoryController : MonoBehaviour
     private BoardGridRenderer _gridRenderer;
     private CameraController _camCtrl;
     private GameTimer _timer;
+    private int _boardWidth;
+    private int _boardHeight;
     private VisualElement _overlay;
     private Label _messageLabel;
     private Label _timeLabel;
@@ -54,6 +62,8 @@ public sealed class VictoryController : MonoBehaviour
         UIDocument uiDocument,
         BoardGridRenderer gridRenderer,
         CameraController camCtrl,
+        int boardWidth,
+        int boardHeight,
         GameTimer timer = null,
         UIDocument hudDocument = null
     )
@@ -62,6 +72,8 @@ public sealed class VictoryController : MonoBehaviour
         _hudDocument = hudDocument;
         _gridRenderer = gridRenderer;
         _camCtrl = camCtrl;
+        _boardWidth = boardWidth;
+        _boardHeight = boardHeight;
         _timer = timer;
 
         var root = _uiDocument.rootVisualElement;
@@ -103,7 +115,7 @@ public sealed class VictoryController : MonoBehaviour
             _messageLabel.style.fontSize = 40;
 
         if (_timeLabel != null && _timer != null)
-            _timeLabel.text = FormatTime(_timer.SolveElapsed);
+            _timeLabel.text = $"{_boardWidth}x{_boardHeight} - {FormatTime(_timer.SolveElapsed)}";
 
         if (_hudDocument != null)
             _hudDocument.rootVisualElement.style.display = DisplayStyle.None;

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -72,6 +73,11 @@ public sealed class GameController : MonoBehaviour
     [SerializeField]
     private int seed = 42;
 
+    [Header("Loading Screen")]
+    [Tooltip("Duration of the loading screen fade in/out in seconds.")]
+    [SerializeField]
+    private float loadingFadeDuration = 0.3f;
+
     private Board _board = null!;
     private BoardView _boardView = null!;
 
@@ -96,6 +102,11 @@ public sealed class GameController : MonoBehaviour
         if (mainCamera != null)
             mainCamera.backgroundColor = visualSettings.backgroundColor;
 
+        StartCoroutine(GenerateAndSetup());
+    }
+
+    private IEnumerator GenerateAndSetup()
+    {
         // Resolve board parameters: menu overrides take priority, then inspector fields
         int w = boardWidth;
         int h = boardHeight;
@@ -112,9 +123,61 @@ public sealed class GameController : MonoBehaviour
         int activeSeed =
             (GameSettings.IsSet || useRandomSeed) ? System.Environment.TickCount : seed;
 
-        // Generate board
+        // Generate board, overlapping with loading overlay fade when needed
+        VisualElement loadingOverlay = null;
+        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
+        {
+            loadingOverlay = hudUIDocument.rootVisualElement.Q("loading-overlay");
+            if (loadingOverlay != null)
+                loadingOverlay.style.display = DisplayStyle.None;
+        }
+
         _board = new Board(w, h);
-        BoardGeneration.FillBoard(_board, minLen, maxLen, new System.Random(activeSeed));
+        var generator = BoardGeneration.FillBoardIncremental(
+            _board,
+            minLen,
+            maxLen,
+            new System.Random(activeSeed)
+        );
+
+        bool generating = generator.MoveNext();
+
+        if (generating && loadingOverlay != null)
+        {
+            // Generation needs multiple frames — fade in overlay while generating
+            loadingOverlay.style.display = DisplayStyle.Flex;
+            loadingOverlay.style.opacity = 0f;
+            float fadeIn = 0f;
+
+            // Fade in + generate simultaneously
+            while (generating)
+            {
+                fadeIn += Time.deltaTime;
+                float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                loadingOverlay.style.opacity = t;
+                generating = generator.MoveNext();
+                yield return null;
+            }
+
+            // Fade out from current opacity
+            float currentOpacity = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+            yield return FadeElement(
+                loadingOverlay,
+                currentOpacity,
+                0f,
+                loadingFadeDuration * currentOpacity,
+                hide: true
+            );
+        }
+        else
+        {
+            // Finish any remaining generation (no overlay needed)
+            while (generating)
+            {
+                generating = generator.MoveNext();
+                yield return null;
+            }
+        }
 
         // Create board view
         var boardGo = new GameObject("BoardView");
@@ -150,22 +213,22 @@ public sealed class GameController : MonoBehaviour
             timerView = gameObject.AddComponent<GameTimerView>();
             timerView.Init(timer, hudUIDocument, inspectionWarningThreshold);
 
-            // Trajectory toggle button (bottom-right)
-            var trajBtn = hudRoot.Q<Button>("trajectory-toggle-btn");
-            bool trajectoryOn = false;
-            trajBtn.clicked += () =>
+            // Trail toggle button (bottom-right)
+            var trailBtn = hudRoot.Q<Button>("trail-toggle-btn");
+            bool trailOn = false;
+            trailBtn.clicked += () =>
             {
-                trajectoryOn = !trajectoryOn;
-                _boardView.SetAllTrajectoriesVisible(trajectoryOn);
-                if (trajectoryOn)
-                    trajBtn.AddToClassList("hud-btn--active");
+                trailOn = !trailOn;
+                _boardView.SetAllTrailsVisible(trailOn);
+                if (trailOn)
+                    trailBtn.AddToClassList("hud-btn--active");
                 else
-                    trajBtn.RemoveFromClassList("hud-btn--active");
+                    trailBtn.RemoveFromClassList("hud-btn--active");
             };
-            _boardView.TrajectoryAutoOff += () =>
+            _boardView.TrailAutoOff += () =>
             {
-                trajectoryOn = false;
-                trajBtn.RemoveFromClassList("hud-btn--active");
+                trailOn = false;
+                trailBtn.RemoveFromClassList("hud-btn--active");
             };
         }
 
@@ -191,12 +254,41 @@ public sealed class GameController : MonoBehaviour
         )
         {
             var victory = gameObject.AddComponent<VictoryController>();
-            victory.Init(victoryUIDocument, _boardView.GridRenderer, camCtrl, timer, hudUIDocument);
+            victory.Init(
+                victoryUIDocument,
+                _boardView.GridRenderer,
+                camCtrl,
+                w,
+                h,
+                timer,
+                hudUIDocument
+            );
             _boardView.BoardCleared += () =>
             {
                 inputHandler.SetInputEnabled(false);
                 victory.OnBoardCleared();
             };
         }
+    }
+
+    private static IEnumerator FadeElement(
+        VisualElement element,
+        float from,
+        float to,
+        float duration,
+        bool hide = false
+    )
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            element.style.opacity = Mathf.Lerp(from, to, t);
+            yield return null;
+        }
+        element.style.opacity = to;
+        if (hide)
+            element.style.display = DisplayStyle.None;
     }
 }
