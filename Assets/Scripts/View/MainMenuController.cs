@@ -169,10 +169,11 @@ public sealed class MainMenuController : MonoBehaviour
         // Restore last selection if returning from a game, otherwise default to small
         if (GameSettings.IsSet)
         {
-            bool matchesPreset = (GameSettings.Width == 10 && GameSettings.Height == 10)
-                              || (GameSettings.Width == 20 && GameSettings.Height == 20)
-                              || (GameSettings.Width == 40 && GameSettings.Height == 40)
-                              || (GameSettings.Width == 100 && GameSettings.Height == 100);
+            bool matchesPreset =
+                (GameSettings.Width == 10 && GameSettings.Height == 10)
+                || (GameSettings.Width == 20 && GameSettings.Height == 20)
+                || (GameSettings.Width == 40 && GameSettings.Height == 40)
+                || (GameSettings.Width == 100 && GameSettings.Height == 100);
             if (matchesPreset)
                 SelectPreset(GameSettings.Width, GameSettings.Height);
             else

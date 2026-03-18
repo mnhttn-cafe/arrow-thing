@@ -163,7 +163,9 @@ public sealed class GameController : MonoBehaviour
                 if (loadingBarFill != null)
                 {
                     float progress = (float)_board.OccupiedCellCount / (w * h);
-                    loadingBarFill.style.width = new StyleLength(new Length(progress * 100f, LengthUnit.Percent));
+                    loadingBarFill.style.width = new StyleLength(
+                        new Length(progress * 100f, LengthUnit.Percent)
+                    );
                 }
                 yield return null;
             }
