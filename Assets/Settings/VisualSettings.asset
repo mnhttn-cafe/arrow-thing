@@ -17,9 +17,9 @@ MonoBehaviour:
   arrowBodyColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
   arrowPalette:
   - {r: 0.396, g: 0.573, b: 0.816, a: 1}
-  - {r: 0.878, g: 0.718, b: 0.38, a: 1}
-  - {r: 0.467, g: 0.757, b: 0.537, a: 1}
   - {r: 0.753, g: 0.576, b: 0.824, a: 1}
+  - {r: 0.467, g: 0.757, b: 0.537, a: 1}
+  - {r: 0.878, g: 0.718, b: 0.38, a: 1}
   boardDotSprite: {fileID: -4815089856549589728, guid: 8121e4e108c755342acdfcd64a7be331, type: 3}
   arrowBodyWidth: 0.1
   arrowHeadLength: 0.35
