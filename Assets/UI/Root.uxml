@@ -26,10 +26,25 @@
 
     <ui:VisualElement name="mode-select" class="screen screen--hidden">
         <ui:Label class="section-label" text="Select Board Size" />
-        <ui:Button name="preset-small" class="preset-btn" text="Small — 10 × 10" />
-        <ui:Button name="preset-medium" class="preset-btn" text="Medium — 20 × 20" />
-        <ui:Button name="preset-large" class="preset-btn" text="Large — 40 × 40" />
-        <ui:Button name="preset-xlarge" class="preset-btn" text="Extra Large — 100 × 100" />
+        <ui:VisualElement class="preset-grid">
+            <ui:Button name="preset-small"  class="preset-btn" text="Small&#10;10 × 10" />
+            <ui:Button name="preset-medium" class="preset-btn" text="Medium&#10;20 × 20" />
+            <ui:Button name="preset-large"  class="preset-btn" text="Large&#10;40 × 40" />
+            <ui:Button name="preset-xlarge" class="preset-btn" text="XLarge&#10;100 × 100" />
+            <ui:VisualElement name="preset-custom" class="preset-btn preset-btn--custom">
+                <ui:Label class="preset-custom-title" text="Custom" />
+                <ui:VisualElement class="preset-custom-row">
+                    <ui:Label class="preset-custom-dim-label" text="W" />
+                    <ui:SliderInt name="custom-width-slider" class="custom-dim-slider" low-value="2" high-value="400" value="20" />
+                    <ui:Label name="custom-width-value" class="preset-custom-dim-value" text="20" />
+                </ui:VisualElement>
+                <ui:VisualElement class="preset-custom-row">
+                    <ui:Label class="preset-custom-dim-label" text="H" />
+                    <ui:SliderInt name="custom-height-slider" class="custom-dim-slider" low-value="2" high-value="400" value="20" />
+                    <ui:Label name="custom-height-value" class="preset-custom-dim-value" text="20" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
         <ui:Button name="start-btn" class="start-btn" text="Start" />
         <ui:Button name="mode-back-btn" class="menu-btn" text="Back" />
     </ui:VisualElement>

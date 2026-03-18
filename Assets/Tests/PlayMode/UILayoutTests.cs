@@ -125,6 +125,8 @@ public class UILayoutTests
             modeSelect.Q<Button>("preset-small"),
             modeSelect.Q<Button>("preset-medium"),
             modeSelect.Q<Button>("preset-large"),
+            modeSelect.Q<Button>("preset-xlarge"),
+            modeSelect.Q("preset-custom"),
             modeSelect.Q<Button>("start-btn"),
             modeSelect.Q<Button>("mode-back-btn")
         );
@@ -248,6 +250,40 @@ public class UILayoutTests
             warn,
             root.Q<Button>("back-to-menu-btn"),
             root.Q<Label>("timer-label")
+        );
+    }
+
+    // ───────── Game HUD — Loading Overlay ─────────
+
+    [UnityTest]
+    public IEnumerator GameHud_LoadingOverlay_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(GameHudUxmlPath, ratio);
+
+        // Show the loading overlay as GameController does during generation
+        var loadingOverlay = root.Q("loading-overlay");
+        loadingOverlay.style.display = StyleKeyword.Null;
+        loadingOverlay.style.opacity = 1f;
+
+        // Set percent text so the label has content to lay out
+        root.Q<Label>("loading-percent").text = "42%";
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"GameHud_LoadingOverlay @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            loadingOverlay,
+            panelBounds,
+            ctx,
+            warn,
+            root.Q<Label>("loading-label"),
+            root.Q<Label>("loading-percent")
         );
     }
 

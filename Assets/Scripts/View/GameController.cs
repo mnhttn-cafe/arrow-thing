@@ -125,11 +125,17 @@ public sealed class GameController : MonoBehaviour
 
         // Generate board, overlapping with loading overlay fade when needed
         VisualElement loadingOverlay = null;
+        VisualElement loadingBarFill = null;
+        Label loadingPercent = null;
         if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
         {
             loadingOverlay = hudUIDocument.rootVisualElement.Q("loading-overlay");
             if (loadingOverlay != null)
+            {
                 loadingOverlay.style.display = DisplayStyle.None;
+                loadingBarFill = loadingOverlay.Q("loading-bar-fill");
+                loadingPercent = loadingOverlay.Q<Label>("loading-percent");
+            }
         }
 
         _board = new Board(w, h);
@@ -149,13 +155,26 @@ public sealed class GameController : MonoBehaviour
             loadingOverlay.style.opacity = 0f;
             float fadeIn = 0f;
 
-            // Fade in + generate simultaneously
+            // Fade in + generate simultaneously.
+            // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
+            const float estimatedArrowDensity = 0.064f;
+            float estimatedArrows = w * h * estimatedArrowDensity;
+
             while (generating)
             {
                 fadeIn += Time.deltaTime;
                 float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
                 loadingOverlay.style.opacity = t;
                 generating = generator.MoveNext();
+                if (loadingBarFill != null)
+                {
+                    float progress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
+                    loadingBarFill.style.width = new StyleLength(
+                        new Length(progress * 100f, LengthUnit.Percent)
+                    );
+                    if (loadingPercent != null)
+                        loadingPercent.text = Mathf.RoundToInt(progress * 100f) + "%";
+                }
                 yield return null;
             }
 

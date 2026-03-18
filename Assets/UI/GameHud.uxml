@@ -3,6 +3,10 @@
 
     <ui:VisualElement name="loading-overlay" class="loading-overlay">
         <ui:Label name="loading-label" class="loading-label" text="Generating..." />
+        <ui:VisualElement class="loading-bar-track">
+            <ui:VisualElement name="loading-bar-fill" class="loading-bar-fill" />
+        </ui:VisualElement>
+        <ui:Label name="loading-percent" class="loading-percent" text="" />
     </ui:VisualElement>
 
     <ui:Button name="back-to-menu-btn" class="hud-btn" text="X" />

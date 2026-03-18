@@ -187,6 +187,20 @@ Key optimisations applied (in order of impact):
 3. **Occupancy guard on head/next before cycle check** — avoids computing reachability for candidates whose start cells are already taken.
 4. **Reachability set computed once per head candidate** — the BFS runs once, then each tail cell is checked with a simple O(N) scan against the fixed set.
 
+## Loading Progress Heuristic
+
+The loading bar during generation uses arrow count as its progress signal. Arrow placement rate is nearly constant with respect to wall time — unlike candidate depletion or cell fill, which are both front-loaded and stall in the tail.
+
+The estimated total arrows for a board is `w * h * EstimatedArrowDensity`, where `EstimatedArrowDensity = 0.064`. This was derived as follows:
+
+1. **Profiling** (`ProfileDepletionCurve_DumpData` in `PerformanceTests.cs`) sampled arrow count, cell count, and candidate depletion per-arrow across 100×100 and 200×200 boards with multiple seeds.
+2. **Observation**: boards consistently fill ~93% of cells with an average arrow length of ~10, giving a theoretical arrow density of `0.93 / 10 = 0.093` arrows per cell.
+3. **Tuning**: the constant was reduced from 0.093 to 0.064 so the bar reaches ~99% before generation finishes across board sizes from 100×100 to 400×400. The gap between the theoretical 0.093 and the tuned 0.064 exists because arrows placed early in generation tend to be longer than average (the board is less crowded, so DFS finds longer paths). This means the average arrow length measured across the full run (~10) is lower than the effective average during most of generation, and fewer total arrows end up being placed than the theoretical estimate predicts.
+
+Progress is displayed as `Clamp01(arrowCount / estimatedArrows)`, so slight overestimates cap at 100%.
+
+If generation parameters change significantly (e.g. different `minLength` defaults or dead-end limits), re-run the profiling test and re-tune the constant.
+
 ## Design History
 
 The current implementation is a rewrite (`generation-rewrite` branch) of an earlier `BoardGenerator` (sealed class, instance-based). Key decisions made during that history:
