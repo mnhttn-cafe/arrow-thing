@@ -43,7 +43,7 @@ public sealed class BoardGridRenderer : MonoBehaviour
                 var sr = dot.AddComponent<SpriteRenderer>();
                 sr.sprite = settings.boardDotSprite;
                 sr.color = settings.gridDotColor;
-                sr.sortingOrder = 0;
+                sr.sortingOrder = -1;
                 _dots[i++] = sr;
             }
         }
