@@ -190,7 +190,7 @@ public sealed class GameController : MonoBehaviour
             // Fade in + generate simultaneously.
             // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
             const float estimatedArrowDensity = 0.064f;
-            float estimatedArrows = w * h * estimatedArrowDensity;
+            float estimatedArrows = _w * _h * estimatedArrowDensity;
 
             while (generating)
             {
