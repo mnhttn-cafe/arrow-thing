@@ -130,4 +130,40 @@ public class BoardTests
         board.AddArrow(arrow);
         Assert.That(board.IsClearable(arrow), Is.True);
     }
+
+    // --- Candidate counts ---
+
+    [Test]
+    public void InitialCandidateCount_IsZeroBeforeInitialization()
+    {
+        var board = new Board(5, 5);
+        Assert.AreEqual(0, board.InitialCandidateCount);
+    }
+
+    [Test]
+    public void InitialCandidateCount_IsPositiveAfterInitialization()
+    {
+        var board = new Board(5, 5);
+        board.InitializeForGeneration();
+        Assert.Greater(board.InitialCandidateCount, 0);
+    }
+
+    [Test]
+    public void RemainingCandidateCount_EqualsInitialBeforeAnyArrows()
+    {
+        var board = new Board(5, 5);
+        board.InitializeForGeneration();
+        Assert.AreEqual(board.InitialCandidateCount, board.RemainingCandidateCount);
+    }
+
+    [Test]
+    public void RemainingCandidateCount_DecreasesAfterAddArrow()
+    {
+        var board = new Board(5, 5);
+        board.InitializeForGeneration();
+        int before = board.RemainingCandidateCount;
+        var arrow = new Arrow(new Cell[] { new(2, 2), new(2, 1) });
+        board.AddArrow(arrow);
+        Assert.Less(board.RemainingCandidateCount, before);
+    }
 }

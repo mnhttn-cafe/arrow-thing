@@ -69,7 +69,8 @@
 - Board topology:
   - Grid-based rectangular board for MVP and initial competitive modes.
 - Board size presets:
-  - Small (10×10), Medium (20×20), Large (40×40). Player selects from mode menu.
+  - Small (10×10), Medium (20×20), Large (40×40), XLarge (100×100). Player selects from a grid layout in the mode menu.
+  - Custom board sizes via width/height sliders (range 2–400). Selection is remembered when returning from a game.
 - Occupancy and collision:
   - Cell occupancy is exclusive per arrow body segment.
   - Obstruction checks use arrowhead ray-to-edge logic.
@@ -201,8 +202,13 @@
   - WebGL deployment via GitHub Pages with CD pipeline.
   - Audio feedback for success/fail/clear. **[Not started — deferred to post-MVP]**
 
-### v0.1.1 — Visual Polish
+### v0.1.1 — Visual Polish **[Complete]**
   - Map-coloring arrow tinting (graph coloring for adjacent arrow readability).
+
+### v0.1.2 — QoL **[In Progress]**
+  - XLarge preset (100×100) and custom board sizes (2–400).
+  - Loading progress bar with percentage for large board generation.
+  - Preset grid layout (replacing column layout).
 
 ### v0.2 — Online (see [`docs/OnlineRoadmap.md`](OnlineRoadmap.md))
   - Authoritative server (ASP.NET Core, shared domain code).
@@ -238,3 +244,4 @@
 - 2026-03-06: Closed open questions on arrow count and length distribution based on generation rewrite experience.
 - 2026-03-16: Updated platform target to WebGL-first for MVP; mobile gameplay works but UI scaling deferred. Updated controls section accordingly.
 - 2026-03-16: MVP (v0.1) declared complete. Replaced MVP checklist with version-based production scope (v0.1 → v0.1.1 → v0.2 → v1.0). Online roadmap documented in `OnlineRoadmap.md`.
+- 2026-03-18: v0.1.1 complete. Added v0.1.2 scope: XLarge preset, custom board sizes, loading progress bar, preset grid layout.

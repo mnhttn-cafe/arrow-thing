@@ -32,6 +32,13 @@
     border-radius: 4px;
 }
 
+.loading-percent {
+    font-size: 18px;
+    color: rgb(140, 140, 160);
+    margin-top: 8px;
+    -unity-text-align: middle-center;
+}
+
 .hud-btn {
     position: absolute;
     top: 16px;

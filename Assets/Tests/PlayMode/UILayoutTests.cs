@@ -253,6 +253,40 @@ public class UILayoutTests
         );
     }
 
+    // ───────── Game HUD — Loading Overlay ─────────
+
+    [UnityTest]
+    public IEnumerator GameHud_LoadingOverlay_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(GameHudUxmlPath, ratio);
+
+        // Show the loading overlay as GameController does during generation
+        var loadingOverlay = root.Q("loading-overlay");
+        loadingOverlay.style.display = StyleKeyword.Null;
+        loadingOverlay.style.opacity = 1f;
+
+        // Set percent text so the label has content to lay out
+        root.Q<Label>("loading-percent").text = "42%";
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"GameHud_LoadingOverlay @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            loadingOverlay,
+            panelBounds,
+            ctx,
+            warn,
+            root.Q<Label>("loading-label"),
+            root.Q<Label>("loading-percent")
+        );
+    }
+
     // ───────── Game HUD — Leave Modal ─────────
 
     [UnityTest]

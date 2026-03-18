@@ -16,6 +16,12 @@ public sealed class Board
     public int Height { get; }
     public int OccupiedCellCount { get; private set; }
 
+    /// <summary>Number of candidates at the time InitializeForGeneration was called.</summary>
+    public int InitialCandidateCount { get; private set; }
+
+    /// <summary>Number of remaining unpruned head candidates. 0 before initialization.</summary>
+    public int RemainingCandidateCount => _availableArrowHeads?.Count ?? 0;
+
     public Board(int width, int height)
     {
         Width = width;
@@ -26,6 +32,7 @@ public sealed class Board
     public void InitializeForGeneration()
     {
         _availableArrowHeads = CreateInitialArrowHeads();
+        InitialCandidateCount = _availableArrowHeads.Count;
         _candidateLookup = new List<ArrowHeadData>[Width, Height];
         for (int x = 0; x < Width; x++)
         for (int y = 0; y < Height; y++)
