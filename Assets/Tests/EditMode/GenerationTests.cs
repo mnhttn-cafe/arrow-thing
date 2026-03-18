@@ -21,8 +21,8 @@ public class GenerationTests
     {
         var board1 = new Board(6, 6);
         var board2 = new Board(6, 6);
-        BoardGeneration.FillBoard(board1, 2, 5, new System.Random(42));
-        BoardGeneration.FillBoard(board2, 2, 5, new System.Random(42));
+        TestBoardHelper.FillBoard(board1, 2, 5, new System.Random(42));
+        TestBoardHelper.FillBoard(board2, 2, 5, new System.Random(42));
 
         Assert.That(board1.Arrows.Count, Is.EqualTo(board2.Arrows.Count));
         for (int i = 0; i < board1.Arrows.Count; i++)
@@ -33,7 +33,7 @@ public class GenerationTests
     public void FillBoard_NoCellsOverlap()
     {
         var board = new Board(6, 6);
-        BoardGeneration.FillBoard(board, 2, 5, new System.Random(7));
+        TestBoardHelper.FillBoard(board, 2, 5, new System.Random(7));
 
         var seen = new HashSet<Cell>();
         foreach (var arrow in board.Arrows)
@@ -49,7 +49,7 @@ public class GenerationTests
     public void FillBoard_AllCellsWithinBounds()
     {
         var board = new Board(5, 7);
-        BoardGeneration.FillBoard(board, 2, 4, new System.Random(13));
+        TestBoardHelper.FillBoard(board, 2, 4, new System.Random(13));
 
         foreach (var arrow in board.Arrows)
         foreach (var cell in arrow.Cells)
@@ -65,7 +65,7 @@ public class GenerationTests
     {
         const int minLength = 3;
         var board = new Board(6, 6);
-        BoardGeneration.FillBoard(board, minLength, 6, new System.Random(99));
+        TestBoardHelper.FillBoard(board, minLength, 6, new System.Random(99));
 
         foreach (var arrow in board.Arrows)
             Assert.That(
@@ -79,7 +79,7 @@ public class GenerationTests
     public void FillBoard_NoTailCellInOwnRay()
     {
         var board = new Board(6, 6);
-        BoardGeneration.FillBoard(board, 2, 6, new System.Random(55));
+        TestBoardHelper.FillBoard(board, 2, 6, new System.Random(55));
 
         foreach (var arrow in board.Arrows)
             for (int i = 1; i < arrow.Cells.Count; i++)
@@ -127,7 +127,7 @@ public class GenerationTests
         for (int seed = 0; seed < 50; seed++)
         {
             var board = new Board(8, 8);
-            BoardGeneration.FillBoard(board, 2, 5, new System.Random(seed));
+            TestBoardHelper.FillBoard(board, 2, 5, new System.Random(seed));
             int initialCount = board.Arrows.Count;
             Assert.That(initialCount, Is.GreaterThan(0), $"Seed {seed}: no arrows generated.");
 
@@ -206,7 +206,7 @@ public class GenerationTests
         for (int i = 0; i < 100; i++)
         {
             var board = new Board(10, 10);
-            BoardGeneration.FillBoard(board, 2, 5, new System.Random(i));
+            TestBoardHelper.FillBoard(board, 2, 5, new System.Random(i));
         }
         sw.Stop();
         Assert.That(

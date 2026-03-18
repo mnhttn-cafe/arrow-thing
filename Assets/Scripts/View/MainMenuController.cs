@@ -12,6 +12,7 @@ public sealed class MainMenuController : MonoBehaviour
     private UIDocument uiDocument;
 
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
+    private const string DragThresholdPrefKey = "DragThreshold";
 
     private VisualElement _mainMenu;
     private VisualElement _modeSelect;
@@ -65,6 +66,25 @@ public sealed class MainMenuController : MonoBehaviour
 
         _modeSelect.Q<Button>("start-btn").clicked += OnStart;
         _modeSelect.Q<Button>("mode-back-btn").clicked += OnModeBack;
+
+        // Settings: drag threshold slider
+        float savedThreshold = PlayerPrefs.GetFloat(
+            DragThresholdPrefKey,
+            GameSettings.DefaultDragThreshold
+        );
+        GameSettings.DragThreshold = savedThreshold;
+
+        var dragSlider = _settings.Q<Slider>("drag-threshold-slider");
+        var dragValueLabel = _settings.Q<Label>("drag-threshold-value");
+        dragSlider.value = savedThreshold;
+        dragValueLabel.text = Mathf.RoundToInt(savedThreshold).ToString();
+        dragSlider.RegisterValueChangedCallback(evt =>
+        {
+            float val = evt.newValue;
+            GameSettings.DragThreshold = val;
+            dragValueLabel.text = Mathf.RoundToInt(val).ToString();
+            PlayerPrefs.SetFloat(DragThresholdPrefKey, val);
+        });
 
         // Settings buttons
         _settings.Q<Button>("settings-back-btn").clicked += OnSettingsBack;

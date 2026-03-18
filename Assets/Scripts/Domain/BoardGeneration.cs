@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using static ListUtils;
 
 public static class BoardGeneration
@@ -10,17 +12,54 @@ public static class BoardGeneration
     /// </summary>
     private const int DefaultDeadEndLimit = 10;
 
-    public static void FillBoard(
+    /// <summary>
+    /// Incremental version of <see cref="FillBoard"/>. Places as many arrows as possible
+    /// within <paramref name="frameBudgetMs"/> per frame, then yields to let the caller
+    /// (e.g. a Unity coroutine) process the next frame. Repeats until generation is complete.
+    /// </summary>
+    public static IEnumerator FillBoardIncremental(
         Board board,
         int minLength,
         int maxLength,
         Random random,
+        long frameBudgetMs = 12,
         int deadEndLimit = DefaultDeadEndLimit
     )
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
-        GenerateArrows(board, minLength, maxLength, maxPossibleArrows, random, out _, deadEndLimit);
+        int created = 0;
+        var sw = new Stopwatch();
+
+        while (created < maxPossibleArrows)
+        {
+            sw.Restart();
+            while (
+                created < maxPossibleArrows
+                && sw.ElapsedMilliseconds < frameBudgetMs
+                && TryGenerateArrow(
+                    board,
+                    minLength,
+                    maxLength,
+                    random,
+                    out Arrow arrow,
+                    deadEndLimit
+                )
+            )
+            {
+                board.AddArrow(arrow!);
+                created++;
+            }
+
+            if (
+                created >= maxPossibleArrows
+                || board._availableArrowHeads == null
+                || board._availableArrowHeads.Count == 0
+            )
+                break;
+
+            yield return null;
+        }
     }
 
     public static bool GenerateArrows(

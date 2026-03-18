@@ -22,6 +22,7 @@ public sealed class VisualSettings : ScriptableObject
     [Header("Materials")]
     public Material arrowBodyMaterial;
     public Material arrowHeadMaterial;
+    public Material arrowTrailMaterial;
 
     [Header("Arrow Head Color")]
     public Color arrowHeadColor = new Color(0.816f, 0.847f, 0.910f); // #D0D8E8
@@ -35,6 +36,9 @@ public sealed class VisualSettings : ScriptableObject
     public float clearSlideDuration = 0.4f;
     public AnimationCurve clearSlideCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
     public float pathExtensionMultiplier = 1.5f;
+
+    [Header("Trail")]
+    public Color trailColor = new Color(0.816f, 0.847f, 0.910f, 0.18f); // arrow color, low alpha
 
     [Header("Bump Animation")]
     public float bumpSlideDuration = 0.15f;

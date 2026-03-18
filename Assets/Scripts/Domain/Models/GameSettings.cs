@@ -9,6 +9,15 @@ public static class GameSettings
     public static int Height { get; private set; }
     public static int MaxArrowLength { get; private set; }
 
+    /// <summary>
+    /// Screen-space drag threshold in pixels. Persisted via PlayerPrefs.
+    /// </summary>
+    public static float DragThreshold { get; set; } = DefaultDragThreshold;
+
+    public const float DefaultDragThreshold = 15f;
+    public const float MinDragThreshold = 5f;
+    public const float MaxDragThreshold = 60f;
+
     public static void Apply(int width, int height)
     {
         Width = width;

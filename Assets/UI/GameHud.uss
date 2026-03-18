@@ -1,3 +1,21 @@
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(26, 26, 46);
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-label {
+    font-size: 32px;
+    color: rgb(180, 180, 200);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+}
+
 .hud-btn {
     position: absolute;
     top: 16px;
@@ -19,6 +37,22 @@
 
 .hud-btn:active {
     background-color: rgba(255, 255, 255, 0.25);
+}
+
+.hud-btn--bottom-right {
+    top: auto;
+    left: auto;
+    bottom: 16px;
+    right: 16px;
+}
+
+.hud-btn--active {
+    color: rgb(120, 180, 240);
+    background-color: rgba(120, 180, 240, 0.15);
+}
+
+.hud-btn--active:hover {
+    background-color: rgba(120, 180, 240, 0.25);
 }
 
 .timer-label {
