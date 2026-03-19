@@ -355,6 +355,33 @@ public class UILayoutTests
         );
     }
 
+    [UnityTest]
+    public IEnumerator GameHudCancelGenerationModal_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(GameHudUxmlPath, ratio);
+
+        var modal = root.Q("cancel-generation-modal");
+        modal.RemoveFromClassList("modal--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"GameHudCancelGenerationModal @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            modal,
+            panelBounds,
+            ctx,
+            warn,
+            modal.Q<Button>("cancel-generation-yes-btn"),
+            modal.Q<Button>("cancel-generation-no-btn")
+        );
+    }
+
     // ───────── Victory Popup with Time ─────────
 
     [UnityTest]
