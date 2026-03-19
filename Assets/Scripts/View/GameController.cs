@@ -92,6 +92,9 @@ public sealed class GameController : MonoBehaviour
     private float _inspectionDur;
     private int _initialArrowCount;
     private InputHandler _inputHandler;
+    private bool _autosaveEnabled;
+    private int _clearsSinceLastSave;
+    private const int AutosaveInterval = 10;
 
     /// <summary>Set to true by the X button during generation to abort.</summary>
     private bool _cancelGeneration;
@@ -320,6 +323,9 @@ public sealed class GameController : MonoBehaviour
             _recorder.RecordSessionStart();
         }
 
+        // Autosave is safe when no other game's save would be overwritten
+        _autosaveEnabled = !SaveManager.HasSave() || priorData != null;
+
         // Create board view
         var boardGo = new GameObject("BoardView");
         _boardView = boardGo.AddComponent<BoardView>();
@@ -356,12 +362,12 @@ public sealed class GameController : MonoBehaviour
             var leaveSublabel = hudRoot.Q("leave-sublabel");
             var leaveCloseBtn = hudRoot.Q<Button>("leave-close-btn");
 
-            // X button opens the leave modal
+            // X button: auto-save and leave, or open modal if a save already exists
             if (backBtn != null)
             {
                 backBtn.clickable = new Clickable(() => { });
                 backBtn.clicked += () =>
-                    ShowLeaveModal(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
+                    HandleLeaveRequest(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
             }
 
             // Leave modal: Yes = save (if applicable) and leave
@@ -408,7 +414,8 @@ public sealed class GameController : MonoBehaviour
             inputActions,
             dragThreshold,
             _timer,
-            _recorder
+            _recorder,
+            OnArrowCleared
         );
 
         // Wire X button to also suppress input when opening leave modal
@@ -448,6 +455,23 @@ public sealed class GameController : MonoBehaviour
     /// <summary>Returns true if any arrows have been cleared this session (including resumed clears).</summary>
     private bool HasAnyClearedArrows => _board != null && _board.Arrows.Count < _initialArrowCount;
 
+    private void HandleLeaveRequest(
+        VisualElement modal,
+        Label title,
+        VisualElement sublabel,
+        Button closeBtn
+    )
+    {
+        if (HasAnyClearedArrows && _autosaveEnabled)
+        {
+            // Autosave has been keeping the save current — just save and leave
+            SaveAndLeave();
+            return;
+        }
+
+        ShowLeaveModal(modal, title, sublabel, closeBtn);
+    }
+
     private void ShowLeaveModal(
         VisualElement modal,
         Label title,
@@ -457,23 +481,11 @@ public sealed class GameController : MonoBehaviour
     {
         if (HasAnyClearedArrows)
         {
-            // Save-worthy state: show "Save game?" with Yes/No/X
+            // A different game's save exists — warn before overwriting
             if (title != null)
                 title.text = "Save game?";
             if (sublabel != null)
-            {
-                // Only warn about replacing if a DIFFERENT game's save exists
-                bool hasDifferentSave = false;
-                if (SaveManager.HasSave())
-                {
-                    var existing = SaveManager.Load();
-                    hasDifferentSave = existing != null && existing.gameId != _gameId;
-                }
-                if (hasDifferentSave)
-                    sublabel.RemoveFromClassList("modal--hidden");
-                else
-                    sublabel.AddToClassList("modal--hidden");
-            }
+                sublabel.RemoveFromClassList("modal--hidden");
             if (closeBtn != null)
                 closeBtn.style.display = DisplayStyle.Flex;
         }
@@ -496,9 +508,24 @@ public sealed class GameController : MonoBehaviour
         _inputHandler?.SetInputEnabled(true);
     }
 
-    private void OnLeaveYes(VisualElement modal)
+    private void OnArrowCleared()
     {
-        if (HasAnyClearedArrows && _recorder != null && _timer != null)
+        if (!_autosaveEnabled || _recorder == null || _timer == null)
+            return;
+
+        _clearsSinceLastSave++;
+        if (_clearsSinceLastSave >= AutosaveInterval)
+        {
+            _clearsSinceLastSave = 0;
+            SaveManager.Save(
+                _recorder.ToReplayData(_gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur)
+            );
+        }
+    }
+
+    private void SaveAndLeave()
+    {
+        if (_recorder != null && _timer != null)
         {
             _recorder.RecordSessionLeave(_timer.SolveElapsed);
             SaveManager.Save(
@@ -506,6 +533,14 @@ public sealed class GameController : MonoBehaviour
             );
         }
         SceneManager.LoadScene("MainMenu");
+    }
+
+    private void OnLeaveYes(VisualElement modal)
+    {
+        if (HasAnyClearedArrows)
+            SaveAndLeave();
+        else
+            SceneManager.LoadScene("MainMenu");
     }
 
     private void OnLeaveNo(VisualElement modal)
