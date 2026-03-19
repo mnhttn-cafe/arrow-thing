@@ -97,6 +97,7 @@ public sealed class GameController : MonoBehaviour
     private bool _isContinuedGame;
     private int _clearsSinceLastSave;
     private const int AutosaveInterval = 10;
+    private List<List<Cell>> _initialBoardSnapshot;
 
     /// <summary>Set to true by the X button during generation to abort.</summary>
     private bool _cancelGeneration;
@@ -155,8 +156,7 @@ public sealed class GameController : MonoBehaviour
             : seed;
 
         // Snapshot resume: restore board directly without regeneration
-        bool hasSnapshot =
-            priorData?.boardSnapshot != null && priorData.boardSnapshot.Count > 0;
+        bool hasSnapshot = priorData?.boardSnapshot != null && priorData.boardSnapshot.Count > 0;
 
         // Resolve HUD elements (needed for generation overlay and back button wiring)
         VisualElement loadingOverlay = null;
@@ -186,9 +186,10 @@ public sealed class GameController : MonoBehaviour
 
         if (hasSnapshot)
         {
-            // Fast path: restore remaining arrows directly — no generation wait
+            // Fast path: restore all initial arrows, then replay clears below
             foreach (List<Cell> arrowCells in priorData.boardSnapshot)
                 _board.AddArrow(new Arrow(arrowCells));
+            _initialBoardSnapshot = priorData.boardSnapshot;
         }
         else
         {
@@ -293,9 +294,14 @@ public sealed class GameController : MonoBehaviour
                 SceneManager.LoadScene("MainMenu");
                 yield break;
             }
+
+            // Capture initial board state for saves and replays
+            _initialBoardSnapshot = new List<List<Cell>>(_board.Arrows.Count);
+            foreach (Arrow arrow in _board.Arrows)
+                _initialBoardSnapshot.Add(new List<Cell>(arrow.Cells));
         }
 
-        // --- Resume: restore timer state and recorder from prior event log ---
+        // --- Resume: replay clears and restore timer state from prior event log ---
         bool resumeSolving = false;
         double resumeSolveElapsed = 0.0;
 
@@ -303,10 +309,10 @@ public sealed class GameController : MonoBehaviour
         {
             _gameId = priorData.gameId;
 
+            // Replay clear events to reconstruct current board state
             foreach (ReplayEvent evt in priorData.events)
             {
-                // Legacy path only: replay clears to reconstruct board state from seed
-                if (!hasSnapshot && evt.type == ReplayEventType.Clear)
+                if (evt.type == ReplayEventType.Clear)
                 {
                     var worldPos = new UnityEngine.Vector3(evt.posX ?? 0f, evt.posY ?? 0f, 0f);
                     Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
@@ -319,9 +325,9 @@ public sealed class GameController : MonoBehaviour
                 }
                 if (evt.type == ReplayEventType.StartSolve)
                     resumeSolving = true;
-                if (evt.type == ReplayEventType.SessionLeave)
-                    resumeSolveElapsed = evt.t;
             }
+
+            resumeSolveElapsed = priorData.ComputedSolveElapsed;
 
             int nextSeq =
                 priorData.events.Count > 0
@@ -471,7 +477,7 @@ public sealed class GameController : MonoBehaviour
                 _inputHandler.SetInputEnabled(false);
                 if (backBtn != null)
                     backBtn.style.display = DisplayStyle.None;
-                _recorder?.RecordEndSolve(_timer?.SolveElapsed ?? 0.0);
+                _recorder?.RecordEndSolve();
                 SaveManager.Delete();
                 victory.OnLastArrowClearing();
             };
@@ -481,14 +487,6 @@ public sealed class GameController : MonoBehaviour
 
     /// <summary>Returns true if any arrows have been cleared this session.</summary>
     private bool HasAnyClearedArrows => _board != null && _board.Arrows.Count < _initialArrowCount;
-
-    private List<List<Cell>> GetBoardSnapshot()
-    {
-        var snapshot = new List<List<Cell>>(_board.Arrows.Count);
-        foreach (Arrow arrow in _board.Arrows)
-            snapshot.Add(new List<Cell>(arrow.Cells));
-        return snapshot;
-    }
 
     /// <summary>
     /// True when saving would overwrite a different game's save file.
@@ -544,8 +542,13 @@ public sealed class GameController : MonoBehaviour
             _clearsSinceLastSave = 0;
             SaveManager.Save(
                 _recorder.ToReplayData(
-                    _gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur,
-                    boardSnapshot: GetBoardSnapshot()
+                    _gameId,
+                    _activeSeed,
+                    _w,
+                    _h,
+                    _maxLen,
+                    _inspectionDur,
+                    boardSnapshot: _initialBoardSnapshot
                 )
             );
         }
@@ -555,11 +558,16 @@ public sealed class GameController : MonoBehaviour
     {
         if (_recorder != null && _timer != null)
         {
-            _recorder.RecordSessionLeave(_timer.SolveElapsed);
+            _recorder.RecordSessionLeave();
             SaveManager.Save(
                 _recorder.ToReplayData(
-                    _gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur,
-                    boardSnapshot: GetBoardSnapshot()
+                    _gameId,
+                    _activeSeed,
+                    _w,
+                    _h,
+                    _maxLen,
+                    _inspectionDur,
+                    boardSnapshot: _initialBoardSnapshot
                 )
             );
         }

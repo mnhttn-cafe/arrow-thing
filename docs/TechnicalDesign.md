@@ -71,12 +71,11 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### `ReplayEvent` (`sealed class`)
 
-- One entry in the save/replay event log. Fields vary by event type; unused fields default to 0/null.
+- One entry in the save/replay event log. Fields vary by event type; unused fields are omitted from JSON.
 - `seq` — monotonically increasing, defines event order (timestamps can tie at e.g. `start_solve + clear`).
 - `type` — string constant from `ReplayEventType` (e.g. `"clear"`, `"session_leave"`).
-- `t` — seconds since solve start. Solve-relative time for `clear`/`reject`/`end_solve`; solve elapsed snapshot for `session_leave` (used to restore the timer on resume); always 0 for `start_solve`.
-- `posX`, `posY` — nullable world-space tap position (for `clear`, `reject`; omitted from JSON for other event types). Cell derived via `BoardCoords.WorldToCell`.
-- `timestamp` — ISO 8601 UTC string. Present on all events.
+- `posX`, `posY` — nullable world-space tap position (for `clear`, `reject`; omitted from JSON for other event types via Newtonsoft `NullValueHandling.Ignore`). Cell derived via `BoardCoords.WorldToCell`.
+- `timestamp` — ISO 8601 UTC string. Present on all events. Solve-relative timing is derived by subtracting the `start_solve` timestamp, excluding `session_leave`→`session_rejoin` gaps.
 
 ### `ReplayEventType` (`static class`)
 
@@ -86,7 +85,9 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ### `ReplayData` (`sealed class`)
 
 - Full save/replay record for one game session.
-- Contains: `version`, `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
+- Contains: `version`, `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `boardSnapshot` (initial arrow configuration — all arrows before any clears), `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
+- `boardSnapshot` — each inner list is one arrow's cells in head-to-tail order. On resume, the board is restored from this snapshot and clear events are replayed. Null for v1 legacy saves (falls back to seed-based regeneration).
+- `ComputedSolveElapsed` — derived property that sums active solve intervals from event timestamps, excluding `session_leave`→`session_rejoin` gaps. Used by `GameTimer.Resume` to restore the timer.
 - Serializes to JSON via `Newtonsoft.Json`. Stored at `Application.persistentDataPath/savegame.json`.
 
 ### `ReplayRecorder` (`sealed class`)
@@ -136,7 +137,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### Scene Wiring
 
-- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, `GameTimerView`, and `VictoryController`. Creates the `GameTimer` domain model and passes it to both `InputHandler` (for input-precision timestamps) and `VictoryController` (for final time display). Creates a `ReplayRecorder` and passes it to `InputHandler` to capture all tap events. During multi-frame generation, shows a loading overlay with a progress bar and percentage label; the existing HUD X button cancels generation (timer and trail toggle are hidden until generation completes). Progress is based on arrow count against an estimated total (see `docs/BoardGeneration.md` § "Loading Progress Heuristic"). Reads board parameters from `GameSettings`; when `IsResuming`, regenerates the board from the saved seed, applies prior cleared arrows (no animation), and restores the timer via `GameTimer.Resume()`. **Autosave**: when no other game's save would be overwritten (no save on disk, or resuming the same game), the game autosaves every 10 clears. The X button always opens a modal: "Save game?" with Yes/No/X-close when arrows have been cleared (with a "replace save" warning if a different game's save exists); "Leave game?" with Yes/No when no arrows cleared. Loading overlay shows "Regenerating..." for resumed games. Board completion records `end_solve` and deletes the save file.
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, `GameTimerView`, and `VictoryController`. Creates the `GameTimer` domain model and passes it to both `InputHandler` (for input-precision timestamps) and `VictoryController` (for final time display). Creates a `ReplayRecorder` and passes it to `InputHandler` to capture all tap events. During multi-frame generation, shows a loading overlay with a progress bar and percentage label; the existing HUD X button cancels generation (timer and trail toggle are hidden until generation completes). Progress is based on arrow count against an estimated total (see `docs/BoardGeneration.md` § "Loading Progress Heuristic"). Reads board parameters from `GameSettings`; when `IsResuming`, restores the board from the saved initial snapshot (no generation), replays clear events to reconstruct current state, and restores the timer via `GameTimer.Resume()` using `ReplayData.ComputedSolveElapsed`. Legacy v1 saves without a snapshot fall back to seed-based regeneration. **Autosave**: when no other game's save would be overwritten (no save on disk, or resuming the same game), the game autosaves every 10 clears. The X button always opens a modal: "Save game?" with Yes/No/X-close when arrows have been cleared (with a "replace save" warning if a different game's save exists); "Leave game?" with Yes/No when no arrows cleared. Loading overlay shows "Regenerating..." for resumed games. Board completion records `end_solve` and deletes the save file.
 - **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On each tap: records `start_solve` (if transitioning from inspection), then `clear` or `reject` to the optional `ReplayRecorder`. On non-final clears, fires an `onArrowCleared` callback (used by `GameController` for autosave). Timer phase transitions driven by input-precision wall-clock timestamps.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom is derived from the initial fit (not configurable). Clamped to board bounds. `ZoomToFit` smoothly returns to the initial view with a SmoothStep coroutine.
 - **`GameTimerView`** — drives a `GameTimer` each frame and updates the HUD timer label. During inspection: grey whole-second countdown, turns red at a configurable warning threshold. During solving: white whole-second count-up. On finish: precise millisecond display.

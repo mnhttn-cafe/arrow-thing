@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -23,9 +24,10 @@ public sealed class ReplayData
     public float inspectionDuration;
 
     /// <summary>
-    /// Snapshot of all remaining arrows at save time (version 2+). Each inner list is
-    /// one arrow's cells in head-to-tail order. Null for v1 legacy saves — resume falls
-    /// back to seed-based regeneration when this is absent.
+    /// Initial arrow configuration — all arrows on the board before any clears (version 2+).
+    /// Each inner list is one arrow's cells in head-to-tail order. On resume, the board is
+    /// restored from this snapshot and clear events are replayed to reconstruct current state.
+    /// Null for v1 legacy saves — resume falls back to seed-based regeneration.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<List<Cell>> boardSnapshot;
@@ -37,4 +39,50 @@ public sealed class ReplayData
     /// Solve time in seconds at board completion. -1 if the game is still in progress.
     /// </summary>
     public double finalTime = -1.0;
+
+    /// <summary>
+    /// Computes solve elapsed time in seconds from event timestamps.
+    /// Sets a checkpoint at start_solve, accumulates elapsed on session_leave / end_solve,
+    /// resets checkpoint on session_rejoin. Time between session_leave and session_rejoin
+    /// is excluded. Returns 0 if no start_solve event is found.
+    /// Only counts completed intervals — the live timer adds (now − checkpoint) on top.
+    /// </summary>
+    [JsonIgnore]
+    public double ComputedSolveElapsed
+    {
+        get
+        {
+            double elapsed = 0.0;
+            DateTime checkpoint = DateTime.MinValue;
+            bool solving = false;
+
+            foreach (var evt in events)
+            {
+                var ts = DateTime.Parse(evt.timestamp).ToUniversalTime();
+
+                if (evt.type == ReplayEventType.StartSolve)
+                {
+                    checkpoint = ts;
+                    solving = true;
+                }
+                else if (solving && evt.type == ReplayEventType.SessionLeave)
+                {
+                    elapsed += (ts - checkpoint).TotalSeconds;
+                    solving = false;
+                }
+                else if (!solving && evt.type == ReplayEventType.SessionRejoin)
+                {
+                    checkpoint = ts;
+                    solving = true;
+                }
+                else if (solving && evt.type == ReplayEventType.EndSolve)
+                {
+                    elapsed += (ts - checkpoint).TotalSeconds;
+                    solving = false;
+                }
+            }
+
+            return elapsed;
+        }
+    }
 }

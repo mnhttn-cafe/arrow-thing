@@ -139,17 +139,15 @@ public sealed class InputHandler : MonoBehaviour
                         {
                             _timer.StartSolve(wallTime);
                             if (_recorder != null)
-                                _recorder.RecordStartSolve(0.0);
+                                _recorder.RecordStartSolve();
                         }
 
                         ClearResult result = _boardView.TryClearArrow(arrow);
 
-                        double solveT = _timer?.SolveElapsed ?? 0.0;
-
                         if (result != ClearResult.Blocked)
                         {
                             if (_recorder != null)
-                                _recorder.RecordClear(solveT, worldPos.x, worldPos.y);
+                                _recorder.RecordClear(worldPos.x, worldPos.y);
 
                             if (result == ClearResult.ClearedLast)
                             {
@@ -165,7 +163,7 @@ public sealed class InputHandler : MonoBehaviour
                         else
                         {
                             if (_recorder != null)
-                                _recorder.RecordReject(solveT, worldPos.x, worldPos.y);
+                                _recorder.RecordReject(worldPos.x, worldPos.y);
                         }
                     }
                 }
