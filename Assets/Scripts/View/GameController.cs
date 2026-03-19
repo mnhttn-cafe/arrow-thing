@@ -211,8 +211,9 @@ public sealed class GameController : MonoBehaviour
                 if (backBtn != null)
                     backBtn.clicked += () => _cancelGeneration = true;
 
-                loadingOverlay.style.display = DisplayStyle.Flex;
                 loadingOverlay.style.opacity = 0f;
+                yield return null;
+                loadingOverlay.style.display = DisplayStyle.Flex;
                 float fadeIn = 0f;
 
                 const float frameBudgetMs = 12f;
@@ -321,8 +322,9 @@ public sealed class GameController : MonoBehaviour
                     backBtn.clicked += () => _cancelGeneration = true;
 
                 // Generation needs multiple frames — fade in overlay while generating
-                loadingOverlay.style.display = DisplayStyle.Flex;
                 loadingOverlay.style.opacity = 0f;
+                yield return null;
+                loadingOverlay.style.display = DisplayStyle.Flex;
                 float fadeIn = 0f;
 
                 // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
