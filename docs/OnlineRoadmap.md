@@ -4,8 +4,8 @@
 
 - **Arrow coloring** — implemented. `ArrowColoring.AssignColors()` in domain layer; `BoardView` applies palette colors after spawn.
 - **Replay recording** — partially implemented. `ReplayEvent`, `ReplayRecorder`, `ReplayData` exist in domain layer. Events are recorded during play and persisted in save files. Viewer and server submission not yet built.
-- **Local saves / autosave** — implemented. Board snapshot persisted on each clear; resumes without re-generation.
-- **Local leaderboards & personal best** — implemented (v0.3).
+- **Local saves / autosave** — implemented. Initial board snapshot persisted in save file; resumes without re-generation.
+- **Local leaderboards & personal best** — not yet implemented.
 
 Versions are tagged when a coherent chunk of work lands, not on a fixed schedule.
 
@@ -17,7 +17,7 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 
 A dedicated scene for watching replays. Accessed via the play button on leaderboard entries.
 
-- **Board setup**: regenerates the board from seed using the same generation path as the game scene. `BoardView` renders the board but user input is disabled.
+- **Board setup**: restores the board from the initial arrow configuration stored in the replay data (no generation step). `BoardView` renders the board but user input is disabled.
 - **Playback**: `ReplayPlayer` iterates events by `t`, waiting real-time between events to match the original pacing. On each event, it calls the appropriate `BoardView` method (clear or reject) exactly as `InputHandler` would during live play. All existing animations (pull-out, bump, reject flash) play normally.
 - **Tap indicator**: `TapIndicator` spawns a brief visual pulse (expanding ring that fades out) at the exact world-space `pos` from each event. This shows where the player actually tapped, not just which cell was resolved.
 - **Timer**: `GameTimerView` displays the replay time, driven by event timestamps rather than real time input.
@@ -110,37 +110,45 @@ JSON. One file per game session.
 
 ```jsonc
 {
-  "version": 1,
+  "version": 2,
   "gameId": "uuid",
   "seed": 12345,
   "boardWidth": 20,
   "boardHeight": 20,
   "maxArrowLength": 40,
+  "inspectionDuration": 15.0,
+  "boardSnapshot": [
+    [{ "X": 0, "Y": 0 }, { "X": 0, "Y": 1 }, { "X": 0, "Y": 2 }],
+    // ... one sub-array per arrow (head-to-tail cell order)
+  ],
   "events": [
-    { "seq": 0, "t": 0.000, "type": "start_solve", "pos": { "x": 5.23, "y": 12.41 } },
-    { "seq": 1, "t": 0.000, "type": "clear",       "pos": { "x": 5.23, "y": 12.41 } },
-    { "seq": 2, "t": 0.342, "type": "clear",       "pos": { "x": 3.10, "y":  7.67 } },
-    { "seq": 3, "t": 0.781, "type": "reject",      "pos": { "x": 10.48, "y": 4.15 } },
+    { "seq": 0, "type": "session_start", "timestamp": "2026-03-19T12:00:00.000Z" },
+    { "seq": 1, "type": "start_solve",   "timestamp": "2026-03-19T12:00:15.000Z" },
+    { "seq": 2, "type": "clear",         "posX": 5.23, "posY": 12.41, "timestamp": "2026-03-19T12:00:15.000Z" },
+    { "seq": 3, "type": "clear",         "posX": 3.10, "posY": 7.67,  "timestamp": "2026-03-19T12:00:15.342Z" },
+    { "seq": 4, "type": "reject",        "posX": 10.48, "posY": 4.15, "timestamp": "2026-03-19T12:00:15.781Z" },
     // ...
-    { "seq": N, "t": 14.529, "type": "clear",      "pos": { "x": 8.31, "y":  1.72 } }
+    { "seq": N, "type": "clear",         "posX": 8.31, "posY": 1.72,  "timestamp": "2026-03-19T12:00:29.529Z" },
+    { "seq": N+1, "type": "end_solve",   "timestamp": "2026-03-19T12:00:29.529Z" }
   ],
   "finalTime": 14.529
 }
 ```
 
 - `seq` — monotonically increasing sequence number. **Defines event order.** Timestamps can tie (see below), but `seq` never does.
-- `t` — seconds since solve start (input-precision, from `InputAction.canceled` timestamps). Used for timing, not ordering.
-- `type` — `start_solve`, `clear`, `reject`. Rejects are recorded for replay playback fidelity but don't affect verification.
-- `pos` — world-space coordinates of the tap (float pair). The cell is derived via `BoardCoords` (floor to grid cell). Storing the exact position enables the replay viewer to show a tap indicator at the precise location the player tapped, making replays feel authentic rather than snapping to cell centers.
-- `finalTime` — last clear event's `t`. Server verifies this matches.
+- `type` — `session_start`, `session_leave`, `session_rejoin`, `start_solve`, `clear`, `reject`, `end_solve`. Rejects are recorded for replay playback fidelity but don't affect verification. Session events are for save/resume bookkeeping.
+- `posX`, `posY` — world-space coordinates of the tap. **Present only on `clear` and `reject` events** (omitted from JSON for other types via Newtonsoft `NullValueHandling.Ignore`). The cell is derived via `BoardCoords` (floor to grid cell). Storing the exact position enables the replay viewer to show a tap indicator at the precise location the player tapped.
+- `timestamp` — wall-clock time in ISO 8601 UTC. Present on all events. Solve-relative timing is derived by subtracting the `start_solve` timestamp, excluding any `session_leave`→`session_rejoin` gaps.
+- `boardSnapshot` — the initial arrow configuration (all arrows before any clears). Each sub-array is one arrow's cells in head-to-tail order. Used for fast resume and replay playback without regeneration.
+- `finalTime` — solve time in seconds, derived from event timestamps. Server verifies this matches.
 
 #### Timestamp Ties: `start_solve` + `clear`
 
-The first arrow clear also starts the solve timer (see `InputHandler` / `GameTimer.StartSolve`). This means a single input event produces two replay events with **identical timestamps**: `start_solve` (seq N) followed by `clear` (seq N+1). The verifier must process events by `seq`, not `t`. Timestamps are strictly for timing measurement and replay playback pacing.
+The first arrow clear also starts the solve timer (see `InputHandler` / `GameTimer.StartSolve`). This means a single input event produces two replay events with **identical timestamps**: `start_solve` (seq N) followed by `clear` (seq N+1). The verifier must process events by `seq`, not `timestamp`. Timestamps are for timing measurement and replay playback pacing.
 
 ### Domain Types for Replay
 
-- **`ReplayEvent`** (domain, implemented) — immutable record: `int Seq`, `double Timestamp`, `ReplayEventType Type`, `float PosX`, `float PosY`. Seq is auto-assigned by the recorder.
+- **`ReplayEvent`** (domain, implemented) — `int seq`, `string type`, nullable `float? posX`/`posY` (clear/reject only), `string timestamp` (ISO 8601 UTC). Seq is auto-assigned by the recorder. Serialized via Newtonsoft; null fields omitted from JSON.
 - **`ReplayRecorder`** (domain, implemented) — accumulates events during play. `Record(type, posX, posY, timestamp)` auto-increments seq. `ToReplayData()` returns the serializable replay.
 - **`ReplayVerifier`** (domain, planned) — static class. Takes seed + board config + events, regenerates board, derives cells from positions via `BoardCoords`, simulates clears in order, returns `VerificationResult` (valid/invalid + reason).
 - **`InputHandler`** changes (planned) — call `ReplayRecorder.Record()` on each tap (clear or reject), passing world-space tap position.
