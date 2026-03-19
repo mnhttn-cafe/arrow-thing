@@ -46,7 +46,7 @@ jobs:
             printf '\nPlay now: https://vicplusplus.github.io/arrow-thing/\n\n<@&1483631517681975406>'
           } > /tmp/discord_message.txt
 
-          PAYLOAD=$(jq -n --rawfile content /tmp/discord_message.txt '{content: $content}')
+          PAYLOAD=$(jq -n --rawfile content /tmp/discord_message.txt '{content: $content, allowed_mentions: {parse: ["roles"]}}')
 
           curl -H "Content-Type: application/json" \
                -d "$PAYLOAD" \

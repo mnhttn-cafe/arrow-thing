@@ -36,7 +36,7 @@ jobs:
             Library-WebGL-
 
       - name: Fetch tags
-        run: git fetch --tags
+        run: git fetch origin --tags --force
 
       - name: Inject git commit hash
         run: |
