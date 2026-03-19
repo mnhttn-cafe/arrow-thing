@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The game is free and open-source (MIT). Primary distribution is WebGL on GitHub Pages, deployed automatically via CD pipeline on push to `main`.
 
-**Current status**: v0.1 (MVP) complete. Incremental releases toward v1.0: v0.2 (map-coloring) → v0.3 (local leaderboards) → v0.4 (replays) → v0.5 (server + deployment) → v0.6 (online leaderboards) → v1.0 (PvP). See `docs/OnlineRoadmap.md` for the full plan.
+**Current status**: v0.2. Next milestone: v0.3 (local leaderboards). See `docs/OnlineRoadmap.md` for the broader plan.
 
 Docs: `docs/GDD.md` (game design), `docs/TechnicalDesign.md` (architecture — single source of truth for all technical decisions), `docs/BoardGeneration.md` (generator algorithm), `docs/OnlineRoadmap.md` (roadmap v0.2–v1.0). See **Feature Workflow** below for how `docs/TODO.md` is used during feature development.
 

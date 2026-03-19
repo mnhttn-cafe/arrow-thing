@@ -6,12 +6,12 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
 
 ## Project Status
 
-- Current version: **v0.1** — MVP complete, playable on [GitHub Pages](https://vicplusplus.github.io/arrow-thing/)
-- Next milestone: v0.2 (online leaderboards, replays, accounts)
+- Current version: **v0.2** — playable on [GitHub Pages](https://vicplusplus.github.io/arrow-thing/)
+- Next milestone: v0.3 (local leaderboards)
 - Design docs:
   - [`docs/GDD.md`](docs/GDD.md) (game design)
   - [`docs/TechnicalDesign.md`](docs/TechnicalDesign.md) (technical architecture and class structure)
-  - [`docs/OnlineRoadmap.md`](docs/OnlineRoadmap.md) (v0.2 online features plan)
+  - [`docs/OnlineRoadmap.md`](docs/OnlineRoadmap.md) (online features plan)
 
 ## Tech Stack
 
@@ -65,5 +65,5 @@ Git configuration (`.gitattributes`, `.gitignore`, git hooks) is based on [NYU G
 - `Assets/Tests/EditMode` - Unit tests (Unity Test Framework)
 - `docs/GDD.md` - Game design direction and scope
 - `docs/TechnicalDesign.md` - Architecture and class-structure decisions
-- `docs/OnlineRoadmap.md` - v0.2 online features plan
+- `docs/OnlineRoadmap.md` - Online features plan
 - `docs/BoardGeneration.md` - Board generation algorithm
