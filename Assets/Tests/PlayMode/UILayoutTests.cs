@@ -158,8 +158,8 @@ public class UILayoutTests
             ctx,
             warn,
             settings.Q<Label>(className: "section-label"),
-            settings.Q<Slider>("drag-threshold-slider"),
-            settings.Q<Slider>("zoom-speed-slider"),
+            settings.Q("drag-threshold-row"),
+            settings.Q("zoom-speed-row"),
             settings.Q<Toggle>("arrow-coloring-toggle"),
             settings.Q<Button>("settings-back-btn")
         );

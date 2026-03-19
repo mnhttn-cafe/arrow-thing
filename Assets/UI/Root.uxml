@@ -34,15 +34,11 @@
             <ui:Button name="preset-xlarge" class="preset-btn" text="XLarge&#10;100 × 100" />
             <ui:VisualElement name="preset-custom" class="preset-btn preset-btn--custom">
                 <ui:Label class="preset-custom-title" text="Custom" />
-                <ui:VisualElement class="preset-custom-row">
+                <ui:VisualElement name="custom-width-row" class="preset-custom-row">
                     <ui:Label class="preset-custom-dim-label" text="W" />
-                    <ui:SliderInt name="custom-width-slider" class="custom-dim-slider" low-value="2" high-value="400" value="20" />
-                    <ui:Label name="custom-width-value" class="preset-custom-dim-value" text="20" />
                 </ui:VisualElement>
-                <ui:VisualElement class="preset-custom-row">
+                <ui:VisualElement name="custom-height-row" class="preset-custom-row">
                     <ui:Label class="preset-custom-dim-label" text="H" />
-                    <ui:SliderInt name="custom-height-slider" class="custom-dim-slider" low-value="2" high-value="400" value="20" />
-                    <ui:Label name="custom-height-value" class="preset-custom-dim-value" text="20" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
@@ -53,16 +49,12 @@
     <ui:VisualElement name="settings" class="screen screen--hidden">
         <ui:Label class="section-label" text="Settings" />
 
-        <ui:VisualElement class="setting-row">
+        <ui:VisualElement name="drag-threshold-row" class="setting-row">
             <ui:Label class="setting-label" text="Drag Threshold" />
-            <ui:Slider name="drag-threshold-slider" class="setting-slider" low-value="5" high-value="60" value="15" />
-            <ui:Label name="drag-threshold-value" class="setting-value" text="15" />
         </ui:VisualElement>
 
-        <ui:VisualElement class="setting-row">
+        <ui:VisualElement name="zoom-speed-row" class="setting-row">
             <ui:Label class="setting-label" text="Zoom Speed" />
-            <ui:Slider name="zoom-speed-slider" class="setting-slider" low-value="0.2" high-value="5" value="1" />
-            <ui:Label name="zoom-speed-value" class="setting-value" text="1.0" />
         </ui:VisualElement>
 
         <ui:VisualElement class="setting-row">
