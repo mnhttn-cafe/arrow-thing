@@ -435,6 +435,8 @@ public sealed class GameController : MonoBehaviour
             _boardView.BoardCleared += () =>
             {
                 _inputHandler.SetInputEnabled(false);
+                if (backBtn != null)
+                    backBtn.style.display = DisplayStyle.None;
                 _recorder?.RecordEndSolve(_timer?.SolveElapsed ?? 0.0);
                 SaveManager.Delete();
                 victory.OnBoardCleared();
