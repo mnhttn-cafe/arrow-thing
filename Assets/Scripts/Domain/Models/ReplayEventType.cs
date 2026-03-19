@@ -1,13 +1,13 @@
 /// <summary>
 /// String constants for replay event types. Using strings keeps the JSON human-readable
-/// and compatible with Unity's JsonUtility, which serializes enums as integers.
+/// and avoids integer-based enum serialization.
 /// </summary>
 public static class ReplayEventType
 {
     /// <summary>First entry of the session that generated the board.</summary>
     public const string SessionStart = "session_start";
 
-    /// <summary>Player left the game mid-session. Carries solveElapsed snapshot.</summary>
+    /// <summary>Player left the game mid-session. Carries solve elapsed snapshot in t.</summary>
     public const string SessionLeave = "session_leave";
 
     /// <summary>Player returned to a previously saved game.</summary>

@@ -283,7 +283,7 @@ public sealed class GameController : MonoBehaviour
             {
                 if (evt.type == ReplayEventType.Clear)
                 {
-                    var worldPos = new UnityEngine.Vector3(evt.posX, evt.posY, 0f);
+                    var worldPos = new UnityEngine.Vector3(evt.posX ?? 0f, evt.posY ?? 0f, 0f);
                     Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
                     if (_board.Contains(cell))
                     {
@@ -295,7 +295,7 @@ public sealed class GameController : MonoBehaviour
                 if (evt.type == ReplayEventType.StartSolve)
                     resumeSolving = true;
                 if (evt.type == ReplayEventType.SessionLeave)
-                    resumeSolveElapsed = evt.solveElapsed;
+                    resumeSolveElapsed = evt.t;
             }
 
             int nextSeq =

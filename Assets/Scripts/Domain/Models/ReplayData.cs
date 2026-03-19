@@ -1,12 +1,10 @@
-using System;
 using System.Collections.Generic;
 
 /// <summary>
 /// Full save / replay record for a single game session.
-/// Serializes to JSON via Unity's JsonUtility.
+/// Serializes to JSON via Newtonsoft.Json.
 /// A <see cref="finalTime"/> of -1 indicates an in-progress (incomplete) game.
 /// </summary>
-[Serializable]
 public sealed class ReplayData
 {
     /// <summary>Format version — increment if the schema changes incompatibly.</summary>

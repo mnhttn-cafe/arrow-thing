@@ -11,7 +11,7 @@ public class ReplayRecorderTests
     {
         var rec = new ReplayRecorder();
         rec.RecordSessionStart();
-        rec.RecordStartSolve(0.0, 1f, 2f);
+        rec.RecordStartSolve(0.0);
         rec.RecordClear(0.5, 1f, 2f);
         rec.RecordReject(1.0, 3f, 4f);
         rec.RecordSessionLeave(1.0);
@@ -53,7 +53,7 @@ public class ReplayRecorderTests
         var rec = new ReplayRecorder();
         rec.RecordSessionLeave(42.5);
         Assert.AreEqual(ReplayEventType.SessionLeave, rec.Events[0].type);
-        Assert.AreEqual(42.5, rec.Events[0].solveElapsed, 1e-9);
+        Assert.AreEqual(42.5, rec.Events[0].t, 1e-9);
     }
 
     [Test]
@@ -65,27 +65,26 @@ public class ReplayRecorderTests
     }
 
     [Test]
-    public void RecordStartSolve_SetsTypeAndPosition()
+    public void RecordStartSolve_SetsTypeAndTime()
     {
         var rec = new ReplayRecorder();
-        rec.RecordStartSolve(0.0, 1.5f, -2.5f);
+        rec.RecordStartSolve(0.0);
         var evt = rec.Events[0];
         Assert.AreEqual(ReplayEventType.StartSolve, evt.type);
         Assert.AreEqual(0.0, evt.t, 1e-9);
-        Assert.AreEqual(1.5f, evt.posX, 1e-5f);
-        Assert.AreEqual(-2.5f, evt.posY, 1e-5f);
     }
 
     [Test]
-    public void RecordClear_SetsTypeTimeAndPosition()
+    public void RecordClear_SetsTypeTimePositionAndTimestamp()
     {
         var rec = new ReplayRecorder();
         rec.RecordClear(3.14, 5f, 7f);
         var evt = rec.Events[0];
         Assert.AreEqual(ReplayEventType.Clear, evt.type);
         Assert.AreEqual(3.14, evt.t, 1e-9);
-        Assert.AreEqual(5f, evt.posX, 1e-5f);
-        Assert.AreEqual(7f, evt.posY, 1e-5f);
+        Assert.AreEqual(5f, evt.posX.Value, 1e-5f);
+        Assert.AreEqual(7f, evt.posY.Value, 1e-5f);
+        Assert.IsNotEmpty(evt.timestamp);
     }
 
     [Test]
@@ -96,8 +95,8 @@ public class ReplayRecorderTests
         var evt = rec.Events[0];
         Assert.AreEqual(ReplayEventType.Reject, evt.type);
         Assert.AreEqual(1.23, evt.t, 1e-9);
-        Assert.AreEqual(-3f, evt.posX, 1e-5f);
-        Assert.AreEqual(4f, evt.posY, 1e-5f);
+        Assert.AreEqual(-3f, evt.posX.Value, 1e-5f);
+        Assert.AreEqual(4f, evt.posY.Value, 1e-5f);
     }
 
     [Test]
@@ -117,7 +116,7 @@ public class ReplayRecorderTests
     public void StartSolveAndClear_SameTimestamp_OrderedBySeq()
     {
         var rec = new ReplayRecorder();
-        rec.RecordStartSolve(0.0, 2f, 3f); // seq 0, t = 0
+        rec.RecordStartSolve(0.0); // seq 0, t = 0
         rec.RecordClear(0.0, 2f, 3f); // seq 1, t = 0
 
         Assert.AreEqual(2, rec.Events.Count);

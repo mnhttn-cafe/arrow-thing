@@ -74,21 +74,20 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - One entry in the save/replay event log. Fields vary by event type; unused fields default to 0/null.
 - `seq` — monotonically increasing, defines event order (timestamps can tie at e.g. `start_solve + clear`).
 - `type` — string constant from `ReplayEventType` (e.g. `"clear"`, `"session_leave"`).
-- `t` — solve-relative seconds (for `start_solve`, `clear`, `reject`).
-- `solveElapsed` — snapshot of SolveElapsed at leave time (for `session_leave`, used to restore the timer on resume).
-- `posX`, `posY` — world-space tap position (for `start_solve`, `clear`, `reject`). Cell derived via `BoardCoords.WorldToCell`.
-- `timestamp` — ISO 8601 UTC string (for session events and `end_solve`).
+- `t` — seconds since solve start. Solve-relative time for `clear`/`reject`/`end_solve`; solve elapsed snapshot for `session_leave` (used to restore the timer on resume); always 0 for `start_solve`.
+- `posX`, `posY` — world-space tap position (for `clear`, `reject`). Cell derived via `BoardCoords.WorldToCell`.
+- `timestamp` — ISO 8601 UTC string (for session events, `clear`, and `end_solve`).
 
 ### `ReplayEventType` (`static class`)
 
 - String constants for all event types: `session_start`, `session_leave`, `session_rejoin`, `start_solve`, `clear`, `reject`, `end_solve`.
-- Uses strings (not enum) so that `JsonUtility` serializes human-readable JSON.
+- Uses strings (not enum) for human-readable JSON serialization.
 
 ### `ReplayData` (`sealed class`, `[Serializable]`)
 
 - Full save/replay record for one game session.
 - Contains: `version`, `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
-- Serializes to JSON via Unity's `JsonUtility`. Stored at `Application.persistentDataPath/savegame.json`.
+- Serializes to JSON via `Newtonsoft.Json`. Stored at `Application.persistentDataPath/savegame.json`.
 
 ### `ReplayRecorder` (`sealed class`)
 
@@ -133,7 +132,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 - **`MainMenuController`** — drives the main menu UI via UI Toolkit. Manages three screens (Main Menu, Mode Select, Settings) toggled via USS `display: none`. Mode Select presents a flex-wrap preset grid (Small 10×10, Medium 20×20, Large 40×40, XLarge 100×100) plus a custom preset card with width/height `SliderInt` controls (range 2–400). Custom selection is restored when returning from a game if dimensions don't match a preset. On Start, writes chosen dimensions to `GameSettings` and loads the Game scene. Desktop-only quit button (top-left X) opens a confirmation modal; hidden on mobile via `Application.isMobilePlatform`. When a saved game exists, a teal "Continue" button appears below "Play"; "Play" always goes to mode select (no confirmation modal). "Continue" calls `GameSettings.Resume()` and loads the Game scene.
 - **`GameSettings`** (static class, domain layer) — holds `Width`, `Height`, `MaxArrowLength`, `IsSet`, `IsResuming`, and `ResumeData`. `GameController` reads from it when `IsSet` is true. `Apply()` sets board params for a new game; `Resume(ReplayData)` sets params and flags a resume; `Reset()` clears all.
-- **`SaveManager`** (static class, view layer) — saves/loads/deletes the in-progress game JSON at `Application.persistentDataPath/savegame.json`. Wraps `JsonUtility` serialization. Safe: catches I/O exceptions, logs warnings, auto-deletes on corruption.
+- **`SaveManager`** (static class, view layer) — saves/loads/deletes the in-progress game JSON at `Application.persistentDataPath/savegame.json`. Wraps `Newtonsoft.Json` serialization. Safe: catches I/O exceptions, logs warnings, auto-deletes on corruption.
 
 ### Scene Wiring
 

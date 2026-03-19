@@ -136,7 +136,7 @@ public sealed class InputHandler : MonoBehaviour
                         {
                             _timer.StartSolve(wallTime);
                             if (_recorder != null)
-                                _recorder.RecordStartSolve(0.0, worldPos.x, worldPos.y);
+                                _recorder.RecordStartSolve(0.0);
                         }
 
                         ClearResult result = _boardView.TryClearArrow(arrow);

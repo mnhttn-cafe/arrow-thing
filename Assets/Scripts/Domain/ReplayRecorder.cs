@@ -51,7 +51,7 @@ public sealed class ReplayRecorder
             {
                 seq = _nextSeq++,
                 type = ReplayEventType.SessionLeave,
-                solveElapsed = solveElapsed,
+                t = solveElapsed,
                 timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
@@ -69,10 +69,8 @@ public sealed class ReplayRecorder
         );
     }
 
-    /// <param name="t">Seconds since solve start.</param>
-    /// <param name="posX">World-space X of the tap.</param>
-    /// <param name="posY">World-space Y of the tap.</param>
-    public void RecordStartSolve(double t, float posX, float posY)
+    /// <param name="t">Seconds since solve start (always 0 — marks inspection→solve transition).</param>
+    public void RecordStartSolve(double t)
     {
         _events.Add(
             new ReplayEvent
@@ -80,8 +78,6 @@ public sealed class ReplayRecorder
                 seq = _nextSeq++,
                 type = ReplayEventType.StartSolve,
                 t = t,
-                posX = posX,
-                posY = posY,
             }
         );
     }
@@ -97,6 +93,7 @@ public sealed class ReplayRecorder
                 t = t,
                 posX = posX,
                 posY = posY,
+                timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
     }

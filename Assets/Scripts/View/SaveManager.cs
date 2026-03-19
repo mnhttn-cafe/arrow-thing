@@ -1,4 +1,5 @@
 using System.IO;
+using Newtonsoft.Json;
 using UnityEngine;
 
 /// <summary>
@@ -27,7 +28,7 @@ public static class SaveManager
         try
         {
             string json = File.ReadAllText(path);
-            var data = JsonUtility.FromJson<ReplayData>(json);
+            var data = JsonConvert.DeserializeObject<ReplayData>(json);
             if (data == null || data.events == null)
             {
                 Debug.LogWarning("SaveManager: save file is corrupted — deleting.");
@@ -51,7 +52,7 @@ public static class SaveManager
         string path = SavePath;
         try
         {
-            string json = JsonUtility.ToJson(data, prettyPrint: false);
+            string json = JsonConvert.SerializeObject(data);
             File.WriteAllText(path, json);
             Debug.Log($"SaveManager: saved to {path}");
         }
