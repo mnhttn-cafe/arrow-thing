@@ -155,7 +155,10 @@ public sealed class InputHandler : MonoBehaviour
                         }
 
                         if (_timer != null && result == ClearResult.ClearedLast)
+                        {
                             _timer.Finish(wallTime);
+                            _boardView.NotifyLastArrowClearing();
+                        }
                     }
                 }
             }

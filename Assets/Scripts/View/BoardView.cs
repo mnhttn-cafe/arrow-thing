@@ -17,7 +17,9 @@ public sealed class BoardView : MonoBehaviour
     private ArrowView _tintedBlocker;
 
     /// <summary>
-    /// Fired immediately when the last arrow begins its pull-out animation (before it finishes).
+    /// Fired after the last arrow is cleared and recorded, but before its pull-out animation finishes.
+    /// Must be invoked explicitly via <see cref="NotifyLastArrowClearing"/> after the caller
+    /// has finished recording the clear event, to ensure correct event ordering.
     /// </summary>
     public event System.Action LastArrowClearing;
 
@@ -134,9 +136,6 @@ public sealed class BoardView : MonoBehaviour
             TrailAutoOff?.Invoke();
         }
 
-        if (wasLast)
-            LastArrowClearing?.Invoke();
-
         view.PlayPullOut(onComplete: () =>
         {
             Destroy(view.gameObject);
@@ -150,6 +149,11 @@ public sealed class BoardView : MonoBehaviour
             return ClearResult.ClearedFirst;
         return ClearResult.Cleared;
     }
+
+    /// <summary>
+    /// Call after recording the final clear event to fire <see cref="LastArrowClearing"/>.
+    /// </summary>
+    public void NotifyLastArrowClearing() => LastArrowClearing?.Invoke();
 
     private void ClearPreviousTints()
     {
