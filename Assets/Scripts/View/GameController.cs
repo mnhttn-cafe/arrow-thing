@@ -439,8 +439,9 @@ public sealed class GameController : MonoBehaviour
                     backBtn.style.display = DisplayStyle.None;
                 _recorder?.RecordEndSolve(_timer?.SolveElapsed ?? 0.0);
                 SaveManager.Delete();
+                victory.OnLastArrowClearing();
             };
-            _boardView.BoardCleared += () => victory.OnBoardCleared();
+            _boardView.BoardCleared += victory.OnBoardCleared;
         }
     }
 

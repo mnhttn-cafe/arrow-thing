@@ -3,8 +3,8 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Handles the board-cleared sequence: grid fade-out, then victory popup
-/// with a randomized message and Play Again / Menu buttons.
+/// Handles the board-cleared sequence: zoom-to-fit + arrow pull-out run in parallel,
+/// then grid fade-out, then victory popup with a randomized message and Play Again / Menu buttons.
 /// </summary>
 public sealed class VictoryController : MonoBehaviour
 {
@@ -58,6 +58,12 @@ public sealed class VictoryController : MonoBehaviour
     [SerializeField]
     private float gridFadeDuration = 0.5f;
 
+    /// <summary>Tracks whether the zoom-to-fit has finished.</summary>
+    private bool _zoomDone;
+
+    /// <summary>Tracks whether the last arrow's pull-out animation has finished.</summary>
+    private bool _pullOutDone;
+
     public void Init(
         UIDocument uiDocument,
         BoardGridRenderer gridRenderer,
@@ -86,18 +92,45 @@ public sealed class VictoryController : MonoBehaviour
     }
 
     /// <summary>
-    /// Call when the last arrow's pull-out animation finishes.
-    /// Starts the grid fade, then shows the victory popup.
+    /// Call immediately when the last arrow starts clearing (before animation).
+    /// Starts the camera zoom-to-fit in parallel with the pull-out animation.
     /// </summary>
-    public void OnBoardCleared()
+    public void OnLastArrowClearing()
     {
+        _zoomDone = false;
+        _pullOutDone = false;
+
         if (_camCtrl != null)
             _camCtrl.ZoomToFit(
                 zoomOutDuration,
-                () => _gridRenderer.FadeOut(gridFadeDuration, ShowPopup)
+                () =>
+                {
+                    _zoomDone = true;
+                    TryStartGridFade();
+                }
             );
         else
-            _gridRenderer.FadeOut(gridFadeDuration, ShowPopup);
+            _zoomDone = true;
+    }
+
+    /// <summary>
+    /// Call when the last arrow's pull-out animation finishes.
+    /// </summary>
+    public void OnBoardCleared()
+    {
+        _pullOutDone = true;
+        TryStartGridFade();
+    }
+
+    /// <summary>
+    /// Starts the grid fade only once both zoom and pull-out are done.
+    /// </summary>
+    private void TryStartGridFade()
+    {
+        if (!_zoomDone || !_pullOutDone)
+            return;
+
+        _gridRenderer.FadeOut(gridFadeDuration, ShowPopup);
     }
 
     private void ShowPopup()
