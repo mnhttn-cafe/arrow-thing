@@ -17,6 +17,11 @@ public sealed class BoardView : MonoBehaviour
     private ArrowView _tintedBlocker;
 
     /// <summary>
+    /// Fired immediately when the last arrow begins its pull-out animation (before it finishes).
+    /// </summary>
+    public event System.Action LastArrowClearing;
+
+    /// <summary>
     /// Fired after the last arrow's pull-out animation finishes (board fully cleared).
     /// </summary>
     public event System.Action BoardCleared;
@@ -128,6 +133,9 @@ public sealed class BoardView : MonoBehaviour
             SetAllTrailsVisible(false);
             TrailAutoOff?.Invoke();
         }
+
+        if (wasLast)
+            LastArrowClearing?.Invoke();
 
         view.PlayPullOut(onComplete: () =>
         {

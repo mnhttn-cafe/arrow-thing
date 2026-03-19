@@ -432,15 +432,15 @@ public sealed class GameController : MonoBehaviour
                 _timer,
                 hudUIDocument
             );
-            _boardView.BoardCleared += () =>
+            _boardView.LastArrowClearing += () =>
             {
                 _inputHandler.SetInputEnabled(false);
                 if (backBtn != null)
                     backBtn.style.display = DisplayStyle.None;
                 _recorder?.RecordEndSolve(_timer?.SolveElapsed ?? 0.0);
                 SaveManager.Delete();
-                victory.OnBoardCleared();
             };
+            _boardView.BoardCleared += () => victory.OnBoardCleared();
         }
     }
 
