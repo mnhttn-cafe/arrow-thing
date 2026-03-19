@@ -54,31 +54,21 @@ public sealed class ReplayData
         {
             double elapsed = 0.0;
             DateTime checkpoint = DateTime.MinValue;
-            bool solving = false;
 
             foreach (var evt in events)
             {
                 var ts = DateTime.Parse(evt.timestamp).ToUniversalTime();
 
-                if (evt.type == ReplayEventType.StartSolve)
+                switch (evt.type)
                 {
-                    checkpoint = ts;
-                    solving = true;
-                }
-                else if (solving && evt.type == ReplayEventType.SessionLeave)
-                {
-                    elapsed += (ts - checkpoint).TotalSeconds;
-                    solving = false;
-                }
-                else if (!solving && evt.type == ReplayEventType.SessionRejoin)
-                {
-                    checkpoint = ts;
-                    solving = true;
-                }
-                else if (solving && evt.type == ReplayEventType.EndSolve)
-                {
-                    elapsed += (ts - checkpoint).TotalSeconds;
-                    solving = false;
+                    case ReplayEventType.StartSolve:
+                    case ReplayEventType.SessionRejoin:
+                        checkpoint = ts;
+                        break;
+                    case ReplayEventType.SessionLeave:
+                    case ReplayEventType.EndSolve:
+                        elapsed += (ts - checkpoint).TotalSeconds;
+                        break;
                 }
             }
 
