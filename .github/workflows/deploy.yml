@@ -61,6 +61,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL
+          allowDirtyBuild: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
