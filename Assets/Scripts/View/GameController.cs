@@ -93,6 +93,7 @@ public sealed class GameController : MonoBehaviour
     private int _initialArrowCount;
     private InputHandler _inputHandler;
     private bool _autosaveEnabled;
+    private bool _isContinuedGame;
     private int _clearsSinceLastSave;
     private const int AutosaveInterval = 10;
 
@@ -188,6 +189,14 @@ public sealed class GameController : MonoBehaviour
 
         if (generating && loadingOverlay != null)
         {
+            // Update label for resumed games
+            if (priorData != null)
+            {
+                var loadingLabel = loadingOverlay.Q<Label>("loading-label");
+                if (loadingLabel != null)
+                    loadingLabel.text = "Regenerating...";
+            }
+
             // Hide gameplay HUD elements during generation
             if (timerLabel != null)
                 timerLabel.style.display = DisplayStyle.None;
@@ -270,10 +279,6 @@ public sealed class GameController : MonoBehaviour
             yield break;
         }
 
-        // Capture full arrow count before applying resume clears, so that
-        // HasAnyClearedArrows is true for resumed games with prior progress.
-        _initialArrowCount = _board.Arrows.Count;
-
         // --- Resume: apply prior clears with no animation ---
         bool resumeSolving = false;
         double resumeSolveElapsed = 0.0;
@@ -323,8 +328,13 @@ public sealed class GameController : MonoBehaviour
             _recorder.RecordSessionStart();
         }
 
+        // Capture arrow count after resume clears so HasAnyClearedArrows
+        // reflects only new clears made in this session.
+        _initialArrowCount = _board.Arrows.Count;
+
         // Autosave is safe when no other game's save would be overwritten
         _autosaveEnabled = !SaveManager.HasSave() || priorData != null;
+        _isContinuedGame = priorData != null;
 
         // Create board view
         var boardGo = new GameObject("BoardView");
@@ -362,12 +372,12 @@ public sealed class GameController : MonoBehaviour
             var leaveSublabel = hudRoot.Q("leave-sublabel");
             var leaveCloseBtn = hudRoot.Q<Button>("leave-close-btn");
 
-            // X button: auto-save and leave, or open modal if a save already exists
+            // X button opens the leave modal
             if (backBtn != null)
             {
                 backBtn.clickable = new Clickable(() => { });
                 backBtn.clicked += () =>
-                    HandleLeaveRequest(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
+                    ShowLeaveModal(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
             }
 
             // Leave modal: Yes = save (if applicable) and leave
@@ -452,25 +462,15 @@ public sealed class GameController : MonoBehaviour
         }
     }
 
-    /// <summary>Returns true if any arrows have been cleared this session (including resumed clears).</summary>
+    /// <summary>Returns true if any arrows have been cleared this session.</summary>
     private bool HasAnyClearedArrows => _board != null && _board.Arrows.Count < _initialArrowCount;
 
-    private void HandleLeaveRequest(
-        VisualElement modal,
-        Label title,
-        VisualElement sublabel,
-        Button closeBtn
-    )
-    {
-        if (HasAnyClearedArrows && _autosaveEnabled)
-        {
-            // Autosave has been keeping the save current — just save and leave
-            SaveAndLeave();
-            return;
-        }
-
-        ShowLeaveModal(modal, title, sublabel, closeBtn);
-    }
+    /// <summary>
+    /// True when saving would overwrite a different game's save file.
+    /// Only possible for a new game when a prior save exists.
+    /// </summary>
+    private bool WouldOverwriteDifferentSave =>
+        !_autosaveEnabled && HasAnyClearedArrows && SaveManager.HasSave();
 
     private void ShowLeaveModal(
         VisualElement modal,
@@ -479,11 +479,11 @@ public sealed class GameController : MonoBehaviour
         Button closeBtn
     )
     {
-        if (HasAnyClearedArrows)
+        if (WouldOverwriteDifferentSave)
         {
-            // A different game's save exists — warn before overwriting
+            // New game with clears would overwrite a different save — ask explicitly
             if (title != null)
-                title.text = "Save game?";
+                title.text = "Leaving. Save?";
             if (sublabel != null)
                 sublabel.RemoveFromClassList("modal--hidden");
             if (closeBtn != null)
@@ -491,9 +491,9 @@ public sealed class GameController : MonoBehaviour
         }
         else
         {
-            // Nothing to save: show "Leave game?" with Yes/No only
+            // All other cases: simple leave prompt (auto-saves if needed)
             if (title != null)
-                title.text = "Leave game?";
+                title.text = "Leave?";
             if (sublabel != null)
                 sublabel.AddToClassList("modal--hidden");
             if (closeBtn != null)
@@ -537,7 +537,9 @@ public sealed class GameController : MonoBehaviour
 
     private void OnLeaveYes(VisualElement modal)
     {
-        if (HasAnyClearedArrows)
+        if (_autosaveEnabled && (_isContinuedGame || HasAnyClearedArrows))
+            SaveAndLeave();
+        else if (WouldOverwriteDifferentSave)
             SaveAndLeave();
         else
             SceneManager.LoadScene("MainMenu");
@@ -545,7 +547,7 @@ public sealed class GameController : MonoBehaviour
 
     private void OnLeaveNo(VisualElement modal)
     {
-        if (HasAnyClearedArrows)
+        if (WouldOverwriteDifferentSave)
         {
             // "No" on save prompt = leave without saving
             SceneManager.LoadScene("MainMenu");
