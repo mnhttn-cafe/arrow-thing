@@ -3,11 +3,12 @@ using Newtonsoft.Json;
 /// <summary>
 /// One entry in the replay/save event log. Unused fields are omitted from JSON per event type:
 /// <list type="bullet">
-///   <item>session_start, session_rejoin — only timestamp is meaningful.</item>
-///   <item>session_leave — t (solve elapsed snapshot) + timestamp.</item>
+///   <item>All events carry seq, type, and timestamp.</item>
+///   <item>session_start, session_rejoin — timestamp only (t is 0).</item>
+///   <item>session_leave — t (solve elapsed snapshot).</item>
 ///   <item>start_solve — t (always 0).</item>
-///   <item>clear, reject — t (solve-relative seconds) + posX/posY (world-space) + timestamp.</item>
-///   <item>end_solve — t (final solve time) + timestamp.</item>
+///   <item>clear, reject — t (solve-relative seconds) + posX/posY (world-space).</item>
+///   <item>end_solve — t (final solve time).</item>
 /// </list>
 /// </summary>
 public sealed class ReplayEvent
@@ -33,9 +34,6 @@ public sealed class ReplayEvent
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public float? posY;
 
-    /// <summary>
-    /// Wall-clock time in ISO 8601 format (UTC). Used by session events, clear, and end_solve.
-    /// </summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    /// <summary>Wall-clock time in ISO 8601 format (UTC). Present on all events.</summary>
     public string timestamp;
 }

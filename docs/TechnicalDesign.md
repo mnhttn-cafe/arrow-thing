@@ -76,7 +76,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - `type` — string constant from `ReplayEventType` (e.g. `"clear"`, `"session_leave"`).
 - `t` — seconds since solve start. Solve-relative time for `clear`/`reject`/`end_solve`; solve elapsed snapshot for `session_leave` (used to restore the timer on resume); always 0 for `start_solve`.
 - `posX`, `posY` — world-space tap position (for `clear`, `reject`). Cell derived via `BoardCoords.WorldToCell`.
-- `timestamp` — ISO 8601 UTC string (for session events, `clear`, and `end_solve`).
+- `timestamp` — ISO 8601 UTC string. Present on all events.
 
 ### `ReplayEventType` (`static class`)
 

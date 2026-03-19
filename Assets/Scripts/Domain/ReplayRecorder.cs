@@ -78,6 +78,7 @@ public sealed class ReplayRecorder
                 seq = _nextSeq++,
                 type = ReplayEventType.StartSolve,
                 t = t,
+                timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
     }
@@ -124,6 +125,7 @@ public sealed class ReplayRecorder
                 t = t,
                 posX = posX,
                 posY = posY,
+                timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
     }
