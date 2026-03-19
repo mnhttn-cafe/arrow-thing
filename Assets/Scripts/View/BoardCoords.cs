@@ -2,19 +2,17 @@ using UnityEngine;
 
 /// <summary>
 /// Converts between board grid coordinates and world-space positions.
-/// The board is centered at the world origin. Each cell is 1×1 Unity unit.
+/// Cell (0,0) maps to world origin (bottom-left corner). Each cell is 1×1 Unity unit.
 /// </summary>
 public static class BoardCoords
 {
     /// <summary>
-    /// Returns the world-space center of the given cell on a board of the specified size.
-    /// Board is centered at world origin: cell (0,0) is at bottom-left.
+    /// Returns the world-space center of the given cell.
+    /// Cell (0,0) is at world origin (bottom-left).
     /// </summary>
     public static Vector3 CellToWorld(Cell cell, int boardWidth, int boardHeight)
     {
-        float x = cell.X - (boardWidth - 1) * 0.5f;
-        float y = cell.Y - (boardHeight - 1) * 0.5f;
-        return new Vector3(x, y, 0f);
+        return new Vector3(cell.X, cell.Y, 0f);
     }
 
     /// <summary>
@@ -22,8 +20,8 @@ public static class BoardCoords
     /// </summary>
     public static Cell WorldToCell(Vector3 worldPos, int boardWidth, int boardHeight)
     {
-        int x = Mathf.RoundToInt(worldPos.x + (boardWidth - 1) * 0.5f);
-        int y = Mathf.RoundToInt(worldPos.y + (boardHeight - 1) * 0.5f);
+        int x = Mathf.RoundToInt(worldPos.x);
+        int y = Mathf.RoundToInt(worldPos.y);
         return new Cell(x, y);
     }
 

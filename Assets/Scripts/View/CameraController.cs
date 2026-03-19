@@ -22,6 +22,7 @@ public sealed class CameraController : MonoBehaviour
     private Rect _panBounds;
     private float _initialOrthoSize;
     private float _maxOrthoSize;
+    private Vector3 _initialPosition;
 
     public Camera Cam => _cam;
     public float ZoomSpeed
@@ -45,12 +46,17 @@ public sealed class CameraController : MonoBehaviour
         _initialOrthoSize = _cam.orthographicSize;
         _maxOrthoSize = _initialOrthoSize;
 
-        // Pan bounds: board extents + panBuffer
+        // Board center in world space (cell coords start at 0)
+        float cx = (boardW - 1) * 0.5f;
+        float cy = (boardH - 1) * 0.5f;
+
+        // Pan bounds: board extents + panBuffer, centered on board
         float halfW = boardW * 0.5f + panBuffer;
         float halfH = boardH * 0.5f + panBuffer;
-        _panBounds = new Rect(-halfW, -halfH, halfW * 2f, halfH * 2f);
+        _panBounds = new Rect(cx - halfW, cy - halfH, halfW * 2f, halfH * 2f);
 
-        transform.position = new Vector3(0f, 0f, -10f);
+        _initialPosition = new Vector3(cx, cy, -10f);
+        transform.position = _initialPosition;
     }
 
     /// <summary>
@@ -104,7 +110,7 @@ public sealed class CameraController : MonoBehaviour
     {
         float startSize = _cam.orthographicSize;
         Vector3 startPos = transform.position;
-        Vector3 targetPos = new(0f, 0f, startPos.z);
+        Vector3 targetPos = new(_initialPosition.x, _initialPosition.y, startPos.z);
         float elapsed = 0f;
 
         while (elapsed < duration)
