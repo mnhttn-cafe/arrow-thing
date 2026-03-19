@@ -254,7 +254,7 @@ Three jobs run in parallel:
 
 Continuous deployment to GitHub Pages. Triggers automatically after the CI workflow succeeds on `main`, or manually via `workflow_dispatch`.
 
-- **`build-webgl`**: Checks out the repo, restores the Unity `Library/` cache, builds WebGL via [`game-ci/unity-builder@v4`](https://github.com/game-ci/unity-builder), and uploads the build as a Pages artifact. Cache key includes Unity version and a hash of `Assets/` + `Packages/manifest.json`. Uses `allowDirtyBuild: true` because two pre-build steps intentionally modify the worktree: the git commit hash is written to `Assets/Resources/git-commit.txt`, and `bundleVersion` in `ProjectSettings/ProjectSettings.asset` is derived from the latest git tag via `sed`. These are build-time injections only — nothing is pushed back to the repository.
+- **`build-webgl`**: Checks out the repo, builds WebGL via [`game-ci/unity-builder@v4`](https://github.com/game-ci/unity-builder), and uploads the build as a Pages artifact. Uses `allowDirtyBuild: true` because two pre-build steps intentionally modify the worktree: the git commit hash is written to `Assets/Resources/git-commit.txt`, and `bundleVersion` in `ProjectSettings/ProjectSettings.asset` is derived from the latest git tag via `sed`. These are build-time injections only — nothing is pushed back to the repository.
 - **`deploy`**: Deploys the artifact to GitHub Pages via `actions/deploy-pages@v4`. Runs in the `github-pages` environment.
 
 WebGL player settings: Gzip compression, JS decompression fallback enabled, hash-based filenames for cache busting. Concurrency group `pages` prevents overlapping deploys.
