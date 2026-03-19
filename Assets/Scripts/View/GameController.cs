@@ -211,9 +211,8 @@ public sealed class GameController : MonoBehaviour
                 if (backBtn != null)
                     backBtn.clicked += () => _cancelGeneration = true;
 
-                loadingOverlay.style.opacity = 0f;
-                yield return null;
                 loadingOverlay.style.display = DisplayStyle.Flex;
+                loadingOverlay.style.opacity = 0f;
                 float fadeIn = 0f;
 
                 const float frameBudgetMs = 12f;
@@ -236,7 +235,7 @@ public sealed class GameController : MonoBehaviour
                         }
                     }
 
-                    fadeIn += Time.deltaTime;
+                    fadeIn += Mathf.Min(Time.deltaTime, 0.033f);
                     float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
                     loadingOverlay.style.opacity = t;
 
@@ -322,9 +321,8 @@ public sealed class GameController : MonoBehaviour
                     backBtn.clicked += () => _cancelGeneration = true;
 
                 // Generation needs multiple frames — fade in overlay while generating
-                loadingOverlay.style.opacity = 0f;
-                yield return null;
                 loadingOverlay.style.display = DisplayStyle.Flex;
+                loadingOverlay.style.opacity = 0f;
                 float fadeIn = 0f;
 
                 // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
@@ -338,7 +336,7 @@ public sealed class GameController : MonoBehaviour
                         SceneManager.LoadScene("MainMenu");
                         yield break;
                     }
-                    fadeIn += Time.deltaTime;
+                    fadeIn += Mathf.Min(Time.deltaTime, 0.033f);
                     float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
                     loadingOverlay.style.opacity = t;
                     generating = generator.MoveNext();
