@@ -18,6 +18,7 @@ public sealed class InputHandler : MonoBehaviour
     private CameraController _camCtrl = null!;
     private GameTimer _timer;
     private ReplayRecorder _recorder;
+    private Action _onArrowCleared;
 
     private InputAction _pointAction = null!;
     private InputAction _selectAction = null!;
@@ -44,7 +45,8 @@ public sealed class InputHandler : MonoBehaviour
         InputActionAsset inputActions,
         float dragThresholdPixels = 15f,
         GameTimer timer = null,
-        ReplayRecorder recorder = null
+        ReplayRecorder recorder = null,
+        Action onArrowCleared = null
     )
     {
         _board = board;
@@ -53,6 +55,7 @@ public sealed class InputHandler : MonoBehaviour
         _dragThresholdPixels = dragThresholdPixels;
         _timer = timer;
         _recorder = recorder;
+        _onArrowCleared = onArrowCleared;
 
         var gameplay = inputActions.FindActionMap("Gameplay", true);
         _pointAction = gameplay.FindAction("Point", true);
@@ -147,17 +150,22 @@ public sealed class InputHandler : MonoBehaviour
                         {
                             if (_recorder != null)
                                 _recorder.RecordClear(solveT, worldPos.x, worldPos.y);
+
+                            if (result == ClearResult.ClearedLast)
+                            {
+                                if (_timer != null)
+                                    _timer.Finish(wallTime);
+                                _boardView.NotifyLastArrowClearing();
+                            }
+                            else
+                            {
+                                _onArrowCleared?.Invoke();
+                            }
                         }
                         else
                         {
                             if (_recorder != null)
                                 _recorder.RecordReject(solveT, worldPos.x, worldPos.y);
-                        }
-
-                        if (_timer != null && result == ClearResult.ClearedLast)
-                        {
-                            _timer.Finish(wallTime);
-                            _boardView.NotifyLastArrowClearing();
                         }
                     }
                 }
