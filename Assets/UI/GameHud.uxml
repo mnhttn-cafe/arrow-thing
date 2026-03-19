@@ -11,7 +11,7 @@
 
     <ui:Button name="back-to-menu-btn" class="hud-btn" text="X" />
     <ui:Label name="timer-label" class="timer-label" text="15" />
-    <ui:Button name="trail-toggle-btn" class="hud-btn hud-btn--bottom-right" text="◉" />
+    <ui:Button name="trail-toggle-btn" class="hud-btn hud-btn--bottom-right" text="||" />
 
     <ui:VisualElement name="leave-modal" class="modal-overlay modal--hidden">
         <ui:VisualElement class="modal-box">
