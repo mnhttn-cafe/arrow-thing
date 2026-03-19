@@ -438,6 +438,21 @@ public sealed class GameController : MonoBehaviour
                 if (backBtn != null)
                     backBtn.style.display = DisplayStyle.None;
                 _recorder?.RecordEndSolve(_timer?.SolveElapsed ?? 0.0);
+                if (_recorder != null)
+                {
+                    var finalData = _recorder.ToReplayData(
+                        _gameId,
+                        _activeSeed,
+                        _w,
+                        _h,
+                        _maxLen,
+                        _inspectionDur,
+                        finalTime: _timer?.SolveElapsed ?? -1.0
+                    );
+                    Debug.Log(
+                        $"SaveManager: final replay:\n{Newtonsoft.Json.JsonConvert.SerializeObject(finalData, Newtonsoft.Json.Formatting.Indented)}"
+                    );
+                }
                 SaveManager.Delete();
                 victory.OnLastArrowClearing();
             };
