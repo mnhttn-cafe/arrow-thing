@@ -64,9 +64,37 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 - Two-phase timer: inspection countdown followed by solve timer. Pure C# — no Unity dependency.
 - Phases: `Inspection → Solving → Finished`. Driven by `Tick(double current)` for display updates.
-- `StartSolve(current, inputTimestamp)` transitions from inspection to solving. `Finish(current, inputTimestamp)` ends the solve.
+- `StartSolve(current)` transitions from inspection to solving. `Finish(current)` ends the solve.
+- `Resume(current, priorElapsed)` skips inspection and restores the timer to a previously saved solve-elapsed offset, used when loading a saved game.
 - Display during play uses frame time (`Time.timeAsDouble`). Final precise time uses input-event timestamps (via `InputAction.canceled` callback) to avoid frame-boundary imprecision.
 - Fires `PhaseChanged` event on transitions.
+
+### `ReplayEvent` (`sealed class`)
+
+- One entry in the save/replay event log. Fields vary by event type; unused fields default to 0/null.
+- `seq` — monotonically increasing, defines event order (timestamps can tie at e.g. `start_solve + clear`).
+- `type` — string constant from `ReplayEventType` (e.g. `"clear"`, `"session_leave"`).
+- `t` — seconds since solve start. Solve-relative time for `clear`/`reject`/`end_solve`; solve elapsed snapshot for `session_leave` (used to restore the timer on resume); always 0 for `start_solve`.
+- `posX`, `posY` — nullable world-space tap position (for `clear`, `reject`; omitted from JSON for other event types). Cell derived via `BoardCoords.WorldToCell`.
+- `timestamp` — ISO 8601 UTC string. Present on all events.
+
+### `ReplayEventType` (`static class`)
+
+- String constants for all event types: `session_start`, `session_leave`, `session_rejoin`, `start_solve`, `clear`, `reject`, `end_solve`.
+- Uses strings (not enum) for human-readable JSON serialization.
+
+### `ReplayData` (`sealed class`)
+
+- Full save/replay record for one game session.
+- Contains: `version`, `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
+- Serializes to JSON via `Newtonsoft.Json`. Stored at `Application.persistentDataPath/savegame.json`.
+
+### `ReplayRecorder` (`sealed class`)
+
+- Accumulates `ReplayEvent`s during play, auto-increments `seq`.
+- Constructor overload accepts prior events + `nextSeq` for resuming a saved game.
+- `ToReplayData(...)` returns a snapshot (copy) of all accumulated events as a `ReplayData`.
+- Pure C# — no Unity dependency.
 
 ### `ClearResult` (`enum`)
 
@@ -102,22 +130,23 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 ### Main Menu (`MainMenu` Scene)
 
-- **`MainMenuController`** — drives the main menu UI via UI Toolkit. Manages three screens (Main Menu, Mode Select, Settings) toggled via USS `display: none`. Mode Select presents a flex-wrap preset grid (Small 10×10, Medium 20×20, Large 40×40, XLarge 100×100) plus a custom preset card with width/height `SliderInt` controls (range 2–400). Custom selection is restored when returning from a game if dimensions don't match a preset. On Start, writes chosen dimensions to `GameSettings` and loads the Game scene. Desktop-only quit button (top-left X) opens a confirmation modal; hidden on mobile via `Application.isMobilePlatform`.
-- **`GameSettings`** (static class, domain layer) — holds `Width`, `Height`, `MaxArrowLength` (derived as `2 * max(w, h)`), and `IsSet` flag. `GameController` reads from it when `IsSet` is true; otherwise uses its serialized inspector fields, preserving the editor testing workflow.
+- **`MainMenuController`** — drives the main menu UI via UI Toolkit. Manages three screens (Main Menu, Mode Select, Settings) toggled via USS `display: none`. Mode Select presents a flex-wrap preset grid (Small 10×10, Medium 20×20, Large 40×40, XLarge 100×100) plus a custom preset card with width/height `SliderInt` controls (range 2–400). Custom selection is restored when returning from a game if dimensions don't match a preset. On Start, writes chosen dimensions to `GameSettings` and loads the Game scene. Desktop-only quit button (top-left X) opens a confirmation modal; hidden on mobile via `Application.isMobilePlatform`. When a saved game exists, a teal "Continue" button appears below "Play"; "Play" always goes to mode select (no confirmation modal). "Continue" calls `GameSettings.Resume()` and loads the Game scene.
+- **`GameSettings`** (static class, domain layer) — holds `Width`, `Height`, `MaxArrowLength`, `IsSet`, `IsResuming`, and `ResumeData`. `GameController` reads from it when `IsSet` is true. `Apply()` sets board params for a new game; `Resume(ReplayData)` sets params and flags a resume; `Reset()` clears all.
+- **`SaveManager`** (static class, view layer) — saves/loads/deletes the in-progress game JSON at `Application.persistentDataPath/savegame.json`. Wraps `Newtonsoft.Json` serialization. Safe: catches I/O exceptions, logs warnings, auto-deletes on corruption.
 
 ### Scene Wiring
 
-- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, `GameTimerView`, and `VictoryController`. Creates the `GameTimer` domain model and passes it to both `InputHandler` (for input-precision timestamps) and `VictoryController` (for final time display). Sets up the HUD UIDocument with a leave-game confirmation modal and trajectory toggle button (bottom-right). During multi-frame generation, shows a loading overlay with a progress bar and percentage label — progress is based on arrow count against an estimated total (see `docs/BoardGeneration.md` § "Loading Progress Heuristic"). Reads board parameters from `GameSettings` when set (menu flow), otherwise from inspector fields (editor testing). Seed is randomized by default (`useRandomSeed` toggle); fixed seed available via inspector for deterministic debugging.
-- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On arrow clears, passes both frame time and input-precision timestamps (via `canceled` callback) to `GameTimer` for timer phase transitions.
+- **`GameController`** — scene entry point. Creates `Board`, runs generation, spawns `BoardView`, wires `CameraController`, `InputHandler`, `GameTimerView`, and `VictoryController`. Creates the `GameTimer` domain model and passes it to both `InputHandler` (for input-precision timestamps) and `VictoryController` (for final time display). Creates a `ReplayRecorder` and passes it to `InputHandler` to capture all tap events. During multi-frame generation, shows a loading overlay with a progress bar and percentage label; the existing HUD X button cancels generation (timer and trail toggle are hidden until generation completes). Progress is based on arrow count against an estimated total (see `docs/BoardGeneration.md` § "Loading Progress Heuristic"). Reads board parameters from `GameSettings`; when `IsResuming`, regenerates the board from the saved seed, applies prior cleared arrows (no animation), and restores the timer via `GameTimer.Resume()`. The leave-game modal adapts to game state: if arrows have been cleared, it shows "Save game?" with Yes/No/X-close (and a "replace save" warning if a prior save exists); if no arrows cleared, it shows "Leave game?" with Yes/No. Board completion records `end_solve` and deletes the save file.
+- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On each tap: records `start_solve` (if transitioning from inspection), then `clear` or `reject` to the optional `ReplayRecorder`. Timer phase transitions driven by input-precision wall-clock timestamps.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom is derived from the initial fit (not configurable). Clamped to board bounds. `ZoomToFit` smoothly returns to the initial view with a SmoothStep coroutine.
 - **`GameTimerView`** — drives a `GameTimer` each frame and updates the HUD timer label. During inspection: grey whole-second countdown, turns red at a configurable warning threshold. During solving: white whole-second count-up. On finish: precise millisecond display.
-- **`VictoryController`** — handles the board-cleared sequence. `GameController` disables input then invokes `OnBoardCleared`, which runs: zoom-to-fit → grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu buttons. Font size auto-scales for long messages. Hides the game HUD when the popup appears.
+- **`VictoryController`** — handles the board-cleared sequence. On last arrow clear, `OnLastArrowClearing` starts the camera zoom-to-fit in parallel with the pull-out animation. After both complete, `OnBoardCleared` triggers grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu buttons. Font size auto-scales for long messages. Hides the game HUD when the popup appears.
 
 ### Board and Arrow Rendering
 
-- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, returns `ClearResult` (replacing the old `bool` return), and triggers pull-out or bump animation accordingly. Tracks clear count to distinguish `ClearedFirst` / `ClearedLast`. Manages trajectory highlight state (`SetAllTrajectoriesVisible`) and fires `TrajectoryAutoOff` when a successful clear is made while the toggle is on.
+- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, returns `ClearResult` (replacing the old `bool` return), and triggers pull-out or bump animation accordingly. Tracks clear count to distinguish `ClearedFirst` / `ClearedLast`. `LastArrowClearing` event is fired via `NotifyLastArrowClearing()` after the caller records the final clear (ensures correct replay event ordering). `BoardCleared` fires after the last arrow's pull-out animation finishes. Manages trail highlight state (`SetAllTrailsVisible`) and fires `TrailAutoOff` when a successful clear is made while the toggle is on.
 - **`BoardGridRenderer`** — spawns dot sprites at each cell center.
-- **`BoardCoords`** — static coordinate mapping between cell indices and world-space positions.
+- **`BoardCoords`** — static coordinate mapping between cell indices and world-space positions. Cell (0,0) maps to world origin (bottom-left corner); each cell is 1×1 Unity unit.
 - **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Manages reject flash and clear/bump animations. Owns a `TrajectoryLine` child GameObject (hidden by default) built from the already-computed extended path — the mesh window `[0, extensionDist]` renders a thin line from the exit point back to the arrow head, making the clearability ray visible to the player.
 - **`ArrowMeshBuilder`** — static builder that generates a polyline mesh for the arrow body with arc-length UVs and a sliding visibility window.
 - **`VisualSettings`** — `ScriptableObject` with visual tuning parameters: colors, widths, animation curves, and durations. Includes `trajectoryHighlightColor` (arrow color at low alpha, for trajectory line rendering).
@@ -183,7 +212,7 @@ The menu UI (UI Toolkit) is designed and tested for desktop resolutions only. On
 UI layout tests verify that all UI elements are visible and not clipped across multiple aspect ratios. Tests load UXML assets programmatically (via `AssetDatabase`) onto a runtime `UIDocument`, simulate different screen sizes by modifying `PanelSettings.referenceResolution`, and assert element bounds.
 
 - **`UILayoutTestHelper`** — reusable utilities: `AspectRatio` struct, `SetPanelReferenceResolution`, `AssertElementFullyVisible`, `WarnElementFullyVisible`, `AssertAllVisibleChildren`, `WaitForLayoutResolve`.
-- **`UILayoutTests`** — 10 UI states (main menu, mode select, settings, quit modal, 3 victory message tiers, game HUD, game HUD leave modal, victory with time) tested across 5 aspect ratios (16:9, 4:3, 21:9, 9:16, 1:1) = 50 test cases. Portrait (9:16) failures are reported as warnings (not hard failures) since fixed-pixel CSS is a known limitation.
+- **`UILayoutTests`** — 12 UI states (main menu, main menu with save/continue, mode select, settings, quit modal, 3 victory message tiers, game HUD, game HUD loading overlay, game HUD leave modal with save variant, victory with time) tested across 5 aspect ratios (16:9, 4:3, 21:9, 9:16, 1:1) = 60 test cases. Portrait (9:16) failures are reported as warnings (not hard failures) since fixed-pixel CSS is a known limitation.
 - PanelSettings is saved/restored in SetUp/TearDown to avoid polluting other tests.
 
 ## CI/CD
@@ -225,7 +254,7 @@ Three jobs run in parallel:
 
 Continuous deployment to GitHub Pages. Triggers automatically after the CI workflow succeeds on `main`, or manually via `workflow_dispatch`.
 
-- **`build-webgl`**: Checks out the repo, restores the Unity `Library/` cache, builds WebGL via [`game-ci/unity-builder@v4`](https://github.com/game-ci/unity-builder), and uploads the build as a Pages artifact. Cache key includes Unity version and a hash of `Assets/` + `Packages/manifest.json`.
+- **`build-webgl`**: Checks out the repo, builds WebGL via [`game-ci/unity-builder@v4`](https://github.com/game-ci/unity-builder), and uploads the build as a Pages artifact. Uses `allowDirtyBuild: true` because two pre-build steps intentionally modify the worktree: the git commit hash is written to `Assets/Resources/git-commit.txt`, and `bundleVersion` in `ProjectSettings/ProjectSettings.asset` is derived from the latest git tag via `sed`. These are build-time injections only — nothing is pushed back to the repository.
 - **`deploy`**: Deploys the artifact to GitHub Pages via `actions/deploy-pages@v4`. Runs in the `github-pages` environment.
 
 WebGL player settings: Gzip compression, JS decompression fallback enabled, hash-based filenames for cache busting. Concurrency group `pages` prevents overlapping deploys.
@@ -248,3 +277,4 @@ WebGL player settings: Gzip compression, JS decompression fallback enabled, hash
 - 2026-03-13: Replaced geometric ray-hopping cycle detection with explicit dependency graph on `Board`. The old algorithm followed only the first hit per ray, missing multi-dependency cycles that surfaced after intermediate arrows were cleared. The new algorithm builds a reachability set from forward deps and checks each candidate cell against it. Generation cache (`boardCacheDict`) merged into `Board` to eliminate desync fragility. `Board.Version` removed (no longer needed without external cache). See [`BoardGeneration.md`](BoardGeneration.md) for the current algorithm.
 - 2026-03-17: Added trajectory highlight toggle for playability on large boards. Trajectory lines reuse the already-computed extended path in `ArrowView` (window `[0, extensionDist]`), requiring no new geometry code. Auto-disables on successful clear to avoid stale lines.
 - 2026-03-16: MVP (v0.1) declared complete. v0.2 planning started: authoritative ASP.NET Core server sharing domain code via monorepo shared `.csproj`, input-based replay system with sequence-numbered events, size-partitioned leaderboards (local + global), simple account system (username/display name/JWT). Offline-first design — game always playable without server. See [`OnlineRoadmap.md`](OnlineRoadmap.md).
+- 2026-03-18: Added save-game and cancel-generation QoL features. Save uses the same event-log format as the planned v0.4 replay system (`ReplayEvent`, `ReplayData`, `ReplayRecorder`) — the save file doubles as a partial replay. `SaveManager` persists to `Application.persistentDataPath/savegame.json`. Resume regenerates the board from seed, applies prior clears via `BoardCoords.WorldToCell`, and restores the solve timer via `GameTimer.Resume()`. Cancel generation reuses the HUD X button (timer/trail hidden during generation). Leave-game modal adapts to state: "Save game?" with Yes/No/X-close when arrows have been cleared (with "replace save" sub-text if prior save exists); "Leave game?" with Yes/No when no arrows cleared. `InputHandler` records all tap events to the `ReplayRecorder`. `end_solve` event recorded on board completion. No auto-save on focus loss — save only via explicit leave modal.

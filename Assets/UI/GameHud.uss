@@ -14,6 +14,7 @@
     color: rgb(180, 180, 200);
     -unity-font-style: bold;
     letter-spacing: 2px;
+    margin-bottom: 24px;
 }
 
 .loading-bar-track {
@@ -146,4 +147,30 @@
 
 .modal-btn:active {
     background-color: rgb(100, 100, 140);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    color: rgb(140, 140, 160);
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 16px;
+    -unity-text-align: middle-center;
+}
+
+.modal-close-btn:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-sublabel {
+    font-size: 16px;
+    color: rgb(140, 140, 160);
+    margin-bottom: 16px;
+    margin-top: -12px;
 }

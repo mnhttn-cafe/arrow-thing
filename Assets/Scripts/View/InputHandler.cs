@@ -7,7 +7,7 @@ using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 /// <summary>
 /// Unified input handler for both PC and mobile. Uses the Input System Gameplay
 /// action map. Left-click / touch is disambiguated into tap (select arrow) vs
-/// drag (pan camera) by a screen-space distance threshold.
+/// drag (pan camera) by a configurable screen-space distance threshold.
 /// </summary>
 public sealed class InputHandler : MonoBehaviour
 {
@@ -17,6 +17,7 @@ public sealed class InputHandler : MonoBehaviour
     private BoardView _boardView = null!;
     private CameraController _camCtrl = null!;
     private GameTimer _timer;
+    private ReplayRecorder _recorder;
 
     private InputAction _pointAction = null!;
     private InputAction _selectAction = null!;
@@ -42,7 +43,8 @@ public sealed class InputHandler : MonoBehaviour
         CameraController camCtrl,
         InputActionAsset inputActions,
         float dragThresholdPixels = 15f,
-        GameTimer timer = null
+        GameTimer timer = null,
+        ReplayRecorder recorder = null
     )
     {
         _board = board;
@@ -50,6 +52,7 @@ public sealed class InputHandler : MonoBehaviour
         _camCtrl = camCtrl;
         _dragThresholdPixels = dragThresholdPixels;
         _timer = timer;
+        _recorder = recorder;
 
         var gameplay = inputActions.FindActionMap("Gameplay", true);
         _pointAction = gameplay.FindAction("Point", true);
@@ -124,21 +127,37 @@ public sealed class InputHandler : MonoBehaviour
                     Arrow arrow = _board.GetArrowAt(cell);
                     if (arrow != null)
                     {
+                        double wallTime =
+                            (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+
                         // Any arrow tap starts the solve timer (ends inspection)
-                        if (_timer != null && !_timer.IsSolving)
+                        bool wasInspecting = _timer != null && !_timer.IsSolving;
+                        if (wasInspecting)
                         {
-                            double wallTime =
-                                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
                             _timer.StartSolve(wallTime);
+                            if (_recorder != null)
+                                _recorder.RecordStartSolve(0.0);
                         }
 
                         ClearResult result = _boardView.TryClearArrow(arrow);
 
+                        double solveT = _timer?.SolveElapsed ?? 0.0;
+
+                        if (result != ClearResult.Blocked)
+                        {
+                            if (_recorder != null)
+                                _recorder.RecordClear(solveT, worldPos.x, worldPos.y);
+                        }
+                        else
+                        {
+                            if (_recorder != null)
+                                _recorder.RecordReject(solveT, worldPos.x, worldPos.y);
+                        }
+
                         if (_timer != null && result == ClearResult.ClearedLast)
                         {
-                            double wallTime =
-                                (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
                             _timer.Finish(wallTime);
+                            _boardView.NotifyLastArrowClearing();
                         }
                     }
                 }

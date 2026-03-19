@@ -11,11 +11,13 @@
 
     <ui:Button name="back-to-menu-btn" class="hud-btn" text="X" />
     <ui:Label name="timer-label" class="timer-label" text="15" />
-    <ui:Button name="trail-toggle-btn" class="hud-btn hud-btn--bottom-right" text="◉" />
+    <ui:Button name="trail-toggle-btn" class="hud-btn hud-btn--bottom-right" text="||" />
 
     <ui:VisualElement name="leave-modal" class="modal-overlay modal--hidden">
         <ui:VisualElement class="modal-box">
-            <ui:Label class="modal-label" text="Leave game?" />
+            <ui:Button name="leave-close-btn" class="modal-close-btn" text="X" />
+            <ui:Label name="leave-title" class="modal-label" text="Save game?" />
+            <ui:Label name="leave-sublabel" class="modal-sublabel modal--hidden" text="This will replace your current save." />
             <ui:VisualElement class="modal-buttons">
                 <ui:Button name="leave-yes-btn" class="modal-btn" text="Yes" />
                 <ui:Button name="leave-no-btn" class="modal-btn" text="No" />

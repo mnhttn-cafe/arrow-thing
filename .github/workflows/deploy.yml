@@ -30,15 +30,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Unity Library
-        uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-WebGL-6000.3.8f1-${{ hashFiles('Assets/**', 'Packages/manifest.json') }}
-          restore-keys: |
-            Library-WebGL-6000.3.8f1-
-            Library-WebGL-
-
       - name: Fetch tags
         run: git fetch --tags
 
@@ -61,6 +52,11 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL
+          # The commit hash and version injection steps above modify the worktree
+          # before the build. This is intentional — nothing is pushed back to the
+          # repository. allowDirtyBuild prevents the builder from rejecting the
+          # build due to these uncommitted changes.
+          allowDirtyBuild: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

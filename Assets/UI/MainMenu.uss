@@ -144,6 +144,20 @@
     background-color: rgb(60, 180, 90);
 }
 
+/* Continue button — teal accent to distinguish from "Play" / "New Board" */
+.continue-btn {
+    background-color: rgb(30, 100, 110);
+}
+
+.continue-btn:hover {
+    background-color: rgb(40, 130, 145);
+}
+
+.continue-btn:active {
+    background-color: rgb(50, 160, 180);
+}
+
+
 /* Quit button (desktop only, top-left X) */
 .quit-btn {
     position: absolute;

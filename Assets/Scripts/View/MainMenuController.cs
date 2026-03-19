@@ -53,7 +53,15 @@ public sealed class MainMenuController : MonoBehaviour
         _quitModal = root.Q("quit-modal");
 
         // Main menu buttons
-        _mainMenu.Q<Button>("play-btn").clicked += OnPlay;
+        var playBtn = _mainMenu.Q<Button>("play-btn");
+        var continueBtn = _mainMenu.Q<Button>("continue-btn");
+
+        if (SaveManager.HasSave())
+            SetVisible(continueBtn, true);
+
+        playBtn.clicked += () => ShowScreen(Screen.ModeSelect);
+        continueBtn.clicked += OnContinue;
+
         _mainMenu.Q<Button>("settings-btn").clicked += OnSettings;
 
         // Quit button — desktop only (no quit action on mobile or web)
@@ -216,7 +224,18 @@ public sealed class MainMenuController : MonoBehaviour
 
     // -- Callbacks -----------------------------------------------------------
 
-    private void OnPlay() => ShowScreen(Screen.ModeSelect);
+    private void OnContinue()
+    {
+        ReplayData data = SaveManager.Load();
+        if (data == null)
+        {
+            // Save was corrupted — fall back to fresh game
+            ShowScreen(Screen.ModeSelect);
+            return;
+        }
+        GameSettings.Resume(data);
+        SceneManager.LoadScene("Game");
+    }
 
     private void OnSettings() => ShowScreen(Screen.Settings);
 

@@ -17,6 +17,13 @@ public sealed class BoardView : MonoBehaviour
     private ArrowView _tintedBlocker;
 
     /// <summary>
+    /// Fired after the last arrow is cleared and recorded, but before its pull-out animation finishes.
+    /// Must be invoked explicitly via <see cref="NotifyLastArrowClearing"/> after the caller
+    /// has finished recording the clear event, to ensure correct event ordering.
+    /// </summary>
+    public event System.Action LastArrowClearing;
+
+    /// <summary>
     /// Fired after the last arrow's pull-out animation finishes (board fully cleared).
     /// </summary>
     public event System.Action BoardCleared;
@@ -142,6 +149,11 @@ public sealed class BoardView : MonoBehaviour
             return ClearResult.ClearedFirst;
         return ClearResult.Cleared;
     }
+
+    /// <summary>
+    /// Call after recording the final clear event to fire <see cref="LastArrowClearing"/>.
+    /// </summary>
+    public void NotifyLastArrowClearing() => LastArrowClearing?.Invoke();
 
     private void ClearPreviousTints()
     {

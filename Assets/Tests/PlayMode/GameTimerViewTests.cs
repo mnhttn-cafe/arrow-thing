@@ -121,6 +121,8 @@ public class GameTimerViewTests
         doc.visualTreeAsset = uxml;
 
         var timer = new GameTimer(inspectionDuration);
+        double wallNow = (double)System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+        timer.Start(wallNow);
         timerView = _host.AddComponent<GameTimerView>();
         timerView.Init(timer, doc);
         return timer;

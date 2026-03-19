@@ -23,7 +23,11 @@ public sealed class GameTimerView : MonoBehaviour
         _label = hudDocument.rootVisualElement.Q<Label>("timer-label");
 
         _timer.PhaseChanged += OnPhaseChanged;
-        _timer.Start(GetWallTime());
+
+        // Timer is already started/resumed by GameController before Init is called.
+        // Apply the current phase styling in case we're resuming into Solving.
+        if (_timer.CurrentPhase == GameTimer.Phase.Solving)
+            OnPhaseChanged(GameTimer.Phase.Solving);
 
         UpdateLabel();
     }

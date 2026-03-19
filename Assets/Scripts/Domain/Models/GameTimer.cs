@@ -83,6 +83,19 @@ public sealed class GameTimer
     }
 
     /// <summary>
+    /// Resume solving from a previously saved elapsed time.
+    /// Skips the inspection phase and restores the solve timer offset.
+    /// </summary>
+    public void Resume(double current, double priorElapsed)
+    {
+        _solveStart = current - priorElapsed;
+        SolveElapsed = priorElapsed;
+        InspectionRemaining = 0.0;
+        CurrentPhase = Phase.Solving;
+        PhaseChanged?.Invoke(Phase.Solving);
+    }
+
+    /// <summary>
     /// End the solve. Uses the same clock as Tick.
     /// </summary>
     public void Finish(double current)
