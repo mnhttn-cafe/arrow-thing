@@ -177,6 +177,7 @@ public sealed class GameController : MonoBehaviour
             if (loadingOverlay != null)
             {
                 loadingOverlay.style.display = DisplayStyle.None;
+                loadingOverlay.style.opacity = 0f;
                 loadingBarFill = loadingOverlay.Q("loading-bar-fill");
                 loadingPercent = loadingOverlay.Q<Label>("loading-percent");
             }
