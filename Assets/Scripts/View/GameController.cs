@@ -111,6 +111,7 @@ public sealed class GameController : MonoBehaviour
     private Label _timerLabel;
     private Button _trailToggleBtn;
     private Button _backBtn;
+    private VisualElement _cancelGenModal;
     private float _loadProgress;
     private bool _loadingActive;
     private float _loadingFadeStart;
@@ -269,6 +270,7 @@ public sealed class GameController : MonoBehaviour
         _backBtn = hudRoot.Q<Button>("back-to-menu-btn");
         _timerLabel = hudRoot.Q<Label>("timer-label");
         _trailToggleBtn = hudRoot.Q<Button>("trail-toggle-btn");
+        _cancelGenModal = hudRoot.Q("cancel-generation-modal");
 
         if (_loadingOverlay != null)
         {
@@ -602,8 +604,21 @@ public sealed class GameController : MonoBehaviour
             _timerLabel.style.display = DisplayStyle.None;
         if (_trailToggleBtn != null)
             _trailToggleBtn.style.display = DisplayStyle.None;
-        if (_backBtn != null)
+        if (_backBtn != null && _cancelGenModal != null)
+        {
+            _backBtn.clicked += () => _cancelGenModal.RemoveFromClassList("modal--hidden");
+            _cancelGenModal.Q<Button>("cancel-generation-yes-btn").clicked += () =>
+            {
+                _cancelGenModal.AddToClassList("modal--hidden");
+                _cancelRequested = true;
+            };
+            _cancelGenModal.Q<Button>("cancel-generation-no-btn").clicked += () =>
+                _cancelGenModal.AddToClassList("modal--hidden");
+        }
+        else if (_backBtn != null)
+        {
             _backBtn.clicked += () => _cancelRequested = true;
+        }
 
         _loadingOverlay.style.display = DisplayStyle.Flex;
         _loadingOverlay.style.opacity = 0f;
@@ -636,6 +651,7 @@ public sealed class GameController : MonoBehaviour
             _trailToggleBtn.style.display = DisplayStyle.Flex;
         if (_backBtn != null)
             _backBtn.clickable = new Clickable(() => { });
+        _cancelGenModal?.AddToClassList("modal--hidden");
     }
 
     // --- Leave modal ---
