@@ -161,6 +161,8 @@ public sealed class GameController : MonoBehaviour
         Label timerLabel = null;
         Button trailToggleBtn = null;
 
+        VisualElement cancelGenModal = null;
+
         if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
         {
             var hudRoot = hudUIDocument.rootVisualElement;
@@ -168,6 +170,7 @@ public sealed class GameController : MonoBehaviour
             backBtn = hudRoot.Q<Button>("back-to-menu-btn");
             timerLabel = hudRoot.Q<Label>("timer-label");
             trailToggleBtn = hudRoot.Q<Button>("trail-toggle-btn");
+            cancelGenModal = hudRoot.Q("cancel-generation-modal");
 
             if (loadingOverlay != null)
             {
@@ -203,9 +206,19 @@ public sealed class GameController : MonoBehaviour
             if (trailToggleBtn != null)
                 trailToggleBtn.style.display = DisplayStyle.None;
 
-            // Wire X button to cancel generation (no modal — immediate cancel)
+            // Wire X button to show cancel-generation confirmation modal
             if (backBtn != null)
-                backBtn.clicked += () => _cancelGeneration = true;
+                backBtn.clicked += () => cancelGenModal?.RemoveFromClassList("modal--hidden");
+            if (cancelGenModal != null)
+            {
+                cancelGenModal.Q<Button>("cancel-generation-yes-btn").clicked += () =>
+                {
+                    cancelGenModal.AddToClassList("modal--hidden");
+                    _cancelGeneration = true;
+                };
+                cancelGenModal.Q<Button>("cancel-generation-no-btn").clicked += () =>
+                    cancelGenModal.AddToClassList("modal--hidden");
+            }
 
             // Generation needs multiple frames — fade in overlay while generating
             loadingOverlay.style.display = DisplayStyle.Flex;
@@ -258,6 +271,7 @@ public sealed class GameController : MonoBehaviour
             // Clear cancel handler — X button will be re-wired for leave modal below
             if (backBtn != null)
                 backBtn.clickable = new Clickable(() => { });
+            cancelGenModal?.AddToClassList("modal--hidden");
         }
         else
         {
