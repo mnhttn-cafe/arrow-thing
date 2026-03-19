@@ -69,13 +69,13 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - Display during play uses frame time (`Time.timeAsDouble`). Final precise time uses input-event timestamps (via `InputAction.canceled` callback) to avoid frame-boundary imprecision.
 - Fires `PhaseChanged` event on transitions.
 
-### `ReplayEvent` (`sealed class`, `[Serializable]`)
+### `ReplayEvent` (`sealed class`)
 
 - One entry in the save/replay event log. Fields vary by event type; unused fields default to 0/null.
 - `seq` — monotonically increasing, defines event order (timestamps can tie at e.g. `start_solve + clear`).
 - `type` — string constant from `ReplayEventType` (e.g. `"clear"`, `"session_leave"`).
 - `t` — seconds since solve start. Solve-relative time for `clear`/`reject`/`end_solve`; solve elapsed snapshot for `session_leave` (used to restore the timer on resume); always 0 for `start_solve`.
-- `posX`, `posY` — world-space tap position (for `clear`, `reject`). Cell derived via `BoardCoords.WorldToCell`.
+- `posX`, `posY` — nullable world-space tap position (for `clear`, `reject`; omitted from JSON for other event types). Cell derived via `BoardCoords.WorldToCell`.
 - `timestamp` — ISO 8601 UTC string. Present on all events.
 
 ### `ReplayEventType` (`static class`)
@@ -83,7 +83,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - String constants for all event types: `session_start`, `session_leave`, `session_rejoin`, `start_solve`, `clear`, `reject`, `end_solve`.
 - Uses strings (not enum) for human-readable JSON serialization.
 
-### `ReplayData` (`sealed class`, `[Serializable]`)
+### `ReplayData` (`sealed class`)
 
 - Full save/replay record for one game session.
 - Contains: `version`, `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
@@ -140,13 +140,13 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On each tap: records `start_solve` (if transitioning from inspection), then `clear` or `reject` to the optional `ReplayRecorder`. Timer phase transitions driven by input-precision wall-clock timestamps.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom is derived from the initial fit (not configurable). Clamped to board bounds. `ZoomToFit` smoothly returns to the initial view with a SmoothStep coroutine.
 - **`GameTimerView`** — drives a `GameTimer` each frame and updates the HUD timer label. During inspection: grey whole-second countdown, turns red at a configurable warning threshold. During solving: white whole-second count-up. On finish: precise millisecond display.
-- **`VictoryController`** — handles the board-cleared sequence. `GameController` disables input then invokes `OnBoardCleared`, which runs: zoom-to-fit → grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu buttons. Font size auto-scales for long messages. Hides the game HUD when the popup appears.
+- **`VictoryController`** — handles the board-cleared sequence. On last arrow clear, `OnLastArrowClearing` starts the camera zoom-to-fit in parallel with the pull-out animation. After both complete, `OnBoardCleared` triggers grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu buttons. Font size auto-scales for long messages. Hides the game HUD when the popup appears.
 
 ### Board and Arrow Rendering
 
-- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, returns `ClearResult` (replacing the old `bool` return), and triggers pull-out or bump animation accordingly. Tracks clear count to distinguish `ClearedFirst` / `ClearedLast`. Manages trajectory highlight state (`SetAllTrajectoriesVisible`) and fires `TrajectoryAutoOff` when a successful clear is made while the toggle is on.
+- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Spawns grid and arrow views. `TryClearArrow` checks clearability, returns `ClearResult` (replacing the old `bool` return), and triggers pull-out or bump animation accordingly. Tracks clear count to distinguish `ClearedFirst` / `ClearedLast`. `LastArrowClearing` event is fired via `NotifyLastArrowClearing()` after the caller records the final clear (ensures correct replay event ordering). `BoardCleared` fires after the last arrow's pull-out animation finishes. Manages trail highlight state (`SetAllTrailsVisible`) and fires `TrailAutoOff` when a successful clear is made while the toggle is on.
 - **`BoardGridRenderer`** — spawns dot sprites at each cell center.
-- **`BoardCoords`** — static coordinate mapping between cell indices and world-space positions.
+- **`BoardCoords`** — static coordinate mapping between cell indices and world-space positions. Cell (0,0) maps to world origin (bottom-left corner); each cell is 1×1 Unity unit.
 - **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Manages reject flash and clear/bump animations. Owns a `TrajectoryLine` child GameObject (hidden by default) built from the already-computed extended path — the mesh window `[0, extensionDist]` renders a thin line from the exit point back to the arrow head, making the clearability ray visible to the player.
 - **`ArrowMeshBuilder`** — static builder that generates a polyline mesh for the arrow body with arc-length UVs and a sliding visibility window.
 - **`VisualSettings`** — `ScriptableObject` with visual tuning parameters: colors, widths, animation curves, and durations. Includes `trajectoryHighlightColor` (arrow color at low alpha, for trajectory line rendering).

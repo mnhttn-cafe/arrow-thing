@@ -52,7 +52,7 @@ public static class SaveManager
         string path = SavePath;
         try
         {
-            string json = JsonConvert.SerializeObject(data);
+            string json = JsonConvert.SerializeObject(data, Formatting.Indented);
             File.WriteAllText(path, json);
             Debug.Log($"SaveManager: saved to {path}");
         }
