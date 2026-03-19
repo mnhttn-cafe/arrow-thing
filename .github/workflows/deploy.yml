@@ -61,6 +61,10 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL
+          # The commit hash and version injection steps above modify the worktree
+          # before the build. This is intentional — nothing is pushed back to the
+          # repository. allowDirtyBuild prevents the builder from rejecting the
+          # build due to these uncommitted changes.
           allowDirtyBuild: true
 
       - name: Upload Pages artifact
