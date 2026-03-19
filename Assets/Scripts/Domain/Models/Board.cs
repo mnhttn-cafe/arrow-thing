@@ -45,13 +45,15 @@ public sealed class Board
     }
 
     /// <summary>
-    /// Restores arrows from a snapshot in bulk. Places all arrows into occupancy first,
-    /// then builds the dependency graph in a single pass. Much faster than calling
-    /// AddArrow individually because it avoids the O(n²) reverse-dependency scan.
+    /// Incrementally restores arrows from a snapshot. Places each arrow into occupancy
+    /// and yields the count placed so far (for progress reporting). After all arrows are
+    /// placed, builds the dependency graph in one forward-ray pass. Much faster than
+    /// calling AddArrow individually because it avoids the O(n²) reverse-dependency scan.
+    /// Caller must exhaust the enumerator for the board to be usable.
     /// </summary>
-    public void RestoreArrows(IReadOnlyList<Arrow> arrows)
+    public IEnumerator<int> RestoreArrowsIncremental(IReadOnlyList<Arrow> arrows)
     {
-        // Phase 1: place all arrows into occupancy
+        // Phase 1: place arrows into occupancy, yielding after each
         foreach (Arrow arrow in arrows)
         {
             _arrows.Add(arrow);
@@ -60,6 +62,7 @@ public sealed class Board
             OccupiedCellCount += arrow.Cells.Count;
             _dependsOn[arrow] = new HashSet<Arrow>();
             _dependedOnBy[arrow] = new HashSet<Arrow>();
+            yield return _arrows.Count;
         }
 
         // Phase 2: build dependency graph — each arrow's forward ray hits are its deps

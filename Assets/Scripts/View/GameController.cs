@@ -193,8 +193,73 @@ public sealed class GameController : MonoBehaviour
             foreach (List<Cell> arrowCells in priorData.boardSnapshot)
                 snapshotArrows.Add(new Arrow(arrowCells));
 
-            // Bulk restore: occupancy + dependency graph in one pass (no per-arrow O(n²) scan)
-            _board.RestoreArrows(snapshotArrows);
+            int totalArrows = snapshotArrows.Count;
+            var restorer = _board.RestoreArrowsIncremental(snapshotArrows);
+
+            if (loadingOverlay != null)
+            {
+                var loadingLabel = loadingOverlay.Q<Label>("loading-label");
+                if (loadingLabel != null)
+                    loadingLabel.text = "Resuming...";
+
+                if (timerLabel != null)
+                    timerLabel.style.display = DisplayStyle.None;
+                if (trailToggleBtn != null)
+                    trailToggleBtn.style.display = DisplayStyle.None;
+
+                if (backBtn != null)
+                    backBtn.clicked += () => _cancelGeneration = true;
+
+                loadingOverlay.style.display = DisplayStyle.Flex;
+                loadingOverlay.style.opacity = 0f;
+                float fadeIn = 0f;
+
+                while (restorer.MoveNext())
+                {
+                    if (_cancelGeneration)
+                    {
+                        SceneManager.LoadScene("MainMenu");
+                        yield break;
+                    }
+
+                    fadeIn += Time.deltaTime;
+                    float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                    loadingOverlay.style.opacity = t;
+
+                    if (loadingBarFill != null)
+                    {
+                        float progress = (float)restorer.Current / totalArrows;
+                        loadingBarFill.style.width = new StyleLength(
+                            new Length(progress * 100f, LengthUnit.Percent)
+                        );
+                        if (loadingPercent != null)
+                            loadingPercent.text = Mathf.RoundToInt(progress * 100f) + "%";
+                    }
+                    yield return null;
+                }
+
+                float currentOpacity = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                yield return FadeElement(
+                    loadingOverlay,
+                    currentOpacity,
+                    0f,
+                    loadingFadeDuration * currentOpacity,
+                    hide: true
+                );
+
+                if (timerLabel != null)
+                    timerLabel.style.display = DisplayStyle.Flex;
+                if (trailToggleBtn != null)
+                    trailToggleBtn.style.display = DisplayStyle.Flex;
+
+                if (backBtn != null)
+                    backBtn.clickable = new Clickable(() => { });
+            }
+            else
+            {
+                while (restorer.MoveNext())
+                    yield return null;
+            }
         }
         else
         {
