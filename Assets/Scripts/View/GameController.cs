@@ -214,12 +214,24 @@ public sealed class GameController : MonoBehaviour
                 loadingOverlay.style.opacity = 0f;
                 float fadeIn = 0f;
 
-                while (restorer.MoveNext())
+                const float frameBudgetMs = 12f;
+                bool restoring = true;
+                while (restoring)
                 {
                     if (_cancelGeneration)
                     {
                         SceneManager.LoadScene("MainMenu");
                         yield break;
+                    }
+
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    while (sw.ElapsedMilliseconds < frameBudgetMs)
+                    {
+                        if (!restorer.MoveNext())
+                        {
+                            restoring = false;
+                            break;
+                        }
                     }
 
                     fadeIn += Time.deltaTime;
@@ -257,8 +269,22 @@ public sealed class GameController : MonoBehaviour
             }
             else
             {
-                while (restorer.MoveNext())
-                    yield return null;
+                const float fallbackBudgetMs = 12f;
+                bool restoring = true;
+                while (restoring)
+                {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    while (sw.ElapsedMilliseconds < fallbackBudgetMs)
+                    {
+                        if (!restorer.MoveNext())
+                        {
+                            restoring = false;
+                            break;
+                        }
+                    }
+                    if (restoring)
+                        yield return null;
+                }
             }
         }
         else
