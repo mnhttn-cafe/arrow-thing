@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using System.Linq;
 
 [TestFixture]
 public class ReplayRecorderTests
@@ -168,6 +169,76 @@ public class ReplayRecorderTests
         rec.RecordClear(1.0, 0f, 0f);
         Assert.AreEqual(1, data.events.Count);
         Assert.AreEqual(2, rec.Events.Count);
+    }
+
+    // ── boardSnapshot ─────────────────────────────────────────────────────────
+
+    [Test]
+    public void ToReplayData_WithSnapshot_SnapshotIsPreserved()
+    {
+        var rec = new ReplayRecorder();
+        rec.RecordSessionStart();
+
+        var snapshot = new List<List<Cell>>
+        {
+            new List<Cell> { new Cell(0, 0), new Cell(0, 1) },
+            new List<Cell> { new Cell(2, 3), new Cell(3, 3), new Cell(4, 3) },
+        };
+
+        var data = rec.ToReplayData("g", 1, 5, 5, 10, 15f, boardSnapshot: snapshot);
+
+        Assert.IsNotNull(data.boardSnapshot);
+        Assert.AreEqual(2, data.boardSnapshot.Count);
+        Assert.AreEqual(new Cell(0, 0), data.boardSnapshot[0][0]);
+        Assert.AreEqual(new Cell(0, 1), data.boardSnapshot[0][1]);
+        Assert.AreEqual(3, data.boardSnapshot[1].Count);
+    }
+
+    [Test]
+    public void ToReplayData_WithSnapshot_SetsVersionTwo()
+    {
+        var rec = new ReplayRecorder();
+        var snapshot = new List<List<Cell>>
+        {
+            new List<Cell> { new Cell(0, 0), new Cell(1, 0) },
+        };
+        var data = rec.ToReplayData("g", 0, 5, 5, 10, 15f, boardSnapshot: snapshot);
+        Assert.AreEqual(2, data.version);
+    }
+
+    [Test]
+    public void ToReplayData_WithoutSnapshot_SnapshotIsNull()
+    {
+        var rec = new ReplayRecorder();
+        rec.RecordSessionStart();
+        var data = rec.ToReplayData("g", 0, 5, 5, 10, 15f);
+        Assert.IsNull(data.boardSnapshot);
+    }
+
+    [Test]
+    public void ResumeWithSnapshot_CanRestoreArrowsOnBoard()
+    {
+        // Build a minimal board from snapshot cells (domain-layer only, no Unity)
+        var snapshotArrows = new List<List<Cell>>
+        {
+            new List<Cell> { new Cell(0, 0), new Cell(0, 1), new Cell(0, 2) },
+            new List<Cell> { new Cell(3, 3), new Cell(2, 3) },
+        };
+
+        var board = new Board(6, 6);
+        foreach (var arrowCells in snapshotArrows)
+            board.AddArrow(new Arrow(arrowCells));
+
+        Assert.AreEqual(2, board.Arrows.Count);
+
+        // Verify cells match what was stored in the snapshot
+        var restoredCells0 = board.Arrows[0].Cells.ToList();
+        Assert.AreEqual(new Cell(0, 0), restoredCells0[0]);
+        Assert.AreEqual(new Cell(0, 2), restoredCells0[2]);
+
+        var restoredCells1 = board.Arrows[1].Cells.ToList();
+        Assert.AreEqual(new Cell(3, 3), restoredCells1[0]);
+        Assert.AreEqual(new Cell(2, 3), restoredCells1[1]);
     }
 
     // ── Resume from prior events ──────────────────────────────────────────────

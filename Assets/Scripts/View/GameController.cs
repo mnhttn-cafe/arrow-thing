@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -153,7 +154,11 @@ public sealed class GameController : MonoBehaviour
             : (GameSettings.IsSet || useRandomSeed) ? Environment.TickCount
             : seed;
 
-        // Generate board, overlapping with loading overlay fade when needed
+        // Snapshot resume: restore board directly without regeneration
+        bool hasSnapshot =
+            priorData?.boardSnapshot != null && priorData.boardSnapshot.Count > 0;
+
+        // Resolve HUD elements (needed for generation overlay and back button wiring)
         VisualElement loadingOverlay = null;
         VisualElement loadingBarFill = null;
         Label loadingPercent = null;
@@ -178,108 +183,119 @@ public sealed class GameController : MonoBehaviour
         }
 
         _board = new Board(_w, _h);
-        var generator = BoardGeneration.FillBoardIncremental(
-            _board,
-            minLen,
-            _maxLen,
-            new System.Random(_activeSeed)
-        );
 
-        bool generating = generator.MoveNext();
-
-        if (generating && loadingOverlay != null)
+        if (hasSnapshot)
         {
-            // Update label for resumed games
-            if (priorData != null)
-            {
-                var loadingLabel = loadingOverlay.Q<Label>("loading-label");
-                if (loadingLabel != null)
-                    loadingLabel.text = "Regenerating...";
-            }
-
-            // Hide gameplay HUD elements during generation
-            if (timerLabel != null)
-                timerLabel.style.display = DisplayStyle.None;
-            if (trailToggleBtn != null)
-                trailToggleBtn.style.display = DisplayStyle.None;
-
-            // Wire X button to cancel generation (no modal — immediate cancel)
-            if (backBtn != null)
-                backBtn.clicked += () => _cancelGeneration = true;
-
-            // Generation needs multiple frames — fade in overlay while generating
-            loadingOverlay.style.display = DisplayStyle.Flex;
-            loadingOverlay.style.opacity = 0f;
-            float fadeIn = 0f;
-
-            // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
-            const float estimatedArrowDensity = 0.064f;
-            float estimatedArrows = _w * _h * estimatedArrowDensity;
-
-            while (generating)
-            {
-                if (_cancelGeneration)
-                {
-                    SceneManager.LoadScene("MainMenu");
-                    yield break;
-                }
-                fadeIn += Time.deltaTime;
-                float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
-                loadingOverlay.style.opacity = t;
-                generating = generator.MoveNext();
-                if (loadingBarFill != null)
-                {
-                    float progress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
-                    loadingBarFill.style.width = new StyleLength(
-                        new Length(progress * 100f, LengthUnit.Percent)
-                    );
-                    if (loadingPercent != null)
-                        loadingPercent.text = Mathf.RoundToInt(progress * 100f) + "%";
-                }
-                yield return null;
-            }
-
-            // Fade out from current opacity
-            float currentOpacity = Mathf.Clamp01(fadeIn / loadingFadeDuration);
-            yield return FadeElement(
-                loadingOverlay,
-                currentOpacity,
-                0f,
-                loadingFadeDuration * currentOpacity,
-                hide: true
-            );
-
-            // Restore gameplay HUD elements after generation
-            if (timerLabel != null)
-                timerLabel.style.display = DisplayStyle.Flex;
-            if (trailToggleBtn != null)
-                trailToggleBtn.style.display = DisplayStyle.Flex;
-
-            // Clear cancel handler — X button will be re-wired for leave modal below
-            if (backBtn != null)
-                backBtn.clickable = new Clickable(() => { });
+            // Fast path: restore remaining arrows directly — no generation wait
+            foreach (List<Cell> arrowCells in priorData.boardSnapshot)
+                _board.AddArrow(new Arrow(arrowCells));
         }
         else
         {
-            // Finish any remaining generation (no overlay needed)
-            while (generating)
+            // Generate board (new game or legacy v1 save without snapshot)
+            var generator = BoardGeneration.FillBoardIncremental(
+                _board,
+                minLen,
+                _maxLen,
+                new System.Random(_activeSeed)
+            );
+
+            bool generating = generator.MoveNext();
+
+            if (generating && loadingOverlay != null)
             {
-                generating = generator.MoveNext();
-                yield return null;
+                // Update label for legacy resumed games (v1 saves without snapshot)
+                if (priorData != null)
+                {
+                    var loadingLabel = loadingOverlay.Q<Label>("loading-label");
+                    if (loadingLabel != null)
+                        loadingLabel.text = "Regenerating...";
+                }
+
+                // Hide gameplay HUD elements during generation
+                if (timerLabel != null)
+                    timerLabel.style.display = DisplayStyle.None;
+                if (trailToggleBtn != null)
+                    trailToggleBtn.style.display = DisplayStyle.None;
+
+                // Wire X button to cancel generation (no modal — immediate cancel)
+                if (backBtn != null)
+                    backBtn.clicked += () => _cancelGeneration = true;
+
+                // Generation needs multiple frames — fade in overlay while generating
+                loadingOverlay.style.display = DisplayStyle.Flex;
+                loadingOverlay.style.opacity = 0f;
+                float fadeIn = 0f;
+
+                // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
+                const float estimatedArrowDensity = 0.064f;
+                float estimatedArrows = _w * _h * estimatedArrowDensity;
+
+                while (generating)
+                {
+                    if (_cancelGeneration)
+                    {
+                        SceneManager.LoadScene("MainMenu");
+                        yield break;
+                    }
+                    fadeIn += Time.deltaTime;
+                    float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                    loadingOverlay.style.opacity = t;
+                    generating = generator.MoveNext();
+                    if (loadingBarFill != null)
+                    {
+                        float progress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
+                        loadingBarFill.style.width = new StyleLength(
+                            new Length(progress * 100f, LengthUnit.Percent)
+                        );
+                        if (loadingPercent != null)
+                            loadingPercent.text = Mathf.RoundToInt(progress * 100f) + "%";
+                    }
+                    yield return null;
+                }
+
+                // Fade out from current opacity
+                float currentOpacity = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                yield return FadeElement(
+                    loadingOverlay,
+                    currentOpacity,
+                    0f,
+                    loadingFadeDuration * currentOpacity,
+                    hide: true
+                );
+
+                // Restore gameplay HUD elements after generation
+                if (timerLabel != null)
+                    timerLabel.style.display = DisplayStyle.Flex;
+                if (trailToggleBtn != null)
+                    trailToggleBtn.style.display = DisplayStyle.Flex;
+
+                // Clear cancel handler — X button will be re-wired for leave modal below
+                if (backBtn != null)
+                    backBtn.clickable = new Clickable(() => { });
+            }
+            else
+            {
+                // Finish any remaining generation (no overlay needed)
+                while (generating)
+                {
+                    generating = generator.MoveNext();
+                    yield return null;
+                }
+            }
+
+            // Guard: empty board means generation params are too restrictive
+            if (_board.Arrows.Count == 0)
+            {
+                Debug.LogWarning(
+                    $"BoardGeneration produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
+                );
+                SceneManager.LoadScene("MainMenu");
+                yield break;
             }
         }
 
-        // Guard: empty board means generation params are too restrictive
-        if (_board.Arrows.Count == 0)
-        {
-            Debug.LogWarning(
-                $"BoardGeneration produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
-            );
-            SceneManager.LoadScene("MainMenu");
-            yield break;
-        }
-
-        // --- Resume: apply prior clears with no animation ---
+        // --- Resume: restore timer state and recorder from prior event log ---
         bool resumeSolving = false;
         double resumeSolveElapsed = 0.0;
 
@@ -289,7 +305,8 @@ public sealed class GameController : MonoBehaviour
 
             foreach (ReplayEvent evt in priorData.events)
             {
-                if (evt.type == ReplayEventType.Clear)
+                // Legacy path only: replay clears to reconstruct board state from seed
+                if (!hasSnapshot && evt.type == ReplayEventType.Clear)
                 {
                     var worldPos = new UnityEngine.Vector3(evt.posX ?? 0f, evt.posY ?? 0f, 0f);
                     Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
@@ -465,6 +482,14 @@ public sealed class GameController : MonoBehaviour
     /// <summary>Returns true if any arrows have been cleared this session.</summary>
     private bool HasAnyClearedArrows => _board != null && _board.Arrows.Count < _initialArrowCount;
 
+    private List<List<Cell>> GetBoardSnapshot()
+    {
+        var snapshot = new List<List<Cell>>(_board.Arrows.Count);
+        foreach (Arrow arrow in _board.Arrows)
+            snapshot.Add(new List<Cell>(arrow.Cells));
+        return snapshot;
+    }
+
     /// <summary>
     /// True when saving would overwrite a different game's save file.
     /// Only possible for a new game when a prior save exists.
@@ -518,7 +543,10 @@ public sealed class GameController : MonoBehaviour
         {
             _clearsSinceLastSave = 0;
             SaveManager.Save(
-                _recorder.ToReplayData(_gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur)
+                _recorder.ToReplayData(
+                    _gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur,
+                    boardSnapshot: GetBoardSnapshot()
+                )
             );
         }
     }
@@ -529,7 +557,10 @@ public sealed class GameController : MonoBehaviour
         {
             _recorder.RecordSessionLeave(_timer.SolveElapsed);
             SaveManager.Save(
-                _recorder.ToReplayData(_gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur)
+                _recorder.ToReplayData(
+                    _gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur,
+                    boardSnapshot: GetBoardSnapshot()
+                )
             );
         }
         SceneManager.LoadScene("MainMenu");

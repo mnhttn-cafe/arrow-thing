@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -11,6 +12,22 @@ public static class SaveManager
     private const string FileName = "savegame.json";
 
     private static string SavePath => Path.Combine(Application.persistentDataPath, FileName);
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")]
+    private static extern void SyncFilesystem();
+#endif
+
+    /// <summary>
+    /// Flushes the in-memory Emscripten filesystem to IndexedDB on WebGL so saves
+    /// survive page refresh. No-op on all other platforms.
+    /// </summary>
+    private static void SyncFS()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        SyncFilesystem();
+#endif
+    }
 
     /// <summary>Returns true if a save file currently exists on disk.</summary>
     public static bool HasSave() => File.Exists(SavePath);
@@ -53,6 +70,7 @@ public static class SaveManager
         {
             string json = JsonConvert.SerializeObject(data, Formatting.Indented);
             File.WriteAllText(path, json);
+            SyncFS();
         }
         catch (System.Exception e)
         {
@@ -69,6 +87,7 @@ public static class SaveManager
             try
             {
                 File.Delete(path);
+                SyncFS();
             }
             catch (System.Exception e)
             {

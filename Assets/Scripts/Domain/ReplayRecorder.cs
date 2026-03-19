@@ -133,6 +133,10 @@ public sealed class ReplayRecorder
     /// <summary>
     /// Produces a <see cref="ReplayData"/> snapshot of all accumulated events.
     /// </summary>
+    /// <param name="boardSnapshot">
+    /// Remaining arrows at save time. Each inner list is one arrow's cells (head to tail).
+    /// Pass null only for legacy compatibility; all new saves should include a snapshot.
+    /// </param>
     /// <param name="finalTime">Pass the solve elapsed at completion, or -1 for in-progress.</param>
     public ReplayData ToReplayData(
         string gameId,
@@ -141,18 +145,20 @@ public sealed class ReplayRecorder
         int boardHeight,
         int maxArrowLength,
         float inspectionDuration,
+        List<List<Cell>> boardSnapshot = null,
         double finalTime = -1.0
     )
     {
         return new ReplayData
         {
-            version = 1,
+            version = 2,
             gameId = gameId,
             seed = seed,
             boardWidth = boardWidth,
             boardHeight = boardHeight,
             maxArrowLength = maxArrowLength,
             inspectionDuration = inspectionDuration,
+            boardSnapshot = boardSnapshot,
             events = new List<ReplayEvent>(_events),
             finalTime = finalTime,
         };
