@@ -213,7 +213,7 @@ public sealed class GameController : MonoBehaviour
 
                 loadingOverlay.style.display = DisplayStyle.Flex;
                 loadingOverlay.style.opacity = 0f;
-                float fadeIn = 0f;
+                float fadeStart = Time.unscaledTime;
 
                 const float frameBudgetMs = 12f;
                 bool restoring = true;
@@ -235,9 +235,9 @@ public sealed class GameController : MonoBehaviour
                         }
                     }
 
-                    fadeIn += Mathf.Min(Time.deltaTime, 0.033f);
-                    float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
-                    loadingOverlay.style.opacity = t;
+                    loadingOverlay.style.opacity = Mathf.Clamp01(
+                        (Time.unscaledTime - fadeStart) / loadingFadeDuration
+                    );
 
                     if (loadingBarFill != null)
                     {
@@ -251,7 +251,9 @@ public sealed class GameController : MonoBehaviour
                     yield return null;
                 }
 
-                float currentOpacity = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                float currentOpacity = Mathf.Clamp01(
+                    (Time.unscaledTime - fadeStart) / loadingFadeDuration
+                );
                 yield return FadeElement(
                     loadingOverlay,
                     currentOpacity,
@@ -323,7 +325,7 @@ public sealed class GameController : MonoBehaviour
                 // Generation needs multiple frames — fade in overlay while generating
                 loadingOverlay.style.display = DisplayStyle.Flex;
                 loadingOverlay.style.opacity = 0f;
-                float fadeIn = 0f;
+                float fadeStart = Time.unscaledTime;
 
                 // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
                 const float estimatedArrowDensity = 0.064f;
@@ -336,9 +338,9 @@ public sealed class GameController : MonoBehaviour
                         SceneManager.LoadScene("MainMenu");
                         yield break;
                     }
-                    fadeIn += Mathf.Min(Time.deltaTime, 0.033f);
-                    float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
-                    loadingOverlay.style.opacity = t;
+                    loadingOverlay.style.opacity = Mathf.Clamp01(
+                        (Time.unscaledTime - fadeStart) / loadingFadeDuration
+                    );
                     generating = generator.MoveNext();
                     if (loadingBarFill != null)
                     {
@@ -353,7 +355,9 @@ public sealed class GameController : MonoBehaviour
                 }
 
                 // Fade out from current opacity
-                float currentOpacity = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                float currentOpacity = Mathf.Clamp01(
+                    (Time.unscaledTime - fadeStart) / loadingFadeDuration
+                );
                 yield return FadeElement(
                     loadingOverlay,
                     currentOpacity,
@@ -703,15 +707,15 @@ public sealed class GameController : MonoBehaviour
         bool hide = false
     )
     {
-        float elapsed = 0f;
-        while (elapsed < duration)
+        float start = Time.unscaledTime;
+        while (true)
         {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
+            float t = Mathf.Clamp01((Time.unscaledTime - start) / duration);
             element.style.opacity = Mathf.Lerp(from, to, t);
+            if (t >= 1f)
+                break;
             yield return null;
         }
-        element.style.opacity = to;
         if (hide)
             element.style.display = DisplayStyle.None;
     }
