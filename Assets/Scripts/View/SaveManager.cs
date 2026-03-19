@@ -35,7 +35,6 @@ public static class SaveManager
                 Delete();
                 return null;
             }
-            Debug.Log($"SaveManager: loaded from {path}");
             return data;
         }
         catch (System.Exception e)
@@ -54,7 +53,6 @@ public static class SaveManager
         {
             string json = JsonConvert.SerializeObject(data, Formatting.Indented);
             File.WriteAllText(path, json);
-            Debug.Log($"SaveManager: saved to {path}");
         }
         catch (System.Exception e)
         {
