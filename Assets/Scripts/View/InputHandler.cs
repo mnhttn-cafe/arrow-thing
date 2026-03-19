@@ -130,8 +130,7 @@ public sealed class InputHandler : MonoBehaviour
                     Arrow arrow = _board.GetArrowAt(cell);
                     if (arrow != null)
                     {
-                        double wallTime =
-                            (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+                        double wallTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
 
                         // Any arrow tap starts the solve timer (ends inspection)
                         bool wasInspecting = _timer != null && !_timer.IsSolving;

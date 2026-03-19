@@ -105,8 +105,7 @@ public sealed class GameTimerView : MonoBehaviour
         return $"{secs}.{millis:D3}";
     }
 
-    private static double GetWallTime() =>
-        (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+    private static double GetWallTime() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
 
     private void OnDestroy()
     {

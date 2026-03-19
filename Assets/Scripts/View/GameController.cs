@@ -80,11 +80,13 @@ public sealed class GameController : MonoBehaviour
     [SerializeField]
     private float loadingFadeDuration = 0.3f;
 
-    // Fields shared between GenerateAndSetup and leave callbacks
-    private Board _board = null!;
-    private BoardView _boardView = null!;
+    // Game state
+    private Board _board;
+    private BoardView _boardView;
+    private CameraController _camCtrl;
     private GameTimer _timer;
     private ReplayRecorder _recorder;
+    private InputHandler _inputHandler;
     private string _gameId;
     private int _activeSeed;
     private int _w;
@@ -92,15 +94,28 @@ public sealed class GameController : MonoBehaviour
     private int _maxLen;
     private float _inspectionDur;
     private int _initialArrowCount;
-    private InputHandler _inputHandler;
     private bool _autosaveEnabled;
     private bool _isContinuedGame;
     private int _clearsSinceLastSave;
     private const int AutosaveInterval = 10;
     private List<List<Cell>> _initialBoardSnapshot;
+    private const float FrameBudgetMs = 12f;
 
-    /// <summary>Set to true by the X button during generation to abort.</summary>
-    private bool _cancelGeneration;
+    /// <summary>Set to true by the X button during loading to abort.</summary>
+    private bool _cancelRequested;
+
+    // Loading overlay state — driven by Update()
+    private VisualElement _loadingOverlay;
+    private VisualElement _loadingBarFill;
+    private Label _loadingPercent;
+    private Label _timerLabel;
+    private Button _trailToggleBtn;
+    private Button _backBtn;
+    private float _loadProgress;
+    private bool _loadingActive;
+    private float _loadingFadeStart;
+
+    // --- Lifecycle ---
 
     private void Awake()
     {
@@ -109,7 +124,6 @@ public sealed class GameController : MonoBehaviour
             Debug.LogError("GameController: VisualSettings is not assigned.");
             return;
         }
-
         if (inputActions == null)
         {
             Debug.LogError("GameController: InputActions is not assigned.");
@@ -118,433 +132,421 @@ public sealed class GameController : MonoBehaviour
 
         if (mainCamera == null)
             mainCamera = Camera.main;
-
-        // Set background color
         if (mainCamera != null)
             mainCamera.backgroundColor = visualSettings.backgroundColor;
 
         StartCoroutine(GenerateAndSetup());
     }
 
+    private void Update()
+    {
+        if (!_loadingActive || _loadingOverlay == null)
+            return;
+
+        _loadingOverlay.style.opacity = Mathf.Clamp01(
+            (Time.unscaledTime - _loadingFadeStart) / loadingFadeDuration
+        );
+
+        if (_loadingBarFill != null)
+        {
+            _loadingBarFill.style.width = new StyleLength(
+                new Length(_loadProgress * 100f, LengthUnit.Percent)
+            );
+            if (_loadingPercent != null)
+                _loadingPercent.text = Mathf.RoundToInt(_loadProgress * 100f) + "%";
+        }
+    }
+
+    // --- Main setup orchestrator ---
+
     private IEnumerator GenerateAndSetup()
     {
-        // Resolve board parameters: menu overrides take priority, then inspector fields
-        _w = boardWidth;
-        _h = boardHeight;
-        int minLen = minArrowLength;
-        _maxLen = maxArrowLength;
-        _inspectionDur = inspectionDuration;
+        ResolveParameters(out int minLen, out ReplayData priorData, out bool deferredResume);
+        ResolveHudElements();
 
-        ReplayData priorData = null;
+        ShowLoading(deferredResume ? "Resuming..." : "Generating...");
+        yield return null;
 
-        if (GameSettings.IsSet)
+        if (deferredResume)
         {
-            _w = GameSettings.Width;
-            _h = GameSettings.Height;
-            _maxLen = GameSettings.MaxArrowLength;
-
-            if (GameSettings.IsResuming)
+            yield return LoadSaveAsync(result => priorData = result);
+            if (priorData == null)
             {
-                priorData = GameSettings.ResumeData;
-                _inspectionDur = priorData.inspectionDuration;
+                SceneManager.LoadScene("MainMenu");
+                yield break;
             }
+            ApplyResumeData(priorData);
         }
 
-        _activeSeed =
-            (priorData != null) ? priorData.seed
-            : (GameSettings.IsSet || useRandomSeed) ? Environment.TickCount
-            : seed;
-
-        // Snapshot resume: restore board directly without regeneration
+        ResolveSeed(priorData);
         bool hasSnapshot = priorData?.boardSnapshot != null && priorData.boardSnapshot.Count > 0;
 
-        // Resolve HUD elements (needed for generation overlay and back button wiring)
-        VisualElement loadingOverlay = null;
-        VisualElement loadingBarFill = null;
-        Label loadingPercent = null;
-        Button backBtn = null;
-        Label timerLabel = null;
-        Button trailToggleBtn = null;
-
-        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
-        {
-            var hudRoot = hudUIDocument.rootVisualElement;
-            loadingOverlay = hudRoot.Q("loading-overlay");
-            backBtn = hudRoot.Q<Button>("back-to-menu-btn");
-            timerLabel = hudRoot.Q<Label>("timer-label");
-            trailToggleBtn = hudRoot.Q<Button>("trail-toggle-btn");
-
-            if (loadingOverlay != null)
-            {
-                loadingOverlay.style.display = DisplayStyle.None;
-                loadingOverlay.style.opacity = 0f;
-                loadingBarFill = loadingOverlay.Q("loading-bar-fill");
-                loadingPercent = loadingOverlay.Q<Label>("loading-percent");
-            }
-        }
-
-        _board = new Board(_w, _h);
+        CreateBoardAndView();
+        SetupCamera();
 
         if (hasSnapshot)
         {
             _initialBoardSnapshot = priorData.boardSnapshot;
-
-            // Build Arrow objects from snapshot cells
-            var snapshotArrows = new List<Arrow>(priorData.boardSnapshot.Count);
-            foreach (List<Cell> arrowCells in priorData.boardSnapshot)
-                snapshotArrows.Add(new Arrow(arrowCells));
-
-            int totalArrows = snapshotArrows.Count;
-            var restorer = _board.RestoreArrowsIncremental(snapshotArrows);
-
-            if (loadingOverlay != null)
-            {
-                var loadingLabel = loadingOverlay.Q<Label>("loading-label");
-                if (loadingLabel != null)
-                    loadingLabel.text = "Resuming...";
-
-                if (timerLabel != null)
-                    timerLabel.style.display = DisplayStyle.None;
-                if (trailToggleBtn != null)
-                    trailToggleBtn.style.display = DisplayStyle.None;
-
-                if (backBtn != null)
-                    backBtn.clicked += () => _cancelGeneration = true;
-
-                loadingOverlay.style.display = DisplayStyle.Flex;
-                loadingOverlay.style.opacity = 0f;
-                float fadeStart = Time.unscaledTime;
-
-                const float frameBudgetMs = 12f;
-                bool restoring = true;
-                while (restoring)
-                {
-                    if (_cancelGeneration)
-                    {
-                        SceneManager.LoadScene("MainMenu");
-                        yield break;
-                    }
-
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    while (sw.ElapsedMilliseconds < frameBudgetMs)
-                    {
-                        if (!restorer.MoveNext())
-                        {
-                            restoring = false;
-                            break;
-                        }
-                    }
-
-                    loadingOverlay.style.opacity = Mathf.Clamp01(
-                        (Time.unscaledTime - fadeStart) / loadingFadeDuration
-                    );
-
-                    if (loadingBarFill != null)
-                    {
-                        float progress = (float)restorer.Current / totalArrows;
-                        loadingBarFill.style.width = new StyleLength(
-                            new Length(progress * 100f, LengthUnit.Percent)
-                        );
-                        if (loadingPercent != null)
-                            loadingPercent.text = Mathf.RoundToInt(progress * 100f) + "%";
-                    }
-                    yield return null;
-                }
-
-                float currentOpacity = Mathf.Clamp01(
-                    (Time.unscaledTime - fadeStart) / loadingFadeDuration
-                );
-                yield return FadeElement(
-                    loadingOverlay,
-                    currentOpacity,
-                    0f,
-                    loadingFadeDuration * currentOpacity,
-                    hide: true
-                );
-
-                if (timerLabel != null)
-                    timerLabel.style.display = DisplayStyle.Flex;
-                if (trailToggleBtn != null)
-                    trailToggleBtn.style.display = DisplayStyle.Flex;
-
-                if (backBtn != null)
-                    backBtn.clickable = new Clickable(() => { });
-            }
-            else
-            {
-                const float fallbackBudgetMs = 12f;
-                bool restoring = true;
-                while (restoring)
-                {
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    while (sw.ElapsedMilliseconds < fallbackBudgetMs)
-                    {
-                        if (!restorer.MoveNext())
-                        {
-                            restoring = false;
-                            break;
-                        }
-                    }
-                    if (restoring)
-                        yield return null;
-                }
-            }
+            yield return RestoreBoard(priorData);
         }
         else
         {
-            // Generate board (new game or legacy v1 save without snapshot)
-            var generator = BoardGeneration.FillBoardIncremental(
-                _board,
-                minLen,
-                _maxLen,
-                new System.Random(_activeSeed)
-            );
-
-            bool generating = generator.MoveNext();
-
-            if (generating && loadingOverlay != null)
-            {
-                // Update label for legacy resumed games (v1 saves without snapshot)
-                if (priorData != null)
-                {
-                    var loadingLabel = loadingOverlay.Q<Label>("loading-label");
-                    if (loadingLabel != null)
-                        loadingLabel.text = "Regenerating...";
-                }
-
-                // Hide gameplay HUD elements during generation
-                if (timerLabel != null)
-                    timerLabel.style.display = DisplayStyle.None;
-                if (trailToggleBtn != null)
-                    trailToggleBtn.style.display = DisplayStyle.None;
-
-                // Wire X button to cancel generation (no modal — immediate cancel)
-                if (backBtn != null)
-                    backBtn.clicked += () => _cancelGeneration = true;
-
-                // Generation needs multiple frames — fade in overlay while generating
-                loadingOverlay.style.display = DisplayStyle.Flex;
-                loadingOverlay.style.opacity = 0f;
-                float fadeStart = Time.unscaledTime;
-
-                // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
-                const float estimatedArrowDensity = 0.064f;
-                float estimatedArrows = _w * _h * estimatedArrowDensity;
-
-                while (generating)
-                {
-                    if (_cancelGeneration)
-                    {
-                        SceneManager.LoadScene("MainMenu");
-                        yield break;
-                    }
-                    loadingOverlay.style.opacity = Mathf.Clamp01(
-                        (Time.unscaledTime - fadeStart) / loadingFadeDuration
-                    );
-                    generating = generator.MoveNext();
-                    if (loadingBarFill != null)
-                    {
-                        float progress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
-                        loadingBarFill.style.width = new StyleLength(
-                            new Length(progress * 100f, LengthUnit.Percent)
-                        );
-                        if (loadingPercent != null)
-                            loadingPercent.text = Mathf.RoundToInt(progress * 100f) + "%";
-                    }
-                    yield return null;
-                }
-
-                // Fade out from current opacity
-                float currentOpacity = Mathf.Clamp01(
-                    (Time.unscaledTime - fadeStart) / loadingFadeDuration
-                );
-                yield return FadeElement(
-                    loadingOverlay,
-                    currentOpacity,
-                    0f,
-                    loadingFadeDuration * currentOpacity,
-                    hide: true
-                );
-
-                // Restore gameplay HUD elements after generation
-                if (timerLabel != null)
-                    timerLabel.style.display = DisplayStyle.Flex;
-                if (trailToggleBtn != null)
-                    trailToggleBtn.style.display = DisplayStyle.Flex;
-
-                // Clear cancel handler — X button will be re-wired for leave modal below
-                if (backBtn != null)
-                    backBtn.clickable = new Clickable(() => { });
-            }
-            else
-            {
-                // Finish any remaining generation (no overlay needed)
-                while (generating)
-                {
-                    generating = generator.MoveNext();
-                    yield return null;
-                }
-            }
-
-            // Guard: empty board means generation params are too restrictive
-            if (_board.Arrows.Count == 0)
-            {
-                Debug.LogWarning(
-                    $"BoardGeneration produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
-                );
-                SceneManager.LoadScene("MainMenu");
-                yield break;
-            }
-
-            // Capture initial board state for saves and replays
-            _initialBoardSnapshot = new List<List<Cell>>(_board.Arrows.Count);
-            foreach (Arrow arrow in _board.Arrows)
-                _initialBoardSnapshot.Add(new List<Cell>(arrow.Cells));
+            yield return GenerateBoard(minLen);
         }
-
-        // --- Resume: replay clears and restore timer state from prior event log ---
-        bool resumeSolving = false;
-        double resumeSolveElapsed = 0.0;
 
         if (priorData != null)
         {
-            _gameId = priorData.gameId;
-
-            // Replay clear events to reconstruct current board state
-            foreach (ReplayEvent evt in priorData.events)
-            {
-                if (evt.type == ReplayEventType.Clear)
-                {
-                    var worldPos = new UnityEngine.Vector3(evt.posX ?? 0f, evt.posY ?? 0f, 0f);
-                    Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
-                    if (_board.Contains(cell))
-                    {
-                        Arrow arrow = _board.GetArrowAt(cell);
-                        if (arrow != null && _board.IsClearable(arrow))
-                            _board.RemoveArrow(arrow);
-                    }
-                }
-                if (evt.type == ReplayEventType.StartSolve)
-                    resumeSolving = true;
-            }
-
-            resumeSolveElapsed = priorData.ComputedSolveElapsed;
-
-            int nextSeq =
-                priorData.events.Count > 0
-                    ? priorData.events[priorData.events.Count - 1].seq + 1
-                    : 0;
-            _recorder = new ReplayRecorder(priorData.events, nextSeq);
-            _recorder.RecordSessionRejoin();
-
-            // Safety: if all arrows were somehow already cleared, wipe the save and go back
+            bool resumeSolving = ReplayClears(priorData, out double resumeSolveElapsed);
             if (_board.Arrows.Count == 0)
             {
                 SaveManager.Delete();
                 SceneManager.LoadScene("MainMenu");
                 yield break;
             }
+            SetupResumedRecorder(priorData);
+            FinalizeSession(priorData);
+            _boardView.ApplyColoring();
+            HideLoading();
+            SetupTimer(resumeSolving, resumeSolveElapsed);
         }
         else
         {
-            _gameId = System.Guid.NewGuid().ToString();
-            _recorder = new ReplayRecorder();
-            _recorder.RecordSessionStart();
+            SetupNewRecorder();
+            FinalizeSession(null);
+            _boardView.ApplyColoring();
+            HideLoading();
+            SetupTimer(false, 0.0);
         }
 
-        // Capture arrow count after resume clears so HasAnyClearedArrows
-        // reflects only new clears made in this session.
-        _initialArrowCount = _board.Arrows.Count;
+        WireHud();
+        WireInput();
+        WireVictory();
+    }
 
-        // Autosave is safe when no other game's save would be overwritten
-        _autosaveEnabled = !SaveManager.HasSave() || priorData != null;
-        _isContinuedGame = priorData != null;
+    // --- Parameter resolution ---
 
-        // Create board view
+    private void ResolveParameters(
+        out int minLen,
+        out ReplayData priorData,
+        out bool deferredResume
+    )
+    {
+        _w = boardWidth;
+        _h = boardHeight;
+        minLen = minArrowLength;
+        _maxLen = maxArrowLength;
+        _inspectionDur = inspectionDuration;
+        priorData = null;
+        deferredResume = false;
+
+        if (!GameSettings.IsSet)
+            return;
+
+        if (GameSettings.IsResuming && GameSettings.ResumeData == null)
+        {
+            deferredResume = true;
+            return;
+        }
+
+        _w = GameSettings.Width;
+        _h = GameSettings.Height;
+        _maxLen = GameSettings.MaxArrowLength;
+
+        if (GameSettings.IsResuming)
+        {
+            priorData = GameSettings.ResumeData;
+            _inspectionDur = priorData.inspectionDuration;
+        }
+    }
+
+    private void ResolveHudElements()
+    {
+        if (hudUIDocument == null || hudUIDocument.rootVisualElement == null)
+            return;
+
+        var hudRoot = hudUIDocument.rootVisualElement;
+        _loadingOverlay = hudRoot.Q("loading-overlay");
+        _backBtn = hudRoot.Q<Button>("back-to-menu-btn");
+        _timerLabel = hudRoot.Q<Label>("timer-label");
+        _trailToggleBtn = hudRoot.Q<Button>("trail-toggle-btn");
+
+        if (_loadingOverlay != null)
+        {
+            _loadingOverlay.style.display = DisplayStyle.None;
+            _loadingOverlay.style.opacity = 0f;
+            _loadingBarFill = _loadingOverlay.Q("loading-bar-fill");
+            _loadingPercent = _loadingOverlay.Q<Label>("loading-percent");
+        }
+    }
+
+    private IEnumerator LoadSaveAsync(Action<ReplayData> onResult)
+    {
+        ReplayData loaded = null;
+        yield return SaveManager.LoadAsync(d => loaded = d);
+        onResult(loaded);
+    }
+
+    private void ApplyResumeData(ReplayData data)
+    {
+        GameSettings.SetResumeData(data);
+        _w = GameSettings.Width;
+        _h = GameSettings.Height;
+        _maxLen = GameSettings.MaxArrowLength;
+        _inspectionDur = data.inspectionDuration;
+    }
+
+    private void ResolveSeed(ReplayData priorData)
+    {
+        _activeSeed =
+            (priorData != null) ? priorData.seed
+            : (GameSettings.IsSet || useRandomSeed) ? Environment.TickCount
+            : seed;
+    }
+
+    // --- Board and view creation ---
+
+    private void CreateBoardAndView()
+    {
+        _board = new Board(_w, _h);
         var boardGo = new GameObject("BoardView");
         _boardView = boardGo.AddComponent<BoardView>();
-        _boardView.Init(_board, visualSettings);
+        _boardView.Init(_board, visualSettings, spawnArrows: false);
+    }
 
-        // Setup camera
-        CameraController camCtrl = null!;
-        if (mainCamera != null)
+    private void SetupCamera()
+    {
+        if (mainCamera == null)
+            return;
+        _camCtrl = mainCamera.gameObject.GetComponent<CameraController>();
+        if (_camCtrl == null)
+            _camCtrl = mainCamera.gameObject.AddComponent<CameraController>();
+        _camCtrl.Init(_board);
+        if (GameSettings.IsSet)
+            _camCtrl.ZoomSpeed = PlayerPrefs.GetFloat(
+                GameSettings.ZoomSpeedPrefKey,
+                GameSettings.DefaultZoomSpeed
+            );
+    }
+
+    // --- Work coroutines (no UI code — just work + _loadProgress) ---
+
+    private IEnumerator RestoreBoard(ReplayData priorData)
+    {
+        var snapshotArrows = new List<Arrow>(priorData.boardSnapshot.Count);
+        foreach (List<Cell> arrowCells in priorData.boardSnapshot)
+            snapshotArrows.Add(new Arrow(arrowCells));
+
+        int totalArrows = snapshotArrows.Count;
+        int totalSteps = totalArrows * 2;
+        var restorer = _board.RestoreArrowsIncremental(snapshotArrows);
+
+        int viewedCount = 0;
+        while (true)
         {
-            camCtrl = mainCamera.gameObject.GetComponent<CameraController>();
-            if (camCtrl == null)
-                camCtrl = mainCamera.gameObject.AddComponent<CameraController>();
-            camCtrl.Init(_board);
-            if (GameSettings.IsSet)
-                camCtrl.ZoomSpeed = GameSettings.ZoomSpeed;
+            if (_cancelRequested)
+            {
+                SceneManager.LoadScene("MainMenu");
+                yield break;
+            }
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            bool done = false;
+            while (sw.ElapsedMilliseconds < FrameBudgetMs)
+            {
+                if (!restorer.MoveNext())
+                {
+                    done = true;
+                    break;
+                }
+                if (viewedCount < totalArrows)
+                    _boardView.AddArrowView(snapshotArrows[viewedCount++]);
+            }
+
+            _loadProgress = (float)restorer.Current / totalSteps;
+
+            if (done)
+                break;
+            yield return null;
+        }
+    }
+
+    private IEnumerator GenerateBoard(int minLen)
+    {
+        var generator = BoardGeneration.FillBoardIncremental(
+            _board,
+            minLen,
+            _maxLen,
+            new System.Random(_activeSeed)
+        );
+
+        // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
+        const float estimatedArrowDensity = 0.064f;
+        float estimatedArrows = _w * _h * estimatedArrowDensity;
+        int viewedArrows = 0;
+        while (true)
+        {
+            if (_cancelRequested)
+            {
+                SceneManager.LoadScene("MainMenu");
+                yield break;
+            }
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            bool done = false;
+            while (sw.ElapsedMilliseconds < FrameBudgetMs)
+            {
+                if (!generator.MoveNext())
+                {
+                    done = true;
+                    break;
+                }
+                _boardView.AddArrowView(_board.Arrows[viewedArrows++]);
+            }
+
+            _loadProgress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
+
+            if (done)
+                break;
+            yield return null;
         }
 
-        // Setup timer — resume skips inspection and restores solve elapsed
+        if (_board.Arrows.Count == 0)
+        {
+            Debug.LogWarning(
+                $"BoardGeneration produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
+            );
+            SceneManager.LoadScene("MainMenu");
+            yield break;
+        }
+
+        _initialBoardSnapshot = new List<List<Cell>>(_board.Arrows.Count);
+        foreach (Arrow arrow in _board.Arrows)
+            _initialBoardSnapshot.Add(new List<Cell>(arrow.Cells));
+    }
+
+    // --- Resume logic ---
+
+    private bool ReplayClears(ReplayData priorData, out double solveElapsed)
+    {
+        bool solving = false;
+        foreach (ReplayEvent evt in priorData.events)
+        {
+            if (evt.type == ReplayEventType.Clear)
+            {
+                var worldPos = new Vector3(evt.posX ?? 0f, evt.posY ?? 0f, 0f);
+                Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
+                if (_board.Contains(cell))
+                {
+                    Arrow arrow = _board.GetArrowAt(cell);
+                    if (arrow != null && _board.IsClearable(arrow))
+                    {
+                        _boardView.RemoveArrowView(arrow);
+                        _board.RemoveArrow(arrow);
+                    }
+                }
+            }
+            if (evt.type == ReplayEventType.StartSolve)
+                solving = true;
+        }
+        solveElapsed = priorData.ComputedSolveElapsed;
+        return solving;
+    }
+
+    private void SetupResumedRecorder(ReplayData priorData)
+    {
+        _gameId = priorData.gameId;
+        int nextSeq =
+            priorData.events.Count > 0 ? priorData.events[priorData.events.Count - 1].seq + 1 : 0;
+        _recorder = new ReplayRecorder(priorData.events, nextSeq);
+        _recorder.RecordSessionRejoin();
+    }
+
+    private void SetupNewRecorder()
+    {
+        _gameId = Guid.NewGuid().ToString();
+        _recorder = new ReplayRecorder();
+        _recorder.RecordSessionStart();
+    }
+
+    private void FinalizeSession(ReplayData priorData)
+    {
+        _initialArrowCount = _board.Arrows.Count;
+        _autosaveEnabled = !SaveManager.HasSave() || priorData != null;
+        _isContinuedGame = priorData != null;
+    }
+
+    // --- Timer and gameplay wiring ---
+
+    private void SetupTimer(bool resumeSolving, double resumeSolveElapsed)
+    {
         _timer = new GameTimer(_inspectionDur);
-        double wallNow = (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+        double wallNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
         if (resumeSolving)
             _timer.Resume(wallNow, resumeSolveElapsed);
         else
             _timer.Start(wallNow);
+    }
 
-        GameTimerView timerView = null;
+    private void WireHud()
+    {
+        if (hudUIDocument == null || hudUIDocument.rootVisualElement == null)
+            return;
 
-        // Setup HUD
-        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
+        var hudRoot = hudUIDocument.rootVisualElement;
+        var leaveModal = hudRoot.Q("leave-modal");
+        var leaveTitle = hudRoot.Q<Label>("leave-title");
+        var leaveSublabel = hudRoot.Q("leave-sublabel");
+        var leaveCloseBtn = hudRoot.Q<Button>("leave-close-btn");
+
+        if (_backBtn != null)
         {
-            var hudRoot = hudUIDocument.rootVisualElement;
-            var leaveModal = hudRoot.Q("leave-modal");
-            var leaveTitle = hudRoot.Q<Label>("leave-title");
-            var leaveSublabel = hudRoot.Q("leave-sublabel");
-            var leaveCloseBtn = hudRoot.Q<Button>("leave-close-btn");
-
-            // X button opens the leave modal
-            if (backBtn != null)
-            {
-                backBtn.clickable = new Clickable(() => { });
-                backBtn.clicked += () =>
-                    ShowLeaveModal(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
-            }
-
-            // Leave modal: Yes = save (if applicable) and leave
-            hudRoot.Q<Button>("leave-yes-btn").clicked += () => OnLeaveYes(leaveModal);
-
-            // Leave modal: No = leave without saving (or cancel if no clears)
-            hudRoot.Q<Button>("leave-no-btn").clicked += () => OnLeaveNo(leaveModal);
-
-            // Leave modal: X close = cancel, stay in game
-            if (leaveCloseBtn != null)
-                leaveCloseBtn.clicked += () => HideLeaveModal(leaveModal);
-
-            timerView = gameObject.AddComponent<GameTimerView>();
-            timerView.Init(_timer, hudUIDocument, inspectionWarningThreshold);
-
-            // Trail toggle button (bottom-right)
-            if (trailToggleBtn != null)
-            {
-                bool trailOn = false;
-                trailToggleBtn.clicked += () =>
-                {
-                    trailOn = !trailOn;
-                    _boardView.SetAllTrailsVisible(trailOn);
-                    if (trailOn)
-                        trailToggleBtn.AddToClassList("hud-btn--active");
-                    else
-                        trailToggleBtn.RemoveFromClassList("hud-btn--active");
-                };
-                _boardView.TrailAutoOff += () =>
-                {
-                    trailOn = false;
-                    trailToggleBtn.RemoveFromClassList("hud-btn--active");
-                };
-            }
+            _backBtn.clickable = new Clickable(() => { });
+            _backBtn.clicked += () =>
+                ShowLeaveModal(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
         }
 
-        // Setup input
-        float dragThreshold = GameSettings.IsSet ? GameSettings.DragThreshold : dragThresholdPixels;
+        hudRoot.Q<Button>("leave-yes-btn").clicked += () => OnLeaveYes(leaveModal);
+        hudRoot.Q<Button>("leave-no-btn").clicked += () => OnLeaveNo(leaveModal);
+
+        if (leaveCloseBtn != null)
+            leaveCloseBtn.clicked += () => HideLeaveModal(leaveModal);
+
+        var timerView = gameObject.AddComponent<GameTimerView>();
+        timerView.Init(_timer, hudUIDocument, inspectionWarningThreshold);
+
+        if (_trailToggleBtn != null)
+        {
+            bool trailOn = false;
+            _trailToggleBtn.clicked += () =>
+            {
+                trailOn = !trailOn;
+                _boardView.SetAllTrailsVisible(trailOn);
+                if (trailOn)
+                    _trailToggleBtn.AddToClassList("hud-btn--active");
+                else
+                    _trailToggleBtn.RemoveFromClassList("hud-btn--active");
+            };
+            _boardView.TrailAutoOff += () =>
+            {
+                trailOn = false;
+                _trailToggleBtn.RemoveFromClassList("hud-btn--active");
+            };
+        }
+    }
+
+    private void WireInput()
+    {
+        float dragThreshold = GameSettings.IsSet
+            ? PlayerPrefs.GetFloat(
+                GameSettings.DragThresholdPrefKey,
+                GameSettings.DefaultDragThreshold
+            )
+            : dragThresholdPixels;
         _inputHandler = gameObject.AddComponent<InputHandler>();
         _inputHandler.Init(
             _board,
             _boardView,
-            camCtrl,
+            _camCtrl,
             inputActions,
             dragThreshold,
             _timer,
@@ -552,47 +554,94 @@ public sealed class GameController : MonoBehaviour
             OnArrowCleared
         );
 
-        // Wire X button to also suppress input when opening leave modal
-        if (backBtn != null)
-            backBtn.clicked += () => _inputHandler.SetInputEnabled(false);
-
-        // Setup victory screen
-        if (
-            victoryUIDocument != null
-            && victoryUIDocument.enabled
-            && victoryUIDocument.rootVisualElement != null
-        )
-        {
-            var victory = gameObject.AddComponent<VictoryController>();
-            victory.Init(
-                victoryUIDocument,
-                _boardView.GridRenderer,
-                camCtrl,
-                _w,
-                _h,
-                _timer,
-                hudUIDocument
-            );
-            _boardView.LastArrowClearing += () =>
-            {
-                _inputHandler.SetInputEnabled(false);
-                if (backBtn != null)
-                    backBtn.style.display = DisplayStyle.None;
-                _recorder?.RecordEndSolve();
-                SaveManager.Delete();
-                victory.OnLastArrowClearing();
-            };
-            _boardView.BoardCleared += victory.OnBoardCleared;
-        }
+        if (_backBtn != null)
+            _backBtn.clicked += () => _inputHandler.SetInputEnabled(false);
     }
 
-    /// <summary>Returns true if any arrows have been cleared this session.</summary>
+    private void WireVictory()
+    {
+        if (
+            victoryUIDocument == null
+            || !victoryUIDocument.enabled
+            || victoryUIDocument.rootVisualElement == null
+        )
+            return;
+
+        var victory = gameObject.AddComponent<VictoryController>();
+        victory.Init(
+            victoryUIDocument,
+            _boardView.GridRenderer,
+            _camCtrl,
+            _w,
+            _h,
+            _timer,
+            hudUIDocument
+        );
+        _boardView.LastArrowClearing += () =>
+        {
+            _inputHandler.SetInputEnabled(false);
+            if (_backBtn != null)
+                _backBtn.style.display = DisplayStyle.None;
+            _recorder?.RecordEndSolve();
+            SaveManager.Delete();
+            victory.OnLastArrowClearing();
+        };
+        _boardView.BoardCleared += victory.OnBoardCleared;
+    }
+
+    // --- Loading overlay ---
+
+    private void ShowLoading(string label)
+    {
+        if (_loadingOverlay == null)
+            return;
+        var loadingLabel = _loadingOverlay.Q<Label>("loading-label");
+        if (loadingLabel != null)
+            loadingLabel.text = label;
+        if (_timerLabel != null)
+            _timerLabel.style.display = DisplayStyle.None;
+        if (_trailToggleBtn != null)
+            _trailToggleBtn.style.display = DisplayStyle.None;
+        if (_backBtn != null)
+            _backBtn.clicked += () => _cancelRequested = true;
+
+        _loadingOverlay.style.display = DisplayStyle.Flex;
+        _loadingOverlay.style.opacity = 0f;
+        _loadProgress = 0f;
+        _loadingActive = true;
+        _loadingFadeStart = Time.unscaledTime;
+    }
+
+    private void HideLoading()
+    {
+        _loadingActive = false;
+        if (_loadingOverlay != null)
+        {
+            float currentOpacity = Mathf.Clamp01(
+                (Time.unscaledTime - _loadingFadeStart) / loadingFadeDuration
+            );
+            StartCoroutine(
+                FadeElement(
+                    _loadingOverlay,
+                    currentOpacity,
+                    0f,
+                    loadingFadeDuration * currentOpacity,
+                    hide: true
+                )
+            );
+        }
+        if (_timerLabel != null)
+            _timerLabel.style.display = DisplayStyle.Flex;
+        if (_trailToggleBtn != null)
+            _trailToggleBtn.style.display = DisplayStyle.Flex;
+        if (_backBtn != null)
+            _backBtn.clickable = new Clickable(() => { });
+    }
+
+    // --- Leave modal ---
+
     private bool HasAnyClearedArrows => _board != null && _board.Arrows.Count < _initialArrowCount;
 
-    /// <summary>
-    /// True when saving would overwrite a different game's save file.
-    /// Only possible for a new game when a prior save exists.
-    /// </summary>
     private bool WouldOverwriteDifferentSave =>
         !_autosaveEnabled && HasAnyClearedArrows && SaveManager.HasSave();
 
@@ -605,7 +654,6 @@ public sealed class GameController : MonoBehaviour
     {
         if (WouldOverwriteDifferentSave)
         {
-            // New game with clears would overwrite a different save — ask explicitly
             if (title != null)
                 title.text = "Leaving. Save?";
             if (sublabel != null)
@@ -615,7 +663,6 @@ public sealed class GameController : MonoBehaviour
         }
         else
         {
-            // All other cases: simple leave prompt (auto-saves if needed)
             if (title != null)
                 title.text = "Leave?";
             if (sublabel != null)
@@ -632,49 +679,6 @@ public sealed class GameController : MonoBehaviour
         _inputHandler?.SetInputEnabled(true);
     }
 
-    private void OnArrowCleared()
-    {
-        if (!_autosaveEnabled || _recorder == null || _timer == null)
-            return;
-
-        _clearsSinceLastSave++;
-        if (_clearsSinceLastSave >= AutosaveInterval)
-        {
-            _clearsSinceLastSave = 0;
-            SaveManager.Save(
-                _recorder.ToReplayData(
-                    _gameId,
-                    _activeSeed,
-                    _w,
-                    _h,
-                    _maxLen,
-                    _inspectionDur,
-                    boardSnapshot: _initialBoardSnapshot
-                )
-            );
-        }
-    }
-
-    private void SaveAndLeave()
-    {
-        if (_recorder != null && _timer != null)
-        {
-            _recorder.RecordSessionLeave();
-            SaveManager.Save(
-                _recorder.ToReplayData(
-                    _gameId,
-                    _activeSeed,
-                    _w,
-                    _h,
-                    _maxLen,
-                    _inspectionDur,
-                    boardSnapshot: _initialBoardSnapshot
-                )
-            );
-        }
-        SceneManager.LoadScene("MainMenu");
-    }
-
     private void OnLeaveYes(VisualElement modal)
     {
         if (_autosaveEnabled && (_isContinuedGame || HasAnyClearedArrows))
@@ -688,16 +692,50 @@ public sealed class GameController : MonoBehaviour
     private void OnLeaveNo(VisualElement modal)
     {
         if (WouldOverwriteDifferentSave)
-        {
-            // "No" on save prompt = leave without saving
             SceneManager.LoadScene("MainMenu");
-        }
         else
-        {
-            // "No" on leave prompt = cancel, stay in game
             HideLeaveModal(modal);
+    }
+
+    // --- Save ---
+
+    private void OnArrowCleared()
+    {
+        if (!_autosaveEnabled || _recorder == null || _timer == null)
+            return;
+
+        _clearsSinceLastSave++;
+        if (_clearsSinceLastSave >= AutosaveInterval)
+        {
+            _clearsSinceLastSave = 0;
+            SaveManager.Save(BuildReplayData());
         }
     }
+
+    private void SaveAndLeave()
+    {
+        if (_recorder != null && _timer != null)
+        {
+            _recorder.RecordSessionLeave();
+            SaveManager.Save(BuildReplayData());
+        }
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    private ReplayData BuildReplayData()
+    {
+        return _recorder.ToReplayData(
+            _gameId,
+            _activeSeed,
+            _w,
+            _h,
+            _maxLen,
+            _inspectionDur,
+            boardSnapshot: _initialBoardSnapshot
+        );
+    }
+
+    // --- Utilities ---
 
     private static IEnumerator FadeElement(
         VisualElement element,
