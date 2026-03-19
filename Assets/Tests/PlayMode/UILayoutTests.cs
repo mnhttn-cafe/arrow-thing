@@ -284,37 +284,6 @@ public class UILayoutTests
         );
     }
 
-    // ───────── Main Menu — New Board Modal ─────────
-
-    [UnityTest]
-    public IEnumerator MainMenu_NewBoardModal_AllElementsVisible(
-        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
-            UILayoutTestHelper.AspectRatio ratio
-    )
-    {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
-
-        root.Q("new-board-modal").RemoveFromClassList("screen--hidden");
-
-        yield return UILayoutTestHelper.WaitForLayoutResolve();
-
-        var modal = root.Q("new-board-modal");
-        var panelBounds = root.worldBound;
-        string ctx = $"NewBoardModal @ {ratio.Name}";
-        bool warn = IsKnownIssueRatio(ratio);
-
-        AssertElements(
-            modal,
-            panelBounds,
-            ctx,
-            warn,
-            modal.Q<Label>(className: "modal-label"),
-            modal.Q<Label>(className: "modal-sublabel"),
-            modal.Q<Button>("new-board-yes-btn"),
-            modal.Q<Button>("new-board-no-btn")
-        );
-    }
-
     // ───────── Game HUD — Loading Overlay ─────────
 
     [UnityTest]
@@ -345,12 +314,11 @@ public class UILayoutTests
             ctx,
             warn,
             root.Q<Label>("loading-label"),
-            root.Q<Label>("loading-percent"),
-            root.Q<Button>("cancel-generation-btn")
+            root.Q<Label>("loading-percent")
         );
     }
 
-    // ───────── Game HUD — Leave Modal ─────────
+    // ───────── Game HUD — Leave Modal (Save variant) ─────────
 
     [UnityTest]
     public IEnumerator GameHudLeaveModal_AllElementsVisible(
@@ -360,11 +328,16 @@ public class UILayoutTests
     {
         var root = SetUpDocument(GameHudUxmlPath, ratio);
 
-        root.Q("leave-modal").RemoveFromClassList("modal--hidden");
+        var modal = root.Q("leave-modal");
+        modal.RemoveFromClassList("modal--hidden");
+
+        // Show sublabel to test the save variant (with replace-save warning)
+        var sublabel = modal.Q("leave-sublabel");
+        if (sublabel != null)
+            sublabel.RemoveFromClassList("modal--hidden");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var modal = root.Q("leave-modal");
         var panelBounds = root.worldBound;
         string ctx = $"GameHudLeaveModal @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
@@ -374,7 +347,9 @@ public class UILayoutTests
             panelBounds,
             ctx,
             warn,
-            modal.Q<Label>(className: "modal-label"),
+            modal.Q<Label>("leave-title"),
+            modal.Q("leave-sublabel"),
+            modal.Q<Button>("leave-close-btn"),
             modal.Q<Button>("leave-yes-btn"),
             modal.Q<Button>("leave-no-btn")
         );

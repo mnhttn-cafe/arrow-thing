@@ -36,7 +36,7 @@ public sealed class ReplayRecorder
             {
                 seq = _nextSeq++,
                 type = ReplayEventType.SessionStart,
-                wallTime = DateTime.UtcNow.ToString("O"),
+                timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
     }
@@ -52,7 +52,7 @@ public sealed class ReplayRecorder
                 seq = _nextSeq++,
                 type = ReplayEventType.SessionLeave,
                 solveElapsed = solveElapsed,
-                wallTime = DateTime.UtcNow.ToString("O"),
+                timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
     }
@@ -64,7 +64,7 @@ public sealed class ReplayRecorder
             {
                 seq = _nextSeq++,
                 type = ReplayEventType.SessionRejoin,
-                wallTime = DateTime.UtcNow.ToString("O"),
+                timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
     }
@@ -97,6 +97,21 @@ public sealed class ReplayRecorder
                 t = t,
                 posX = posX,
                 posY = posY,
+            }
+        );
+    }
+
+    /// <summary>Records the end of the solve (board fully cleared).</summary>
+    /// <param name="t">Seconds since solve start (the final time).</param>
+    public void RecordEndSolve(double t)
+    {
+        _events.Add(
+            new ReplayEvent
+            {
+                seq = _nextSeq++,
+                type = ReplayEventType.EndSolve,
+                t = t,
+                timestamp = DateTime.UtcNow.ToString("O"),
             }
         );
     }

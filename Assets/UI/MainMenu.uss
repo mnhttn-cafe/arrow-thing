@@ -157,13 +157,6 @@
     background-color: rgb(50, 160, 180);
 }
 
-/* Secondary label inside modals (e.g. "Your current game will be lost.") */
-.modal-sublabel {
-    font-size: 20px;
-    color: rgb(160, 160, 175);
-    margin-bottom: 24px;
-    -unity-text-align: middle-center;
-}
 
 /* Quit button (desktop only, top-left X) */
 .quit-btn {

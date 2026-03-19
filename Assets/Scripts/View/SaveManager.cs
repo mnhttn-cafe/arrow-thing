@@ -34,6 +34,7 @@ public static class SaveManager
                 Delete();
                 return null;
             }
+            Debug.Log($"SaveManager: loaded from {path}");
             return data;
         }
         catch (System.Exception e)
@@ -47,10 +48,12 @@ public static class SaveManager
     /// <summary>Serializes <paramref name="data"/> and writes it to disk.</summary>
     public static void Save(ReplayData data)
     {
+        string path = SavePath;
         try
         {
             string json = JsonUtility.ToJson(data, prettyPrint: false);
-            File.WriteAllText(SavePath, json);
+            File.WriteAllText(path, json);
+            Debug.Log($"SaveManager: saved to {path}");
         }
         catch (System.Exception e)
         {

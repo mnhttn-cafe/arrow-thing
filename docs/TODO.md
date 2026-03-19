@@ -1,116 +1,91 @@
-# TODO — Save Game + Cancel Generation
+# Save-Game QoL Fixes
 
-## Overview
+Feedback from manual testing of PR #30. Redesigns the save/leave flow and fixes several bugs.
 
-Two QoL features to support large boards that take a long time to clear.
+## Changes
 
----
+### 1. Redesign leave-game modal → "Save game?" prompt
 
-## Feature 1: Save Game / Resume
+**Current**: "Leave game?" with Yes/No buttons.
+**New**: Two variants depending on game state:
 
-### Design
+**If at least one arrow has been cleared (solve started + clear exists):**
+- Title: "Save game?"
+- Sub-text (only if a prior save exists on disk): "This will replace your current save."
+- **Yes**: Save current game state, return to main menu.
+- **No**: Discard progress, return to main menu without saving (prior save untouched).
+- **X** (top-right close button): Cancel — close modal, resume playing.
 
-Save an in-progress game as a **replay event log** (JSON). This doubles as the groundwork for the v0.4 replay system (see `OnlineRoadmap.md`).
+**If no arrows have been cleared yet (still in inspection or solve started but nothing cleared):**
+- Title: "Leave game?"
+- **Yes**: Return to main menu (no save created — nothing meaningful to preserve).
+- **No**: Cancel — close modal, resume playing.
+- No X button needed (Yes/No covers it), but can keep for consistency.
 
-The save file records:
-- Board parameters (seed, dimensions, max arrow length, inspection duration)
-- A `game_id` UUID for future server compatibility
-- All input events in sequence (session_start, session_leave, session_rejoin, start_solve, clear, reject)
-- Session events carry wall-clock timestamps (ISO 8601); gameplay events carry solve-relative timestamps
-- `session_leave` events include a `solveElapsed` snapshot for timer restoration
+### 2. Remove new-board modal from main menu
 
-One save slot. Starting a new board overwrites (with confirmation modal).
+**Current**: When a save exists, "Play" becomes "New Board" and shows a confirmation modal. Confirming deletes the save.
+**New**: Remove the modal entirely. Simplify:
+- Save exists → show both "Play" and "Continue". "Play" text stays "Play" (not "New Board").
+- No save → show only "Play", hide "Continue".
+- "Play" always goes straight to mode select. No modal, no save deletion.
+- "Continue" loads the save as before.
+- Save is only overwritten when the player explicitly saves a different game via the leave modal.
+- Save is only deleted when the board is fully cleared.
 
-#### Resume flow
-1. Regenerate the board from seed (deterministic → identical board)
-2. Walk `Clear` events in seq order, remove each arrow with no animation
-3. If any `StartSolve` event exists: restore timer from the last `SessionLeave.solveElapsed` via `GameTimer.Resume()`; otherwise restart inspection normally
-4. Continue recording new events into the restored recorder
+### 3. Remove auto-save on focus loss
 
-#### UI changes
-- Main menu: "Continue" button below "Play" (hidden when no save)
-- When save exists: "Play" button text → "New Board"
-- Clicking "New Board" shows a confirmation modal ("Your current game will be lost")
-- In-game: Leave-Yes button saves before scene transition
-- Auto-save on app focus loss (`OnApplicationFocus(false)`) for WebGL tab-switching; matching `session_rejoin` on focus regain
+Delete `OnApplicationFocus` handler entirely. Save only happens via the explicit leave-game modal "Yes" button.
 
-#### Save trigger
-- Explicit Leave (via Leave modal Yes button)
-- `OnApplicationFocus(false)` / `OnApplicationPause(true)` — covers WebGL tab close
-- Delete on board cleared (completed games don't have a save to continue)
+### 4. Fix timer restoration on resume
 
----
+**Bug**: On resume, timer shows inspection countdown and solve elapsed resets to 0.
+**Fix**: Ensure `resumeSolving` and `resumeSolveElapsed` are correctly extracted from replay events and passed to `GameTimer.Resume()`.
 
-## Feature 2: Cancel Board Generation
+### 5. Loading screen HUD cleanup
 
-Large boards (e.g., 200×200) can take 30+ seconds to generate. Players should be able to cancel and return to the menu.
+- Hide `timer-label` and `trail-toggle-btn` during generation (`display: none`, restore after).
+- Remove `cancel-generation-btn` from the loading overlay.
+- Wire the existing `back-to-menu-btn` (X, top-left) to cancel generation during loading — no modal, just immediate cancel.
+- After generation completes, re-wire `back-to-menu-btn` to its normal leave-modal behavior.
 
-A **Cancel** button is shown inside the loading overlay during generation. When clicked, the generation coroutine aborts and the main menu loads.
+### 6. Log save path for debugging
 
----
+Log the full file path on save/load so developers can find and inspect the JSON.
 
 ## Implementation Plan
 
-### Domain layer (pure C#, no Unity dependency)
-
-- [x] `ReplayEventType` — string constants: `session_start`, `session_leave`, `session_rejoin`, `start_solve`, `clear`, `reject`
-- [x] `ReplayEvent` — `[Serializable]` record with all fields; unused fields are 0/null per event type
-- [x] `ReplayData` — `[Serializable]` save/replay format: game_id, seed, board params, event list, finalTime (-1 = incomplete)
-- [x] `ReplayRecorder` — accumulates events, auto-increments seq; supports initialization from prior events for resume
-- [x] `GameTimer.Resume(double current, double priorElapsed)` — restores solve state from saved elapsed
-- [x] `GameSettings.IsResuming`, `GameSettings.ResumeData`, `GameSettings.Resume(ReplayData)`, update `Reset()`
+### UI changes
+- [ ] `GameHud.uxml` — Remove `cancel-generation-btn`. Add X close button to leave modal. Add `modal-sublabel` for "replace save" warning.
+- [ ] `GameHud.uss` — Remove cancel button styles. Add close-button style. Style the two modal variants.
+- [ ] `Root.uxml` — Remove `new-board-modal`. Remove `continue-btn` `screen--hidden` class (visibility managed by controller).
+- [ ] `MainMenu.uss` — Remove `modal-sublabel` style if it was only for the new-board modal (check if reused).
 
 ### View layer
-
-- [x] `SaveManager` — static class: `HasSave()`, `Load()`, `Save(ReplayData)`, `Delete()` via `Application.persistentDataPath`
-- [x] `MainMenuController` — Continue button wiring, dynamic "Play"/"New Board" text, new-board-modal
-- [x] `GameController` — resume logic (apply clears, restore timer), recorder creation, record session events, save on leave, auto-save on focus loss, cancel generation support
-- [x] `InputHandler` — accepts optional `ReplayRecorder`, records `start_solve`/`clear`/`reject` events on each tap
-
-### UI files
-
-- [x] `Root.uxml` — `continue-btn`, `new-board-modal`
-- [x] `MainMenu.uss` — `continue-btn` distinct teal style, `modal-sublabel` for secondary modal text
-- [x] `GameHud.uxml` — `cancel-generation-btn` inside `loading-overlay`
-- [x] `GameHud.uss` — `cancel-generation-btn` style (centered, below label)
+- [ ] `MainMenuController` — Remove new-board modal logic. "Play" always shows "Play" text. Remove `OnNewBoardConfirm`/`OnNewBoardCancel`. Continue button visibility based on `SaveManager.HasSave()`.
+- [ ] `GameController` — Redesign leave modal: check if any clears happened → show appropriate variant. Wire save/no-save/cancel. Remove `OnApplicationFocus`. Hide timer/trail during generation. Wire X button for cancel during generation, then re-wire for leave modal after. Fix timer resume. Add save path logging.
+- [ ] `SaveManager` — Add path logging on save/load.
 
 ### Tests
-
-- [x] `ReplayRecorderTests.cs` (EditMode) — seq ordering, event types, resume continuity, ToReplayData, start_solve+clear same timestamp
-- [x] `UILayoutTests.cs` (PlayMode) — `MainMenu_WithSave`, `MainMenu_NewBoardModal`, `GameHud_CancelGeneration`
+- [ ] `UILayoutTests` — Remove `MainMenu_NewBoardModal` test. Remove cancel-generation button from loading overlay test. Update leave modal test if structure changed. Add test for leave modal with sublabel variant.
+- [ ] `ReplayRecorderTests` — Verify existing tests still pass (no domain changes expected).
 
 ### Documentation
+- [ ] `TechnicalDesign.md` — Update MainMenuController, GameController, and PlayMode test descriptions.
 
-- [x] `TechnicalDesign.md` — update with new domain classes, save manager, modified scripts, decision log entry
-
----
-
-## Open Questions
-
-*Resolved before implementation:*
-
-1. **Single save slot?** Yes. One active game at a time.
-2. **Where to store?** `Application.persistentDataPath/savegame.json` (IndexedDB on WebGL).
-3. **Serializer?** `UnityEngine.JsonUtility` — no external dependency. Fields must be public and `[Serializable]`.
-4. **Resume inspection or skip?** If solve hasn't started (no `start_solve` in log): restart inspection. If started: skip inspection, restore solve elapsed.
-5. **Cancel during generation that yields no arrows?** Generation abort returns to menu normally (same as the empty-board guard that already returns to menu).
-6. **Auto-save paired events?** `OnApplicationFocus(false)` → `session_leave`; `OnApplicationFocus(true)` → `session_rejoin`. Properly paired even if player switches apps mid-game.
-
----
-
-## Testing (Manual)
-
-After implementation, verify the following before marking complete:
+## Manual Test Cases
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 1 | Launch game with no save → Main menu | "Play" button shows; no "Continue" |
-| 2 | Play a game, clear a few arrows, press Leave → Main menu | "Continue" button appears; "Play" reads "New Board" |
-| 3 | Press "Continue" | Same board with same arrows missing; timer continues from where it left off |
-| 4 | Press "New Board" (with save) | Confirmation modal appears |
-| 5 | Confirm new board | Save deleted; fresh board generation |
-| 6 | Cancel new board | Returns to main menu unchanged |
-| 7 | Complete a game (all arrows cleared) → Main menu | "Continue" absent; "Play" shows |
-| 8 | Large board generation (100×100) | Cancel button visible during generation |
-| 9 | Click Cancel during generation | Returns to main menu |
-| 10 | Switch tabs in WebGL mid-game | On return, can still use Leave to save |
+| 1 | Start game, clear some arrows, press X | "Save game?" modal with Yes/No/X-close |
+| 2 | Save game modal → Yes | Returns to menu, Continue visible, resume works with timer |
+| 3 | Save game modal → No | Returns to menu, prior save (if any) untouched |
+| 4 | Save game modal → X (close) | Modal closes, resume playing |
+| 5 | Start game, DON'T clear arrows, press X | "Leave game?" modal with Yes/No only |
+| 6 | Leave (no clears) → Yes | Returns to menu, no save created |
+| 7 | Main menu with save: Play | Goes to mode select directly (no modal) |
+| 8 | Main menu with save: Continue | Loads saved game correctly |
+| 9 | New game while save exists → clear arrows → leave → Yes | Old save replaced, Continue loads new game |
+| 10 | Clear entire board → menu | No Continue button |
+| 11 | During generation: timer/trail hidden, X cancels | Returns to menu |
+| 12 | Check console for save path on save/load | Path logged |

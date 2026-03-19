@@ -3,9 +3,10 @@ using System;
 /// <summary>
 /// One entry in the replay/save event log. Unused fields default to 0 / null per event type:
 /// <list type="bullet">
-///   <item>session_start, session_rejoin — only wallTime is meaningful.</item>
-///   <item>session_leave — wallTime + solveElapsed.</item>
+///   <item>session_start, session_rejoin — only timestamp is meaningful.</item>
+///   <item>session_leave — timestamp + solveElapsed.</item>
 ///   <item>start_solve, clear, reject — t (solve-relative seconds) + posX/posY (world-space).</item>
+///   <item>end_solve — t (final solve time) + timestamp.</item>
 /// </list>
 /// </summary>
 [Serializable]
@@ -34,7 +35,7 @@ public sealed class ReplayEvent
     public float posY;
 
     /// <summary>
-    /// Wall-clock time in ISO 8601 format (UTC). Used by session events.
+    /// Wall-clock time in ISO 8601 format (UTC). Used by session events and end_solve.
     /// </summary>
-    public string wallTime;
+    public string timestamp;
 }

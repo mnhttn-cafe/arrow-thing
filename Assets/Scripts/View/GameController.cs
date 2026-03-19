@@ -79,7 +79,7 @@ public sealed class GameController : MonoBehaviour
     [SerializeField]
     private float loadingFadeDuration = 0.3f;
 
-    // Fields shared between GenerateAndSetup and save/focus-loss callbacks
+    // Fields shared between GenerateAndSetup and leave callbacks
     private Board _board = null!;
     private BoardView _boardView = null!;
     private GameTimer _timer;
@@ -90,11 +90,10 @@ public sealed class GameController : MonoBehaviour
     private int _h;
     private int _maxLen;
     private float _inspectionDur;
+    private int _initialArrowCount;
+    private InputHandler _inputHandler;
 
-    /// <summary>True once generation is done and gameplay has started.</summary>
-    private bool _generationComplete;
-
-    /// <summary>Set to true by the Cancel button during generation.</summary>
+    /// <summary>Set to true by the X button during generation to abort.</summary>
     private bool _cancelGeneration;
 
     private void Awake()
@@ -154,9 +153,18 @@ public sealed class GameController : MonoBehaviour
         VisualElement loadingOverlay = null;
         VisualElement loadingBarFill = null;
         Label loadingPercent = null;
+        Button backBtn = null;
+        Label timerLabel = null;
+        Button trailToggleBtn = null;
+
         if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
         {
-            loadingOverlay = hudUIDocument.rootVisualElement.Q("loading-overlay");
+            var hudRoot = hudUIDocument.rootVisualElement;
+            loadingOverlay = hudRoot.Q("loading-overlay");
+            backBtn = hudRoot.Q<Button>("back-to-menu-btn");
+            timerLabel = hudRoot.Q<Label>("timer-label");
+            trailToggleBtn = hudRoot.Q<Button>("trail-toggle-btn");
+
             if (loadingOverlay != null)
             {
                 loadingOverlay.style.display = DisplayStyle.None;
@@ -177,17 +185,21 @@ public sealed class GameController : MonoBehaviour
 
         if (generating && loadingOverlay != null)
         {
-            // Wire cancel button before the generation loop
-            var cancelBtn = loadingOverlay.Q<Button>("cancel-generation-btn");
-            if (cancelBtn != null)
-                cancelBtn.clicked += () => _cancelGeneration = true;
+            // Hide gameplay HUD elements during generation
+            if (timerLabel != null)
+                timerLabel.style.display = DisplayStyle.None;
+            if (trailToggleBtn != null)
+                trailToggleBtn.style.display = DisplayStyle.None;
+
+            // Wire X button to cancel generation (no modal — immediate cancel)
+            if (backBtn != null)
+                backBtn.clicked += () => _cancelGeneration = true;
 
             // Generation needs multiple frames — fade in overlay while generating
             loadingOverlay.style.display = DisplayStyle.Flex;
             loadingOverlay.style.opacity = 0f;
             float fadeIn = 0f;
 
-            // Fade in + generate simultaneously.
             // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
             const float estimatedArrowDensity = 0.064f;
             float estimatedArrows = _w * _h * estimatedArrowDensity;
@@ -224,6 +236,16 @@ public sealed class GameController : MonoBehaviour
                 loadingFadeDuration * currentOpacity,
                 hide: true
             );
+
+            // Restore gameplay HUD elements after generation
+            if (timerLabel != null)
+                timerLabel.style.display = DisplayStyle.Flex;
+            if (trailToggleBtn != null)
+                trailToggleBtn.style.display = DisplayStyle.Flex;
+
+            // Clear cancel handler — X button will be re-wired for leave modal below
+            if (backBtn != null)
+                backBtn.clickable = new Clickable(() => { });
         }
         else
         {
@@ -244,6 +266,10 @@ public sealed class GameController : MonoBehaviour
             SceneManager.LoadScene("MainMenu");
             yield break;
         }
+
+        // Capture full arrow count before applying resume clears, so that
+        // HasAnyClearedArrows is true for resumed games with prior progress.
+        _initialArrowCount = _board.Arrows.Count;
 
         // --- Resume: apply prior clears with no animation ---
         bool resumeSolving = false;
@@ -311,10 +337,10 @@ public sealed class GameController : MonoBehaviour
                 camCtrl.ZoomSpeed = GameSettings.ZoomSpeed;
         }
 
-        // Setup timer
+        // Setup timer — resume skips inspection and restores solve elapsed
         _timer = new GameTimer(_inspectionDur);
         double wallNow = (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
-        if (resumeSolving && resumeSolveElapsed > 0.0)
+        if (resumeSolving)
             _timer.Resume(wallNow, resumeSolveElapsed);
         else
             _timer.Start(wallNow);
@@ -326,40 +352,56 @@ public sealed class GameController : MonoBehaviour
         {
             var hudRoot = hudUIDocument.rootVisualElement;
             var leaveModal = hudRoot.Q("leave-modal");
+            var leaveTitle = hudRoot.Q<Label>("leave-title");
+            var leaveSublabel = hudRoot.Q("leave-sublabel");
+            var leaveCloseBtn = hudRoot.Q<Button>("leave-close-btn");
 
-            hudRoot.Q<Button>("back-to-menu-btn").clicked += () =>
-                leaveModal.RemoveFromClassList("modal--hidden");
+            // X button opens the leave modal
+            if (backBtn != null)
+            {
+                backBtn.clickable = new Clickable(() => { });
+                backBtn.clicked += () =>
+                    ShowLeaveModal(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
+            }
 
-            hudRoot.Q<Button>("leave-yes-btn").clicked += OnLeaveConfirmed;
-            hudRoot.Q<Button>("leave-no-btn").clicked += () =>
-                leaveModal.AddToClassList("modal--hidden");
+            // Leave modal: Yes = save (if applicable) and leave
+            hudRoot.Q<Button>("leave-yes-btn").clicked += () => OnLeaveYes(leaveModal);
+
+            // Leave modal: No = leave without saving (or cancel if no clears)
+            hudRoot.Q<Button>("leave-no-btn").clicked += () => OnLeaveNo(leaveModal);
+
+            // Leave modal: X close = cancel, stay in game
+            if (leaveCloseBtn != null)
+                leaveCloseBtn.clicked += () => HideLeaveModal(leaveModal);
 
             timerView = gameObject.AddComponent<GameTimerView>();
             timerView.Init(_timer, hudUIDocument, inspectionWarningThreshold);
 
             // Trail toggle button (bottom-right)
-            var trailBtn = hudRoot.Q<Button>("trail-toggle-btn");
-            bool trailOn = false;
-            trailBtn.clicked += () =>
+            if (trailToggleBtn != null)
             {
-                trailOn = !trailOn;
-                _boardView.SetAllTrailsVisible(trailOn);
-                if (trailOn)
-                    trailBtn.AddToClassList("hud-btn--active");
-                else
-                    trailBtn.RemoveFromClassList("hud-btn--active");
-            };
-            _boardView.TrailAutoOff += () =>
-            {
-                trailOn = false;
-                trailBtn.RemoveFromClassList("hud-btn--active");
-            };
+                bool trailOn = false;
+                trailToggleBtn.clicked += () =>
+                {
+                    trailOn = !trailOn;
+                    _boardView.SetAllTrailsVisible(trailOn);
+                    if (trailOn)
+                        trailToggleBtn.AddToClassList("hud-btn--active");
+                    else
+                        trailToggleBtn.RemoveFromClassList("hud-btn--active");
+                };
+                _boardView.TrailAutoOff += () =>
+                {
+                    trailOn = false;
+                    trailToggleBtn.RemoveFromClassList("hud-btn--active");
+                };
+            }
         }
 
-        // Setup input — use player's saved drag threshold if coming from menu, otherwise inspector default
+        // Setup input
         float dragThreshold = GameSettings.IsSet ? GameSettings.DragThreshold : dragThresholdPixels;
-        var inputHandler = gameObject.AddComponent<InputHandler>();
-        inputHandler.Init(
+        _inputHandler = gameObject.AddComponent<InputHandler>();
+        _inputHandler.Init(
             _board,
             _boardView,
             camCtrl,
@@ -369,15 +411,9 @@ public sealed class GameController : MonoBehaviour
             _recorder
         );
 
-        // Wire leave modal to suppress input while visible
-        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
-        {
-            var leaveModal = hudUIDocument.rootVisualElement.Q("leave-modal");
-            hudUIDocument.rootVisualElement.Q<Button>("back-to-menu-btn").clicked += () =>
-                inputHandler.SetInputEnabled(false);
-            hudUIDocument.rootVisualElement.Q<Button>("leave-no-btn").clicked += () =>
-                inputHandler.SetInputEnabled(true);
-        }
+        // Wire X button to also suppress input when opening leave modal
+        if (backBtn != null)
+            backBtn.clicked += () => _inputHandler.SetInputEnabled(false);
 
         // Setup victory screen
         if (
@@ -398,19 +434,68 @@ public sealed class GameController : MonoBehaviour
             );
             _boardView.BoardCleared += () =>
             {
-                inputHandler.SetInputEnabled(false);
-                // Board fully cleared — save is no longer needed
+                _inputHandler.SetInputEnabled(false);
+                _recorder?.RecordEndSolve(_timer?.SolveElapsed ?? 0.0);
                 SaveManager.Delete();
                 victory.OnBoardCleared();
             };
         }
-
-        _generationComplete = true;
     }
 
-    private void OnLeaveConfirmed()
+    /// <summary>Returns true if any arrows have been cleared this session (including resumed clears).</summary>
+    private bool HasAnyClearedArrows => _board != null && _board.Arrows.Count < _initialArrowCount;
+
+    private void ShowLeaveModal(
+        VisualElement modal,
+        Label title,
+        VisualElement sublabel,
+        Button closeBtn
+    )
     {
-        if (_recorder != null && _timer != null && _board != null && _board.Arrows.Count > 0)
+        if (HasAnyClearedArrows)
+        {
+            // Save-worthy state: show "Save game?" with Yes/No/X
+            if (title != null)
+                title.text = "Save game?";
+            if (sublabel != null)
+            {
+                // Only warn about replacing if a DIFFERENT game's save exists
+                bool hasDifferentSave = false;
+                if (SaveManager.HasSave())
+                {
+                    var existing = SaveManager.Load();
+                    hasDifferentSave = existing != null && existing.gameId != _gameId;
+                }
+                if (hasDifferentSave)
+                    sublabel.RemoveFromClassList("modal--hidden");
+                else
+                    sublabel.AddToClassList("modal--hidden");
+            }
+            if (closeBtn != null)
+                closeBtn.style.display = DisplayStyle.Flex;
+        }
+        else
+        {
+            // Nothing to save: show "Leave game?" with Yes/No only
+            if (title != null)
+                title.text = "Leave game?";
+            if (sublabel != null)
+                sublabel.AddToClassList("modal--hidden");
+            if (closeBtn != null)
+                closeBtn.style.display = DisplayStyle.None;
+        }
+        modal.RemoveFromClassList("modal--hidden");
+    }
+
+    private void HideLeaveModal(VisualElement modal)
+    {
+        modal.AddToClassList("modal--hidden");
+        _inputHandler?.SetInputEnabled(true);
+    }
+
+    private void OnLeaveYes(VisualElement modal)
+    {
+        if (HasAnyClearedArrows && _recorder != null && _timer != null)
         {
             _recorder.RecordSessionLeave(_timer.SolveElapsed);
             SaveManager.Save(
@@ -420,21 +505,17 @@ public sealed class GameController : MonoBehaviour
         SceneManager.LoadScene("MainMenu");
     }
 
-    private void OnApplicationFocus(bool hasFocus)
+    private void OnLeaveNo(VisualElement modal)
     {
-        if (!_generationComplete || _recorder == null || _board == null || _board.Arrows.Count == 0)
-            return;
-
-        if (!hasFocus)
+        if (HasAnyClearedArrows)
         {
-            _recorder.RecordSessionLeave(_timer?.SolveElapsed ?? 0.0);
-            SaveManager.Save(
-                _recorder.ToReplayData(_gameId, _activeSeed, _w, _h, _maxLen, _inspectionDur)
-            );
+            // "No" on save prompt = leave without saving
+            SceneManager.LoadScene("MainMenu");
         }
         else
         {
-            _recorder.RecordSessionRejoin();
+            // "No" on leave prompt = cancel, stay in game
+            HideLeaveModal(modal);
         }
     }
 

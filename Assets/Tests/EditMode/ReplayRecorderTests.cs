@@ -44,7 +44,7 @@ public class ReplayRecorderTests
     {
         var rec = new ReplayRecorder();
         rec.RecordSessionStart();
-        Assert.IsNotEmpty(rec.Events[0].wallTime);
+        Assert.IsNotEmpty(rec.Events[0].timestamp);
     }
 
     [Test]
@@ -98,6 +98,17 @@ public class ReplayRecorderTests
         Assert.AreEqual(1.23, evt.t, 1e-9);
         Assert.AreEqual(-3f, evt.posX, 1e-5f);
         Assert.AreEqual(4f, evt.posY, 1e-5f);
+    }
+
+    [Test]
+    public void RecordEndSolve_SetsTypeTimeAndTimestamp()
+    {
+        var rec = new ReplayRecorder();
+        rec.RecordEndSolve(42.0);
+        var evt = rec.Events[0];
+        Assert.AreEqual(ReplayEventType.EndSolve, evt.type);
+        Assert.AreEqual(42.0, evt.t, 1e-9);
+        Assert.IsNotEmpty(evt.timestamp);
     }
 
     // ── start_solve + clear same-timestamp scenario ───────────────────────────
@@ -188,7 +199,7 @@ public class ReplayRecorderTests
             {
                 seq = 0,
                 type = ReplayEventType.SessionStart,
-                wallTime = "t0",
+                timestamp = "t0",
             },
             new ReplayEvent
             {

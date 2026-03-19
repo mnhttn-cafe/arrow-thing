@@ -17,26 +17,6 @@
     margin-bottom: 24px;
 }
 
-.cancel-generation-btn {
-    width: 200px;
-    padding: 12px 0;
-    font-size: 22px;
-    color: rgb(200, 200, 210);
-    background-color: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    border-width: 0;
-    -unity-text-align: middle-center;
-}
-
-.cancel-generation-btn:hover {
-    color: rgb(255, 255, 255);
-    background-color: rgba(255, 255, 255, 0.18);
-}
-
-.cancel-generation-btn:active {
-    background-color: rgba(255, 255, 255, 0.28);
-}
-
 .loading-bar-track {
     width: 300px;
     height: 8px;
@@ -167,4 +147,30 @@
 
 .modal-btn:active {
     background-color: rgb(100, 100, 140);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    color: rgb(140, 140, 160);
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 16px;
+    -unity-text-align: middle-center;
+}
+
+.modal-close-btn:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-sublabel {
+    font-size: 16px;
+    color: rgb(140, 140, 160);
+    margin-bottom: 16px;
+    margin-top: -12px;
 }
