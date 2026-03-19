@@ -186,10 +186,79 @@ public sealed class GameController : MonoBehaviour
 
         if (hasSnapshot)
         {
-            // Fast path: restore all initial arrows, then replay clears below
-            foreach (List<Cell> arrowCells in priorData.boardSnapshot)
-                _board.AddArrow(new Arrow(arrowCells));
             _initialBoardSnapshot = priorData.boardSnapshot;
+            int totalArrows = priorData.boardSnapshot.Count;
+            int placed = 0;
+
+            if (loadingOverlay != null)
+            {
+                var loadingLabel = loadingOverlay.Q<Label>("loading-label");
+                if (loadingLabel != null)
+                    loadingLabel.text = "Resuming...";
+
+                if (timerLabel != null)
+                    timerLabel.style.display = DisplayStyle.None;
+                if (trailToggleBtn != null)
+                    trailToggleBtn.style.display = DisplayStyle.None;
+
+                if (backBtn != null)
+                    backBtn.clicked += () => _cancelGeneration = true;
+
+                loadingOverlay.style.display = DisplayStyle.Flex;
+                loadingOverlay.style.opacity = 0f;
+                float fadeIn = 0f;
+
+                foreach (List<Cell> arrowCells in priorData.boardSnapshot)
+                {
+                    if (_cancelGeneration)
+                    {
+                        SceneManager.LoadScene("MainMenu");
+                        yield break;
+                    }
+                    _board.AddArrow(new Arrow(arrowCells));
+                    placed++;
+
+                    fadeIn += Time.deltaTime;
+                    float t = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                    loadingOverlay.style.opacity = t;
+
+                    if (loadingBarFill != null)
+                    {
+                        float progress = (float)placed / totalArrows;
+                        loadingBarFill.style.width = new StyleLength(
+                            new Length(progress * 100f, LengthUnit.Percent)
+                        );
+                        if (loadingPercent != null)
+                            loadingPercent.text = Mathf.RoundToInt(progress * 100f) + "%";
+                    }
+                    yield return null;
+                }
+
+                float currentOpacity = Mathf.Clamp01(fadeIn / loadingFadeDuration);
+                yield return FadeElement(
+                    loadingOverlay,
+                    currentOpacity,
+                    0f,
+                    loadingFadeDuration * currentOpacity,
+                    hide: true
+                );
+
+                if (timerLabel != null)
+                    timerLabel.style.display = DisplayStyle.Flex;
+                if (trailToggleBtn != null)
+                    trailToggleBtn.style.display = DisplayStyle.Flex;
+
+                if (backBtn != null)
+                    backBtn.clickable = new Clickable(() => { });
+            }
+            else
+            {
+                foreach (List<Cell> arrowCells in priorData.boardSnapshot)
+                {
+                    _board.AddArrow(new Arrow(arrowCells));
+                    yield return null;
+                }
+            }
         }
         else
         {
