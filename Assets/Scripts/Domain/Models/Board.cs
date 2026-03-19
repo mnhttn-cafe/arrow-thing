@@ -44,6 +44,42 @@ public sealed class Board
         }
     }
 
+    /// <summary>
+    /// Restores arrows from a snapshot in bulk. Places all arrows into occupancy first,
+    /// then builds the dependency graph in a single pass. Much faster than calling
+    /// AddArrow individually because it avoids the O(n²) reverse-dependency scan.
+    /// </summary>
+    public void RestoreArrows(IReadOnlyList<Arrow> arrows)
+    {
+        // Phase 1: place all arrows into occupancy
+        foreach (Arrow arrow in arrows)
+        {
+            _arrows.Add(arrow);
+            foreach (Cell c in arrow.Cells)
+                _occupancy[c.X, c.Y] = arrow;
+            OccupiedCellCount += arrow.Cells.Count;
+            _dependsOn[arrow] = new HashSet<Arrow>();
+            _dependedOnBy[arrow] = new HashSet<Arrow>();
+        }
+
+        // Phase 2: build dependency graph — each arrow's forward ray hits are its deps
+        foreach (Arrow arrow in arrows)
+        {
+            (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+            Cell cursor = new(arrow.HeadCell.X + dx, arrow.HeadCell.Y + dy);
+            while (Contains(cursor))
+            {
+                Arrow hit = _occupancy[cursor.X, cursor.Y];
+                if (hit != null && hit != arrow)
+                {
+                    _dependsOn[arrow].Add(hit);
+                    _dependedOnBy[hit].Add(arrow);
+                }
+                cursor = new(cursor.X + dx, cursor.Y + dy);
+            }
+        }
+    }
+
     public void AddArrow(Arrow arrow)
     {
         if (arrow == null)
