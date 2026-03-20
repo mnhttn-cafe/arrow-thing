@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 
 [TestFixture]
@@ -11,10 +12,10 @@ public class ReplayRecorderTests
     {
         var rec = new ReplayRecorder();
         rec.RecordSessionStart();
-        rec.RecordStartSolve(0.0);
-        rec.RecordClear(0.5, 1f, 2f);
-        rec.RecordReject(1.0, 3f, 4f);
-        rec.RecordSessionLeave(1.0);
+        rec.RecordStartSolve();
+        rec.RecordClear(1f, 2f);
+        rec.RecordReject(3f, 4f);
+        rec.RecordSessionLeave();
 
         var events = rec.Events;
         for (int i = 1; i < events.Count; i++)
@@ -48,12 +49,11 @@ public class ReplayRecorderTests
     }
 
     [Test]
-    public void RecordSessionLeave_SetsCorrectTypeAndElapsed()
+    public void RecordSessionLeave_SetsCorrectType()
     {
         var rec = new ReplayRecorder();
-        rec.RecordSessionLeave(42.5);
+        rec.RecordSessionLeave();
         Assert.AreEqual(ReplayEventType.SessionLeave, rec.Events[0].type);
-        Assert.AreEqual(42.5, rec.Events[0].t, 1e-9);
     }
 
     [Test]
@@ -65,65 +65,59 @@ public class ReplayRecorderTests
     }
 
     [Test]
-    public void RecordStartSolve_SetsTypeAndTime()
+    public void RecordStartSolve_SetsType()
     {
         var rec = new ReplayRecorder();
-        rec.RecordStartSolve(0.0);
+        rec.RecordStartSolve();
         var evt = rec.Events[0];
         Assert.AreEqual(ReplayEventType.StartSolve, evt.type);
-        Assert.AreEqual(0.0, evt.t, 1e-9);
     }
 
     [Test]
-    public void RecordClear_SetsTypeTimePositionAndTimestamp()
+    public void RecordClear_SetsTypePositionAndTimestamp()
     {
         var rec = new ReplayRecorder();
-        rec.RecordClear(3.14, 5f, 7f);
+        rec.RecordClear(5f, 7f);
         var evt = rec.Events[0];
         Assert.AreEqual(ReplayEventType.Clear, evt.type);
-        Assert.AreEqual(3.14, evt.t, 1e-9);
         Assert.AreEqual(5f, evt.posX.Value, 1e-5f);
         Assert.AreEqual(7f, evt.posY.Value, 1e-5f);
         Assert.IsNotEmpty(evt.timestamp);
     }
 
     [Test]
-    public void RecordReject_SetsTypeTimeAndPosition()
+    public void RecordReject_SetsTypeAndPosition()
     {
         var rec = new ReplayRecorder();
-        rec.RecordReject(1.23, -3f, 4f);
+        rec.RecordReject(-3f, 4f);
         var evt = rec.Events[0];
         Assert.AreEqual(ReplayEventType.Reject, evt.type);
-        Assert.AreEqual(1.23, evt.t, 1e-9);
         Assert.AreEqual(-3f, evt.posX.Value, 1e-5f);
         Assert.AreEqual(4f, evt.posY.Value, 1e-5f);
     }
 
     [Test]
-    public void RecordEndSolve_SetsTypeTimeAndTimestamp()
+    public void RecordEndSolve_SetsTypeAndTimestamp()
     {
         var rec = new ReplayRecorder();
-        rec.RecordEndSolve(42.0);
+        rec.RecordEndSolve();
         var evt = rec.Events[0];
         Assert.AreEqual(ReplayEventType.EndSolve, evt.type);
-        Assert.AreEqual(42.0, evt.t, 1e-9);
         Assert.IsNotEmpty(evt.timestamp);
     }
 
     // ── start_solve + clear same-timestamp scenario ───────────────────────────
 
     [Test]
-    public void StartSolveAndClear_SameTimestamp_OrderedBySeq()
+    public void StartSolveAndClear_OrderedBySeq()
     {
         var rec = new ReplayRecorder();
-        rec.RecordStartSolve(0.0); // seq 0, t = 0
-        rec.RecordClear(0.0, 2f, 3f); // seq 1, t = 0
+        rec.RecordStartSolve();
+        rec.RecordClear(2f, 3f);
 
         Assert.AreEqual(2, rec.Events.Count);
         Assert.AreEqual(0, rec.Events[0].seq);
         Assert.AreEqual(1, rec.Events[1].seq);
-        Assert.AreEqual(0.0, rec.Events[0].t, 1e-9);
-        Assert.AreEqual(0.0, rec.Events[1].t, 1e-9);
         Assert.AreEqual(ReplayEventType.StartSolve, rec.Events[0].type);
         Assert.AreEqual(ReplayEventType.Clear, rec.Events[1].type);
     }
@@ -135,7 +129,7 @@ public class ReplayRecorderTests
     {
         var rec = new ReplayRecorder();
         rec.RecordSessionStart();
-        rec.RecordClear(1.0, 0f, 0f);
+        rec.RecordClear(0f, 0f);
 
         var data = rec.ToReplayData("game-1", 42, 10, 10, 20, 15f);
         Assert.AreEqual(2, data.events.Count);
@@ -152,7 +146,7 @@ public class ReplayRecorderTests
     public void ToReplayData_FinalTime_SetWhenProvided()
     {
         var rec = new ReplayRecorder();
-        rec.RecordClear(9.99, 0f, 0f);
+        rec.RecordClear(0f, 0f);
         var data = rec.ToReplayData("g", 0, 5, 5, 10, 15f, finalTime: 9.99);
         Assert.AreEqual(9.99, data.finalTime, 1e-9);
     }
@@ -165,9 +159,85 @@ public class ReplayRecorderTests
         var data = rec.ToReplayData("g", 0, 5, 5, 10, 15f);
 
         // Adding more events after snapshot does not affect the snapshot
-        rec.RecordClear(1.0, 0f, 0f);
+        rec.RecordClear(0f, 0f);
         Assert.AreEqual(1, data.events.Count);
         Assert.AreEqual(2, rec.Events.Count);
+    }
+
+    // ── boardSnapshot ─────────────────────────────────────────────────────────
+
+    [Test]
+    public void ToReplayData_WithSnapshot_SnapshotIsPreserved()
+    {
+        var rec = new ReplayRecorder();
+        rec.RecordSessionStart();
+
+        var snapshot = new List<List<Cell>>
+        {
+            new List<Cell> { new Cell(0, 0), new Cell(0, 1) },
+            new List<Cell> { new Cell(2, 3), new Cell(3, 3), new Cell(4, 3) },
+        };
+
+        var data = rec.ToReplayData("g", 1, 5, 5, 10, 15f, boardSnapshot: snapshot);
+
+        Assert.IsNotNull(data.boardSnapshot);
+        Assert.AreEqual(2, data.boardSnapshot.Count);
+        Assert.AreEqual(new Cell(0, 0), data.boardSnapshot[0][0]);
+        Assert.AreEqual(new Cell(0, 1), data.boardSnapshot[0][1]);
+        Assert.AreEqual(3, data.boardSnapshot[1].Count);
+    }
+
+    [Test]
+    public void ToReplayData_WithSnapshot_SetsVersionTwo()
+    {
+        var rec = new ReplayRecorder();
+        var snapshot = new List<List<Cell>>
+        {
+            new List<Cell> { new Cell(0, 0), new Cell(1, 0) },
+        };
+        var data = rec.ToReplayData("g", 0, 5, 5, 10, 15f, boardSnapshot: snapshot);
+        Assert.AreEqual(2, data.version);
+    }
+
+    [Test]
+    public void ToReplayData_WithoutSnapshot_SnapshotIsNull()
+    {
+        var rec = new ReplayRecorder();
+        rec.RecordSessionStart();
+        var data = rec.ToReplayData("g", 0, 5, 5, 10, 15f);
+        Assert.IsNull(data.boardSnapshot);
+    }
+
+    [Test]
+    public void ResumeWithSnapshot_CanRestoreAndReplayClearsOnBoard()
+    {
+        // Initial board: 3 arrows
+        var initialSnapshot = new List<List<Cell>>
+        {
+            new List<Cell> { new Cell(0, 0), new Cell(0, 1), new Cell(0, 2) },
+            new List<Cell> { new Cell(3, 3), new Cell(2, 3) },
+            new List<Cell> { new Cell(5, 5), new Cell(5, 4) },
+        };
+
+        // Restore all arrows from snapshot
+        var board = new Board(6, 6);
+        foreach (var arrowCells in initialSnapshot)
+            board.AddArrow(new Arrow(arrowCells));
+
+        Assert.AreEqual(3, board.Arrows.Count);
+
+        // Simulate replaying a clear event (arrow at 5,5 was cleared)
+        Arrow toClear = board.GetArrowAt(new Cell(5, 5));
+        Assert.IsNotNull(toClear);
+        Assert.IsTrue(board.IsClearable(toClear));
+        board.RemoveArrow(toClear);
+
+        Assert.AreEqual(2, board.Arrows.Count);
+
+        // Verify remaining arrows match
+        var restoredCells0 = board.Arrows[0].Cells.ToList();
+        Assert.AreEqual(new Cell(0, 0), restoredCells0[0]);
+        Assert.AreEqual(new Cell(0, 2), restoredCells0[2]);
     }
 
     // ── Resume from prior events ──────────────────────────────────────────────
@@ -177,8 +247,18 @@ public class ReplayRecorderTests
     {
         var prior = new List<ReplayEvent>
         {
-            new ReplayEvent { seq = 0, type = ReplayEventType.SessionStart },
-            new ReplayEvent { seq = 1, type = ReplayEventType.Clear },
+            new ReplayEvent
+            {
+                seq = 0,
+                type = ReplayEventType.SessionStart,
+                timestamp = "2026-01-01T00:00:00Z",
+            },
+            new ReplayEvent
+            {
+                seq = 1,
+                type = ReplayEventType.Clear,
+                timestamp = "2026-01-01T00:00:01Z",
+            },
         };
 
         var rec = new ReplayRecorder(prior, nextSeq: 2);
@@ -198,13 +278,15 @@ public class ReplayRecorderTests
             {
                 seq = 0,
                 type = ReplayEventType.SessionStart,
-                timestamp = "t0",
+                timestamp = "2026-01-01T00:00:00Z",
             },
             new ReplayEvent
             {
                 seq = 1,
                 type = ReplayEventType.Clear,
-                t = 0.5,
+                posX = 1f,
+                posY = 2f,
+                timestamp = "2026-01-01T00:00:01Z",
             },
         };
 
@@ -213,7 +295,7 @@ public class ReplayRecorderTests
         Assert.AreEqual(0, rec.Events[0].seq);
         Assert.AreEqual(ReplayEventType.SessionStart, rec.Events[0].type);
         Assert.AreEqual(1, rec.Events[1].seq);
-        Assert.AreEqual(0.5, rec.Events[1].t, 1e-9);
+        Assert.AreEqual(1f, rec.Events[1].posX.Value, 1e-5f);
     }
 
     [Test]
@@ -221,13 +303,197 @@ public class ReplayRecorderTests
     {
         var prior = new List<ReplayEvent>
         {
-            new ReplayEvent { seq = 0, type = ReplayEventType.SessionStart },
+            new ReplayEvent
+            {
+                seq = 0,
+                type = ReplayEventType.SessionStart,
+                timestamp = "2026-01-01T00:00:00Z",
+            },
         };
 
         var rec = new ReplayRecorder(prior, nextSeq: 1);
-        rec.RecordClear(1.0, 0f, 0f);
+        rec.RecordClear(0f, 0f);
 
         // The original list should not have been modified
         Assert.AreEqual(1, prior.Count);
+    }
+
+    // ── ComputedSolveElapsed ──────────────────────────────────────────────────
+
+    [Test]
+    public void ComputedSolveElapsed_SimpleSolve_ReturnsCorrectDuration()
+    {
+        var data = new ReplayData
+        {
+            events = new List<ReplayEvent>
+            {
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionStart,
+                    timestamp = "2026-01-01T00:00:00.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.StartSolve,
+                    timestamp = "2026-01-01T00:00:15.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 1f,
+                    posY = 1f,
+                    timestamp = "2026-01-01T00:00:16.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 2f,
+                    posY = 2f,
+                    timestamp = "2026-01-01T00:00:20.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.EndSolve,
+                    timestamp = "2026-01-01T00:00:20.000Z",
+                },
+            },
+        };
+        Assert.AreEqual(5.0, data.ComputedSolveElapsed, 0.001);
+    }
+
+    [Test]
+    public void ComputedSolveElapsed_WithLeaveAndRejoin_ExcludesPausedTime()
+    {
+        var data = new ReplayData
+        {
+            events = new List<ReplayEvent>
+            {
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionStart,
+                    timestamp = "2026-01-01T00:00:00.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.StartSolve,
+                    timestamp = "2026-01-01T00:00:10.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 1f,
+                    posY = 1f,
+                    timestamp = "2026-01-01T00:00:13.000Z",
+                },
+                // Leave at 3s into solve, rejoin 100s later
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionLeave,
+                    timestamp = "2026-01-01T00:00:13.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionRejoin,
+                    timestamp = "2026-01-01T00:01:53.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 2f,
+                    posY = 2f,
+                    timestamp = "2026-01-01T00:01:55.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.EndSolve,
+                    timestamp = "2026-01-01T00:01:55.000Z",
+                },
+            },
+        };
+        // 3s active + 2s active = 5s total (100s paused time excluded)
+        Assert.AreEqual(5.0, data.ComputedSolveElapsed, 0.001);
+    }
+
+    [Test]
+    public void ComputedSolveElapsed_OnlyCountsCompletedIntervals()
+    {
+        // No session_leave or end_solve — still actively solving, so no completed intervals
+        var data = new ReplayData
+        {
+            events = new List<ReplayEvent>
+            {
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionStart,
+                    timestamp = "2026-01-01T00:00:00.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.StartSolve,
+                    timestamp = "2026-01-01T00:00:10.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 1f,
+                    posY = 1f,
+                    timestamp = "2026-01-01T00:00:17.500Z",
+                },
+            },
+        };
+        // Live timer would add (now - checkpoint) on top; ComputedSolveElapsed only has completed intervals
+        Assert.AreEqual(0.0, data.ComputedSolveElapsed, 0.001);
+    }
+
+    [Test]
+    public void ComputedSolveElapsed_WithSessionLeave_IncludesCompletedInterval()
+    {
+        // Proper save always ends with session_leave, closing the interval
+        var data = new ReplayData
+        {
+            events = new List<ReplayEvent>
+            {
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionStart,
+                    timestamp = "2026-01-01T00:00:00.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.StartSolve,
+                    timestamp = "2026-01-01T00:00:10.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 1f,
+                    posY = 1f,
+                    timestamp = "2026-01-01T00:00:17.500Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionLeave,
+                    timestamp = "2026-01-01T00:00:17.500Z",
+                },
+            },
+        };
+        Assert.AreEqual(7.5, data.ComputedSolveElapsed, 0.001);
+    }
+
+    [Test]
+    public void ComputedSolveElapsed_NoStartSolve_ReturnsZero()
+    {
+        var data = new ReplayData
+        {
+            events = new List<ReplayEvent>
+            {
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionStart,
+                    timestamp = "2026-01-01T00:00:00.000Z",
+                },
+            },
+        };
+        Assert.AreEqual(0.0, data.ComputedSolveElapsed, 0.001);
     }
 }

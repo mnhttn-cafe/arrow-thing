@@ -13,9 +13,6 @@ public sealed class MainMenuController : MonoBehaviour
 
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
     private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
-    private const string DragThresholdPrefKey = "DragThreshold";
-    private const string ZoomSpeedPrefKey = "ZoomSpeed";
-    private const string ArrowColoringPrefKey = "ArrowColoring";
 
     private const int CustomDimMin = 2;
     private const int CustomDimMax = 400;
@@ -110,10 +107,9 @@ public sealed class MainMenuController : MonoBehaviour
 
         // Settings: drag threshold slider
         float savedThreshold = PlayerPrefs.GetFloat(
-            DragThresholdPrefKey,
+            GameSettings.DragThresholdPrefKey,
             GameSettings.DefaultDragThreshold
         );
-        GameSettings.DragThreshold = savedThreshold;
 
         var dragSlider = _settings.Q<Slider>("drag-threshold-slider");
         var dragValueLabel = _settings.Q<Label>("drag-threshold-value");
@@ -121,15 +117,15 @@ public sealed class MainMenuController : MonoBehaviour
         dragValueLabel.text = Mathf.RoundToInt(savedThreshold).ToString();
         dragSlider.RegisterValueChangedCallback(evt =>
         {
-            float val = evt.newValue;
-            GameSettings.DragThreshold = val;
-            dragValueLabel.text = Mathf.RoundToInt(val).ToString();
-            PlayerPrefs.SetFloat(DragThresholdPrefKey, val);
+            dragValueLabel.text = Mathf.RoundToInt(evt.newValue).ToString();
+            PlayerPrefs.SetFloat(GameSettings.DragThresholdPrefKey, evt.newValue);
         });
 
         // Settings: zoom speed slider
-        float savedZoom = PlayerPrefs.GetFloat(ZoomSpeedPrefKey, GameSettings.DefaultZoomSpeed);
-        GameSettings.ZoomSpeed = savedZoom;
+        float savedZoom = PlayerPrefs.GetFloat(
+            GameSettings.ZoomSpeedPrefKey,
+            GameSettings.DefaultZoomSpeed
+        );
 
         var zoomSlider = _settings.Q<Slider>("zoom-speed-slider");
         var zoomValueLabel = _settings.Q<Label>("zoom-speed-value");
@@ -137,22 +133,18 @@ public sealed class MainMenuController : MonoBehaviour
         zoomValueLabel.text = savedZoom.ToString("F1");
         zoomSlider.RegisterValueChangedCallback(evt =>
         {
-            float val = evt.newValue;
-            GameSettings.ZoomSpeed = val;
-            zoomValueLabel.text = val.ToString("F1");
-            PlayerPrefs.SetFloat(ZoomSpeedPrefKey, val);
+            zoomValueLabel.text = evt.newValue.ToString("F1");
+            PlayerPrefs.SetFloat(GameSettings.ZoomSpeedPrefKey, evt.newValue);
         });
 
         // Settings: arrow coloring toggle
-        bool savedColoring = PlayerPrefs.GetInt(ArrowColoringPrefKey, 0) == 1;
-        GameSettings.ArrowColoring = savedColoring;
+        bool savedColoring = PlayerPrefs.GetInt(GameSettings.ArrowColoringPrefKey, 0) == 1;
 
         var coloringToggle = _settings.Q<Toggle>("arrow-coloring-toggle");
         coloringToggle.value = savedColoring;
         coloringToggle.RegisterValueChangedCallback(evt =>
         {
-            GameSettings.ArrowColoring = evt.newValue;
-            PlayerPrefs.SetInt(ArrowColoringPrefKey, evt.newValue ? 1 : 0);
+            PlayerPrefs.SetInt(GameSettings.ArrowColoringPrefKey, evt.newValue ? 1 : 0);
         });
 
         // Settings buttons
@@ -226,14 +218,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void OnContinue()
     {
-        ReplayData data = SaveManager.Load();
-        if (data == null)
-        {
-            // Save was corrupted — fall back to fresh game
-            ShowScreen(Screen.ModeSelect);
-            return;
-        }
-        GameSettings.Resume(data);
+        GameSettings.ResumeFromSave();
         SceneManager.LoadScene("Game");
     }
 

@@ -6,8 +6,7 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
 
 ## Project Status
 
-- Current version: **v0.2** — playable on [GitHub Pages](https://vicplusplus.github.io/arrow-thing/)
-- Next milestone: v0.3 (local leaderboards)
+- Playable on [GitHub Pages](https://vicplusplus.github.io/arrow-thing/)
 - Design docs:
   - [`docs/GDD.md`](docs/GDD.md) (game design)
   - [`docs/TechnicalDesign.md`](docs/TechnicalDesign.md) (technical architecture and class structure)

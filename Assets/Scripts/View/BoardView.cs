@@ -35,37 +35,63 @@ public sealed class BoardView : MonoBehaviour
 
     public BoardGridRenderer GridRenderer { get; private set; }
 
-    public void Init(Board board, VisualSettings settings)
+    private Transform _arrowParent;
+
+    /// <summary>
+    /// Sets up grid and arrow parent. If <paramref name="spawnArrows"/> is false,
+    /// arrows must be added incrementally via <see cref="AddArrowView"/> followed
+    /// by <see cref="ApplyColoring"/> when complete.
+    /// </summary>
+    public void Init(Board board, VisualSettings settings, bool spawnArrows = true)
     {
         _board = board;
         _settings = settings;
 
-        // Grid
         GridRenderer = gameObject.AddComponent<BoardGridRenderer>();
         GridRenderer.Init(board, settings);
 
-        // Arrows
-        var arrowParent = new GameObject("Arrows").transform;
-        arrowParent.SetParent(transform, false);
+        _arrowParent = new GameObject("Arrows").transform;
+        _arrowParent.SetParent(transform, false);
 
-        foreach (Arrow arrow in board.Arrows)
+        if (spawnArrows)
         {
-            var go = new GameObject($"Arrow_{arrow.HeadCell.X}_{arrow.HeadCell.Y}");
-            go.transform.SetParent(arrowParent, false);
+            foreach (Arrow arrow in board.Arrows)
+                AddArrowView(arrow);
 
-            var view = go.AddComponent<ArrowView>();
-            view.Init(arrow, board.Width, board.Height, settings);
-            _arrowViews[arrow] = view;
+            ApplyColoring();
         }
+    }
 
-        // Apply map-coloring palette if enabled
-        if (GameSettings.ArrowColoring && settings.arrowPalette.Count > 0)
+    /// <summary>
+    /// Spawns an <see cref="ArrowView"/> for a single arrow. Used for incremental
+    /// board rendering during generation. <see cref="Init"/> must be called first.
+    /// </summary>
+    public void AddArrowView(Arrow arrow)
+    {
+        var go = new GameObject($"Arrow_{arrow.HeadCell.X}_{arrow.HeadCell.Y}");
+        go.transform.SetParent(_arrowParent, false);
+
+        var view = go.AddComponent<ArrowView>();
+        view.Init(arrow, _board.Width, _board.Height, _settings);
+        _arrowViews[arrow] = view;
+    }
+
+    /// <summary>
+    /// Applies map-coloring palette to all current arrow views. Call after all
+    /// arrows have been added (coloring requires the full adjacency graph).
+    /// </summary>
+    public void ApplyColoring()
+    {
+        if (
+            PlayerPrefs.GetInt(GameSettings.ArrowColoringPrefKey, 0) == 1
+            && _settings.arrowPalette.Count > 0
+        )
         {
-            int[] colors = ArrowColoring.AssignColors(board, settings.arrowPalette.Count);
-            for (int i = 0; i < board.Arrows.Count; i++)
+            int[] colors = ArrowColoring.AssignColors(_board, _settings.arrowPalette.Count);
+            for (int i = 0; i < _board.Arrows.Count; i++)
             {
-                Color c = settings.arrowPalette[colors[i]];
-                _arrowViews[board.Arrows[i]].SetBaseColor(c, c);
+                Color c = _settings.arrowPalette[colors[i]];
+                _arrowViews[_board.Arrows[i]].SetBaseColor(c, c);
             }
         }
     }
@@ -166,6 +192,18 @@ public sealed class BoardView : MonoBehaviour
         {
             _tintedBlocker.ClearBlockedTint();
             _tintedBlocker = null;
+        }
+    }
+
+    /// <summary>
+    /// Removes an arrow's view without animation. Used during resume clear replay.
+    /// </summary>
+    public void RemoveArrowView(Arrow arrow)
+    {
+        if (_arrowViews.TryGetValue(arrow, out ArrowView view))
+        {
+            _arrowViews.Remove(arrow);
+            Destroy(view.gameObject);
         }
     }
 

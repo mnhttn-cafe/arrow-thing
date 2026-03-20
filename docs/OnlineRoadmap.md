@@ -151,7 +151,7 @@ The first arrow clear also starts the solve timer (see `InputHandler` / `GameTim
 - **`ReplayEvent`** (domain, implemented) — `int seq`, `string type`, nullable `float? posX`/`posY` (clear/reject only), `string timestamp` (ISO 8601 UTC). Seq is auto-assigned by the recorder. Serialized via Newtonsoft; null fields omitted from JSON.
 - **`ReplayRecorder`** (domain, implemented) — accumulates events during play. `Record(type, posX, posY, timestamp)` auto-increments seq. `ToReplayData()` returns the serializable replay.
 - **`ReplayVerifier`** (domain, planned) — static class. Takes seed + board config + events, regenerates board, derives cells from positions via `BoardCoords`, simulates clears in order, returns `VerificationResult` (valid/invalid + reason).
-- **`InputHandler`** changes (planned) — call `ReplayRecorder.Record()` on each tap (clear or reject), passing world-space tap position.
+- **`InputHandler`** changes (implemented) — calls `ReplayRecorder.Record()` on each tap (clear or reject), passing world-space tap position.
 
 ---
 
@@ -303,7 +303,7 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 
 | Script | Changes |
 |--------|---------|
-| `InputHandler` | Record events to `ReplayRecorder` on each tap |
+| `InputHandler` | ~~Record events to `ReplayRecorder` on each tap~~ (done) |
 | `MainMenuController` | Add account icon button (top-right), leaderboard button on mode select |
 | `VictoryController` | Inline top-10 leaderboard, personal best gold highlight, "New Best!" indicator |
 | `GameTimerView` | Gold color on personal best during board-clear sequence |

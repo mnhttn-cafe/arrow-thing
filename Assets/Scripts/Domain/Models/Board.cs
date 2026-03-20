@@ -31,21 +31,60 @@ public sealed class Board
 
     public void InitializeForGeneration()
     {
-        _availableArrowHeads = CreateInitialArrowHeads();
-        InitialCandidateCount = _availableArrowHeads.Count;
         _candidateLookup = new List<ArrowHeadData>[Width, Height];
         for (int x = 0; x < Width; x++)
         for (int y = 0; y < Height; y++)
             _candidateLookup[x, y] = new List<ArrowHeadData>();
-        foreach (ArrowHeadData candidate in _availableArrowHeads)
+        _availableArrowHeads = CreateInitialArrowHeads();
+        InitialCandidateCount = _availableArrowHeads.Count;
+    }
+
+    /// <summary>
+    /// Incrementally restores arrows from a snapshot. Places each arrow into occupancy
+    /// and yields the count placed so far (for progress reporting). After all arrows are
+    /// placed, builds the dependency graph in one forward-ray pass. Much faster than
+    /// calling AddArrow individually because it avoids the O(n²) reverse-dependency scan.
+    /// Caller must exhaust the enumerator for the board to be usable.
+    /// </summary>
+    public IEnumerator<int> RestoreArrowsIncremental(IReadOnlyList<Arrow> arrows)
+    {
+        // Phase 1: place arrows into occupancy, yielding after each
+        foreach (Arrow arrow in arrows)
         {
-            _candidateLookup[candidate.head.X, candidate.head.Y].Add(candidate);
-            _candidateLookup[candidate.next.X, candidate.next.Y].Add(candidate);
+            _arrows.Add(arrow);
+            foreach (Cell c in arrow.Cells)
+                _occupancy[c.X, c.Y] = arrow;
+            OccupiedCellCount += arrow.Cells.Count;
+            _dependsOn[arrow] = new HashSet<Arrow>();
+            _dependedOnBy[arrow] = new HashSet<Arrow>();
+            yield return _arrows.Count;
+        }
+
+        // Phase 2: build dependency graph — each arrow's forward ray hits are its deps
+        // Yields after each arrow so the caller's time budget can break between iterations.
+        int depsBuilt = 0;
+        foreach (Arrow arrow in arrows)
+        {
+            (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+            Cell cursor = new(arrow.HeadCell.X + dx, arrow.HeadCell.Y + dy);
+            while (Contains(cursor))
+            {
+                Arrow hit = _occupancy[cursor.X, cursor.Y];
+                if (hit != null && hit != arrow)
+                {
+                    _dependsOn[arrow].Add(hit);
+                    _dependedOnBy[hit].Add(arrow);
+                }
+                cursor = new(cursor.X + dx, cursor.Y + dy);
+            }
+            depsBuilt++;
+            yield return arrows.Count + depsBuilt;
         }
     }
 
     public void AddArrow(Arrow arrow)
     {
+        // Validations
         if (arrow == null)
             throw new System.ArgumentNullException(nameof(arrow));
         if (_arrows.Contains(arrow))
@@ -62,6 +101,7 @@ public sealed class Board
                 );
         }
 
+        // Set occupancy
         _arrows.Add(arrow);
         foreach (Cell c in arrow.Cells)
             _occupancy[c.X, c.Y] = arrow;
@@ -100,7 +140,7 @@ public sealed class Board
         }
         _dependedOnBy[arrow] = revDeps;
 
-        // Prune candidates if generation was initialized
+        // Prune candidates whose head/next cell is now occupied
         if (_candidateLookup != null)
         {
             HashSet<ArrowHeadData> toRemove = new();
@@ -130,13 +170,7 @@ public sealed class Board
             _occupancy[c.X, c.Y] = null;
         OccupiedCellCount -= arrow.Cells.Count;
 
-        // Remove forward edges: arrow depended on these
-        if (_dependsOn.TryGetValue(arrow, out var deps))
-        {
-            foreach (Arrow dep in deps)
-                _dependedOnBy[dep].Remove(arrow);
-            _dependsOn.Remove(arrow);
-        }
+        _dependsOn.Remove(arrow);
 
         // Remove reverse edges: these depended on arrow
         if (_dependedOnBy.TryGetValue(arrow, out var revDeps))
@@ -196,9 +230,16 @@ public sealed class Board
     {
         List<ArrowHeadData> arrowHeads = new();
 
+        void Add(ArrowHeadData candidate)
+        {
+            arrowHeads.Add(candidate);
+            _candidateLookup[candidate.head.X, candidate.head.Y].Add(candidate);
+            _candidateLookup[candidate.next.X, candidate.next.Y].Add(candidate);
+        }
+
         for (int x = 0; x < Width - 1; x++)
         for (int y = 0; y < Height; y++)
-            arrowHeads.Add(
+            Add(
                 new ArrowHeadData
                 {
                     head = new(x + 1, y),
@@ -209,7 +250,7 @@ public sealed class Board
 
         for (int x = 0; x < Width - 1; x++)
         for (int y = 0; y < Height; y++)
-            arrowHeads.Add(
+            Add(
                 new ArrowHeadData
                 {
                     head = new(x, y),
@@ -220,7 +261,7 @@ public sealed class Board
 
         for (int x = 0; x < Width; x++)
         for (int y = 0; y < Height - 1; y++)
-            arrowHeads.Add(
+            Add(
                 new ArrowHeadData
                 {
                     head = new(x, y + 1),
@@ -231,7 +272,7 @@ public sealed class Board
 
         for (int x = 0; x < Width; x++)
         for (int y = 0; y < Height - 1; y++)
-            arrowHeads.Add(
+            Add(
                 new ArrowHeadData
                 {
                     head = new(x, y),

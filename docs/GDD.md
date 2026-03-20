@@ -5,8 +5,8 @@
 - Genre: Minimalist puzzle, speed-clearing, competitive PvP (planned)
 - Platform(s): WebGL (primary, deployed via GitHub Pages); mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
-- Status: v0.1 — MVP complete, online features in progress
-- Last Updated: 2026-03-16
+- Status: Active development. Playable on GitHub Pages
+- Last Updated: 2026-03-19
 
 ## High Concept
 - One-sentence pitch: Clear winding grid-based arrows as fast as possible, then weaponize your speed against opponents by sending garbage.
@@ -193,33 +193,29 @@
 
 ## Production Scope
 
-### v0.1 — MVP **[Complete]**
+### Implemented
   - Minimal start menu (UI Toolkit: Play/Mode Select/Settings, board-size presets).
   - Procedural arrow generation with solvability guarantee.
   - Core click/tap clear loop with success/fail animations.
   - Timer UI (inspection countdown + solve timer with input-precision final time).
   - Victory screen (grid fade + victory popup with randomized messages, Play Again / Menu).
   - WebGL deployment via GitHub Pages with CD pipeline.
-  - Audio feedback for success/fail/clear. **[Not started — deferred to post-MVP]**
-
-### v0.1.1 — Visual Polish **[Complete]**
   - Map-coloring arrow tinting (graph coloring for adjacent arrow readability).
-
-### v0.1.2 — QoL **[In Progress]**
   - XLarge preset (100×100) and custom board sizes (2–400).
   - Loading progress bar with percentage for large board generation.
   - Preset grid layout (replacing column layout).
+  - Save/resume with initial board snapshot (no re-generation on resume).
+  - Autosave every 10 clears. Leave-game modal with save/discard options.
+  - Cancel generation confirmation modal.
+  - Trajectory highlight toggle for large boards.
+  - Incremental board display during generation and restore.
 
-### v0.2 — Online (see [`docs/OnlineRoadmap.md`](OnlineRoadmap.md))
-  - Authoritative server (ASP.NET Core, shared domain code).
-  - Input-based replay system with server-side verification.
-  - Size-partitioned leaderboards (local + global).
-  - Simple account system (username/display name/JWT).
-  - Offline-first — game always playable without server connection.
-
-### v1.0 — PvP
-  - Real-time garbage mechanics, matchmaking.
-  - The original competitive vision fulfilled.
+### Planned
+  - Audio feedback for success/fail/clear.
+  - Local leaderboards and personal best tracking.
+  - Replay viewer for saved replays.
+  - Online features (see [`docs/OnlineRoadmap.md`](OnlineRoadmap.md)): server, global leaderboards, accounts.
+  - PvP: real-time garbage mechanics, matchmaking.
 
 ### Non-goals (current)
   - Controller support.
@@ -243,5 +239,5 @@
 - 2026-02-28: Revised to v0.6 with updated generation bounds language (minimum-only rule with mode-specific practical caps).
 - 2026-03-06: Closed open questions on arrow count and length distribution based on generation rewrite experience.
 - 2026-03-16: Updated platform target to WebGL-first for MVP; mobile gameplay works but UI scaling deferred. Updated controls section accordingly.
-- 2026-03-16: MVP (v0.1) declared complete. Replaced MVP checklist with version-based production scope (v0.1 → v0.1.1 → v0.2 → v1.0). Online roadmap documented in `OnlineRoadmap.md`.
-- 2026-03-18: v0.1.1 complete. Added v0.1.2 scope: XLarge preset, custom board sizes, loading progress bar, preset grid layout.
+- 2026-03-16: MVP declared complete. Online roadmap documented in `OnlineRoadmap.md`.
+- 2026-03-19: Replaced version-based production scope with implemented/planned lists. Added save/resume, autosave, cancel generation modal, trajectory highlights, incremental board display to implemented list.
