@@ -141,14 +141,17 @@ public sealed class Board
         _dependedOnBy[arrow] = revDeps;
 
         // Prune candidates whose head/next cell is now occupied
-        HashSet<ArrowHeadData> toRemove = new();
-        foreach (Cell c in arrow.Cells)
+        if (_candidateLookup != null)
         {
-            foreach (ArrowHeadData stale in _candidateLookup[c.X, c.Y])
-                toRemove.Add(stale);
-            _candidateLookup[c.X, c.Y].Clear();
+            HashSet<ArrowHeadData> toRemove = new();
+            foreach (Cell c in arrow.Cells)
+            {
+                foreach (ArrowHeadData stale in _candidateLookup[c.X, c.Y])
+                    toRemove.Add(stale);
+                _candidateLookup[c.X, c.Y].Clear();
+            }
+            _availableArrowHeads.RemoveAll(toRemove.Contains);
         }
-        _availableArrowHeads.RemoveAll(toRemove.Contains);
     }
 
     public void RemoveArrow(Arrow arrow)
