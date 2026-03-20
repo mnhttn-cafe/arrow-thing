@@ -40,8 +40,14 @@ public sealed class SnapSlider
     /// <param name="format">"0" = integer display; "F1"/"F2" = decimal.</param>
     /// <param name="showLock">Show the lock/unlock button (requires snapStep > 0).</param>
     public SnapSlider(
-        float min, float max, float initialValue, float smallStep,
-        float snapStep = 0f, string format = "0", bool showLock = true)
+        float min,
+        float max,
+        float initialValue,
+        float smallStep,
+        float snapStep = 0f,
+        string format = "0",
+        bool showLock = true
+    )
     {
         _min = min;
         _max = max;
@@ -122,7 +128,8 @@ public sealed class SnapSlider
     {
         float step = _snapped ? _snapStep : _smallStep;
         float newVal = Mathf.Clamp(Value + dir * step, _min, _max);
-        if (_snapped) newVal = SnapToGrid(newVal);
+        if (_snapped)
+            newVal = SnapToGrid(newVal);
         CommitValue(newVal);
     }
 
@@ -157,7 +164,8 @@ public sealed class SnapSlider
 
     private void RefreshLockBtn()
     {
-        if (_lockBtn == null) return;
+        if (_lockBtn == null)
+            return;
         // ■ = locked/snapped, □ = free  (U+25A0 / U+25A1, widely available in fonts)
         _lockBtn.text = _snapped ? "\u25a0" : "\u25a1";
         if (_snapped)

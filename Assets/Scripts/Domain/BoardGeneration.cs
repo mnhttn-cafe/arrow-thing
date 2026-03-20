@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using static ListUtils;
 
 public static class BoardGeneration
@@ -22,42 +21,22 @@ public static class BoardGeneration
         int minLength,
         int maxLength,
         Random random,
-        long frameBudgetMs = 12,
         int deadEndLimit = DefaultDeadEndLimit
     )
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
         int created = 0;
-        var sw = new Stopwatch();
 
-        while (created < maxPossibleArrows)
+        while (
+            created < maxPossibleArrows
+            && board._availableArrowHeads != null
+            && board._availableArrowHeads.Count > 0
+            && TryGenerateArrow(board, minLength, maxLength, random, out Arrow arrow, deadEndLimit)
+        )
         {
-            sw.Restart();
-            while (
-                created < maxPossibleArrows
-                && sw.ElapsedMilliseconds < frameBudgetMs
-                && TryGenerateArrow(
-                    board,
-                    minLength,
-                    maxLength,
-                    random,
-                    out Arrow arrow,
-                    deadEndLimit
-                )
-            )
-            {
-                board.AddArrow(arrow!);
-                created++;
-            }
-
-            if (
-                created >= maxPossibleArrows
-                || board._availableArrowHeads == null
-                || board._availableArrowHeads.Count == 0
-            )
-                break;
-
+            board.AddArrow(arrow!);
+            created++;
             yield return null;
         }
     }

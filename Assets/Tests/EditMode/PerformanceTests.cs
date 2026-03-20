@@ -133,8 +133,7 @@ public class PerformanceTests
                     board,
                     minLen,
                     maxLen,
-                    new System.Random(s),
-                    frameBudgetMs: 1
+                    new Random(s)
                 );
 
                 int initial = 0;

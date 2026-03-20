@@ -17,7 +17,6 @@ public static class TestBoardHelper
             minLength,
             maxLength,
             random,
-            frameBudgetMs: long.MaxValue,
             deadEndLimit: deadEndLimit
         );
         while (enumerator.MoveNext()) { }

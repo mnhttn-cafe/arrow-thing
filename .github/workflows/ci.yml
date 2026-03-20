@@ -79,8 +79,6 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           testMode: EditMode
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: EditMode tests
           customParameters: -nographics
 
   test-playmode:
@@ -98,6 +96,4 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           testMode: PlayMode
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: PlayMode tests
           customParameters: --burst-disable-compilation

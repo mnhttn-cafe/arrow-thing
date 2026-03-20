@@ -13,9 +13,6 @@ public sealed class MainMenuController : MonoBehaviour
 
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
     private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
-    private const string DragThresholdPrefKey = "DragThreshold";
-    private const string ZoomSpeedPrefKey = "ZoomSpeed";
-    private const string ArrowColoringPrefKey = "ArrowColoring";
 
     private const int CustomDimMin = 2;
     private const int CustomDimMax = 400;
@@ -88,14 +85,26 @@ public sealed class MainMenuController : MonoBehaviour
         _presetCustom = _modeSelect.Q("preset-custom");
 
         _customWidthSnap = new SnapSlider(
-            CustomDimMin, CustomDimMax, 20f, smallStep: 1f,
-            snapStep: 10f, format: "0", showLock: true);
+            CustomDimMin,
+            CustomDimMax,
+            20f,
+            smallStep: 1f,
+            snapStep: 10f,
+            format: "0",
+            showLock: true
+        );
         _customWidthSnap.OnValueChanged += _ => SelectCustom();
         _modeSelect.Q("custom-width-row").Add(_customWidthSnap.Root);
 
         _customHeightSnap = new SnapSlider(
-            CustomDimMin, CustomDimMax, 20f, smallStep: 1f,
-            snapStep: 10f, format: "0", showLock: true);
+            CustomDimMin,
+            CustomDimMax,
+            20f,
+            smallStep: 1f,
+            snapStep: 10f,
+            format: "0",
+            showLock: true
+        );
         _customHeightSnap.OnValueChanged += _ => SelectCustom();
         _modeSelect.Q("custom-height-row").Add(_customHeightSnap.Root);
 
@@ -106,47 +115,56 @@ public sealed class MainMenuController : MonoBehaviour
 
         // Settings: drag threshold slider
         float savedThreshold = PlayerPrefs.GetFloat(
-            DragThresholdPrefKey,
+            GameSettings.DragThresholdPrefKey,
             GameSettings.DefaultDragThreshold
         );
-        GameSettings.DragThreshold = savedThreshold;
 
         var dragSnap = new SnapSlider(
-            GameSettings.MinDragThreshold, GameSettings.MaxDragThreshold,
-            savedThreshold, smallStep: 1f, snapStep: 0f, format: "0", showLock: false);
+            GameSettings.MinDragThreshold,
+            GameSettings.MaxDragThreshold,
+            savedThreshold,
+            smallStep: 1f,
+            snapStep: 0f,
+            format: "0",
+            showLock: false
+        );
         dragSnap.OnValueChanged += val =>
         {
-            GameSettings.DragThreshold = val;
-            PlayerPrefs.SetFloat(DragThresholdPrefKey, val);
+            PlayerPrefs.SetFloat(GameSettings.DragThresholdPrefKey, val);
         };
         dragSnap.Root.AddToClassList("setting-snap-slider");
         _settings.Q("drag-threshold-row").Add(dragSnap.Root);
 
         // Settings: zoom speed slider
-        float savedZoom = PlayerPrefs.GetFloat(ZoomSpeedPrefKey, GameSettings.DefaultZoomSpeed);
-        GameSettings.ZoomSpeed = savedZoom;
+        float savedZoom = PlayerPrefs.GetFloat(
+            GameSettings.ZoomSpeedPrefKey,
+            GameSettings.DefaultZoomSpeed
+        );
 
         var zoomSnap = new SnapSlider(
-            GameSettings.MinZoomSpeed, GameSettings.MaxZoomSpeed,
-            savedZoom, smallStep: 0.1f, snapStep: 0f, format: "F1", showLock: false);
+            GameSettings.MinZoomSpeed,
+            GameSettings.MaxZoomSpeed,
+            savedZoom,
+            smallStep: 0.1f,
+            snapStep: 0f,
+            format: "F1",
+            showLock: false
+        );
         zoomSnap.OnValueChanged += val =>
         {
-            GameSettings.ZoomSpeed = val;
-            PlayerPrefs.SetFloat(ZoomSpeedPrefKey, val);
+            PlayerPrefs.SetFloat(GameSettings.ZoomSpeedPrefKey, val);
         };
         zoomSnap.Root.AddToClassList("setting-snap-slider");
         _settings.Q("zoom-speed-row").Add(zoomSnap.Root);
 
         // Settings: arrow coloring toggle
-        bool savedColoring = PlayerPrefs.GetInt(ArrowColoringPrefKey, 0) == 1;
-        GameSettings.ArrowColoring = savedColoring;
+        bool savedColoring = PlayerPrefs.GetInt(GameSettings.ArrowColoringPrefKey, 0) == 1;
 
         var coloringToggle = _settings.Q<Toggle>("arrow-coloring-toggle");
         coloringToggle.value = savedColoring;
         coloringToggle.RegisterValueChangedCallback(evt =>
         {
-            GameSettings.ArrowColoring = evt.newValue;
-            PlayerPrefs.SetInt(ArrowColoringPrefKey, evt.newValue ? 1 : 0);
+            PlayerPrefs.SetInt(GameSettings.ArrowColoringPrefKey, evt.newValue ? 1 : 0);
         });
 
         // Settings buttons
@@ -218,14 +236,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void OnContinue()
     {
-        ReplayData data = SaveManager.Load();
-        if (data == null)
-        {
-            // Save was corrupted — fall back to fresh game
-            ShowScreen(Screen.ModeSelect);
-            return;
-        }
-        GameSettings.Resume(data);
+        GameSettings.ResumeFromSave();
         SceneManager.LoadScene("Game");
     }
 

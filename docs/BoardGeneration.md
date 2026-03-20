@@ -39,14 +39,16 @@ Both are updated atomically in `AddArrow` and `RemoveArrow`.
 1. Update occupancy.
 2. Walk the new arrow's forward ray — every existing arrow hit is a forward dependency.
 3. For each existing arrow, check if any of the new arrow's cells lie on that arrow's ray (`IsInRay`) — if yes, that existing arrow now depends on the new arrow (reverse dependency).
-4. Prune stale generation candidates if the candidate pool is initialized.
+4. Prune stale generation candidates whose head or next cell is now occupied (via `_candidateLookup`).
 
 ### Maintenance in `RemoveArrow`
 
+`RemoveArrow` requires `IsClearable(arrow)` — the arrow's `_dependsOn` set is guaranteed empty.
+
 1. Clear occupancy.
-2. For each arrow in `_dependsOn[arrow]`: remove `arrow` from their `_dependedOnBy` set.
+2. Remove `arrow`'s (empty) `_dependsOn` entry.
 3. For each arrow in `_dependedOnBy[arrow]`: remove `arrow` from their `_dependsOn` set.
-4. Remove `arrow`'s own entries from both dictionaries.
+4. Remove `arrow`'s `_dependedOnBy` entry.
 
 ### `IsClearable`
 
@@ -60,12 +62,12 @@ O(1). An arrow is clearable when nothing blocks its forward ray.
 
 ### Initialization
 
-`Board.InitializeForGeneration()` creates the candidate pool. Called by `FillBoard` or lazily by `GenerateArrows` if not yet initialized.
+`Board.InitializeForGeneration()` creates the candidate pool. Called by `FillBoardIncremental`/`FillBoard` or lazily by `GenerateArrows` if not yet initialized. The lookup matrix is initialized first, then `CreateInitialArrowHeads` populates both the candidate list and lookup in a single pass.
 
 - `_availableArrowHeads`: pool of remaining unpruned 2-cell head candidates.
 - `_candidateLookup`: `List<ArrowHeadData>[,]` reverse-lookup — maps each cell to the candidates whose `head` or `next` touches it.
 
-The candidate pool is only needed during generation. Deserialized boards (replays, netcode) skip initialization entirely.
+The candidate pool is only needed during generation. Deserialized/restored boards skip initialization entirely.
 
 ### `ArrowHeadData`
 
@@ -81,11 +83,18 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 
 ## Public Entry Points
 
+### `FillBoardIncremental(Board board, int minLength, int maxLength, Random random, int deadEndLimit = 10)`
+
+- Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
+- Calls `board.InitializeForGeneration()`.
+- Loops: `TryGenerateArrow` → `board.AddArrow` → `yield return null` until candidates are exhausted or the board is full.
+- Used by `GameController.GenerateBoard` for incremental board display during generation.
+
 ### `FillBoard(Board board, int minLength, int maxLength, Random random, int deadEndLimit = 10)`
 
-- Calls `board.InitializeForGeneration()`.
+- Synchronous wrapper. Calls `board.InitializeForGeneration()`.
 - Computes `maxPossibleArrows = width * height / 2`.
-- Delegates to `GenerateArrows(...)` with that amount.
+- Delegates to `GenerateArrows(...)` with that amount. Used by tests.
 
 ### `GenerateArrows(Board board, int minLength, int maxLength, int amount, Random random, out int createdArrows, int deadEndLimit = 10)`
 

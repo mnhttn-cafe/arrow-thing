@@ -24,4 +24,14 @@
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
+
+    <ui:VisualElement name="cancel-generation-modal" class="modal-overlay modal--hidden">
+        <ui:VisualElement class="modal-box">
+            <ui:Label class="modal-label" text="Cancel generation?" />
+            <ui:VisualElement class="modal-buttons">
+                <ui:Button name="cancel-generation-yes-btn" class="modal-btn" text="Yes" />
+                <ui:Button name="cancel-generation-no-btn" class="modal-btn" text="No" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
 </ui:UXML>
