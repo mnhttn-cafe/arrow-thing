@@ -46,12 +46,23 @@ Add a local leaderboard system that tracks solve times per board configuration, 
 
 ### Leaderboard Screen (UI)
 
-**Access point**: Trophy icon button in the **top-right corner of mode-select screen**. Uses `Assets/Art/trophy_icon.png`.
+**Scene**: Dedicated `Leaderboard` scene (separate from MainMenu). Has its own `UIDocument` and `LeaderboardScreenController`.
 
-**Screen layout** (`leaderboard` screen in Root.uxml):
+**Access points**:
+- Trophy icon button in the **top-right corner of mode-select screen** → `SceneManager.LoadScene("Leaderboard")`. Uses `Assets/Art/trophy_icon.png`.
+- "View Leaderboard" button in the victory popup → loads `Leaderboard` scene with `GameSettings.LeaderboardFocusGameId` set to the just-completed entry's `gameId`, so the screen auto-scrolls to and highlights that entry.
+
+**Auto-scroll on entry from victory**: When `GameSettings.LeaderboardFocusGameId` is set, the leaderboard screen:
+1. Determines the correct size tab from the entry's `boardWidth × boardHeight`
+2. Selects that tab and sorts by Fastest (default)
+3. Scrolls the list so the focused entry is visible
+4. Highlights the focused row with a distinct style
+5. Clears `LeaderboardFocusGameId` after consuming it
+
+**Screen layout** (`Leaderboard.uxml`):
 - Header: "Leaderboards" title + back button (top-left)
 - **Local / Global toggle** (top-right, next to header) — two pill buttons
-  - Local (default): shows local PlayerPrefs data
+  - Local (default): shows local data
   - Global: shows "Coming Soon" placeholder overlay
 - **5 tabs** below header, horizontally arranged:
   - Small (10×10)
@@ -78,10 +89,12 @@ Add a local leaderboard system that tracks solve times per board configuration, 
 
 **Context menu**: A small floating panel that appears anchored to the triple-dot button. Clicking outside dismisses it. Simple list of text buttons.
 
-**`LeaderboardScreenController`** (view layer):
+**`LeaderboardScreenController`** (view layer, MonoBehaviour on Leaderboard scene):
+- Scene entry point for the leaderboard screen
 - Manages tab selection, sort state, list population, context menu
-- Wired by MainMenuController as a fourth screen alongside main-menu, mode-select, settings
-- Replay launch → sets GameSettings replay mode, records return destination as "leaderboard", loads Replay scene
+- On start: checks `GameSettings.LeaderboardFocusGameId` for auto-scroll
+- Replay launch → `GameSettings.StartReplay(replayData, "Leaderboard")` → load Replay scene
+- Back button → `SceneManager.LoadScene("MainMenu")`
 
 ### Victory Screen Integration
 
@@ -92,7 +105,7 @@ After board clear, before showing the victory popup:
 
 **Victory popup additions**:
 - "New Best!" gold label (hidden unless applicable)
-- **"View Leaderboard" button** — navigates to the leaderboard screen (replays are viewable from there)
+- **"View Leaderboard" button** — loads `Leaderboard` scene with `GameSettings.LeaderboardFocusGameId` set to the just-completed entry's `gameId` (auto-scrolls to the entry)
 
 ### Replay Viewer
 
@@ -218,33 +231,43 @@ After board clear, before showing the victory popup:
 
 ### Phase 3: Leaderboard UI
 
-- [ ] 3.1 Add trophy button to mode-select screen
+- [ ] 3.1 Add `LeaderboardFocusGameId` to GameSettings
+  - Nullable string property, set by VictoryController before loading Leaderboard scene
+  - Consumed and cleared by LeaderboardScreenController on start
+
+- [ ] 3.2 Update VictoryController to set `LeaderboardFocusGameId`
+  - Store the recorded entry's `gameId` after `RecordResult`
+  - "View Leaderboard" button sets `GameSettings.LeaderboardFocusGameId` and loads `Leaderboard` scene
+
+- [ ] 3.3 Add trophy button to mode-select screen
   - Add button element to Root.uxml in mode-select section
   - Style with trophy icon, position top-right
-  - Wire in MainMenuController to navigate to leaderboard screen
+  - Wire in MainMenuController to load `Leaderboard` scene
 
-- [ ] 3.2 Build leaderboard screen UXML/USS
-  - Add leaderboard section to Root.uxml (consistent with existing screen pattern)
+- [ ] 3.4 Build leaderboard screen UXML/USS
+  - New `Leaderboard.uxml` and `Leaderboard.uss` (separate scene, not in Root.uxml)
   - Header with back button + Local/Global toggle
   - 5 tabs, 3 sort buttons, scrollable list, empty state
-  - Entry row template: rank, size label (All tab only), time, date, star icon, triple-dot menu button
+  - Entry row template: rank, size label (All tab only), time, date, star icon, play button, triple-dot menu button
   - Context menu panel: Favorite/Unfavorite, Delete
   - Global view: "Coming Soon" overlay
-  - `Assets/UI/Leaderboard.uss` — styling (match existing dark theme)
+  - Styling matches existing dark theme
 
-- [ ] 3.3 Build `LeaderboardScreenController` (`Assets/Scripts/View/LeaderboardScreenController.cs`)
+- [ ] 3.5 Create Leaderboard scene
+  - New Unity scene with camera, UIDocument for Leaderboard.uxml
+  - LeaderboardScreenController as scene root MonoBehaviour
+
+- [ ] 3.6 Build `LeaderboardScreenController` (`Assets/Scripts/View/LeaderboardScreenController.cs`)
+  - Scene entry point for leaderboard screen
   - Tab selection logic (5 tabs)
   - Sort button state management (Fastest/Biggest/Favorites)
   - Populate scroll list from LeaderboardManager
   - Context menu show/hide/actions
   - Delete confirmation for favorited entries
   - Personal best gold highlighting
-  - Watch Replay → set GameSettings, load Replay scene
-
-- [ ] 3.4 Wire leaderboard screen into MainMenuController
-  - Add as fourth screen in the screen navigation system
-  - Back button returns to mode-select
-  - Handle return from replay viewer (restore tab/sort state if possible)
+  - Auto-scroll: on start, check `GameSettings.LeaderboardFocusGameId` → select correct tab, scroll to entry, highlight it
+  - Watch Replay → `GameSettings.StartReplay(replayData, "Leaderboard")` → load Replay scene
+  - Back button → load MainMenu scene
 
 ### Phase 4: Replay Viewer
 
