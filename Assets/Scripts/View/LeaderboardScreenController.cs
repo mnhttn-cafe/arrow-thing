@@ -451,6 +451,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
             return;
         }
 
+        GameSettings.LeaderboardFocusGameId = gameId;
         GameSettings.StartReplay(replay, "Leaderboard");
         SceneManager.LoadScene("ReplayViewer");
     }

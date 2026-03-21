@@ -198,6 +198,24 @@ public sealed class ArrowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies or removes a bright green highlight tint to indicate clearability.
+    /// </summary>
+    public void SetHighlight(bool highlighted)
+    {
+        if (highlighted)
+        {
+            Color green = new(0f, 0.875f, 1f); // #00DFFF — electric cyan
+            _materialInstance.SetColor(ColorId, green);
+            _headMaterialInstance.SetColor(ColorId, green);
+        }
+        else
+        {
+            _materialInstance.SetColor(ColorId, _baseBodyColor);
+            _headMaterialInstance.SetColor(ColorId, _baseHeadColor);
+        }
+    }
+
+    /// <summary>
     /// Shows or hides the trail line extending from the arrow head.
     /// </summary>
     public void SetTrailVisible(bool visible)

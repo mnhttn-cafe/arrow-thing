@@ -16,6 +16,7 @@
     flex-direction: row;
     align-items: center;
     margin-bottom: 12px;
+    flex-shrink: 0;
 }
 
 .lb-back-btn {
@@ -81,6 +82,7 @@
     flex-direction: row;
     justify-content: center;
     margin-bottom: 8px;
+    flex-shrink: 0;
 }
 
 .lb-tab {
@@ -109,6 +111,7 @@
     flex-direction: row;
     justify-content: center;
     margin-bottom: 10px;
+    flex-shrink: 0;
 }
 
 .lb-sort-btn {
@@ -190,6 +193,11 @@
     background-color: rgb(45, 50, 70);
     border-width: 1px;
     border-color: rgb(100, 140, 200);
+}
+
+.lb-entry--best.lb-entry--focused {
+    background-color: rgba(255, 215, 0, 0.12);
+    border-color: rgb(200, 180, 80);
 }
 
 .lb-rank {

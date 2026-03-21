@@ -136,7 +136,10 @@ public sealed class LeaderboardStore
                         int areaA = a.boardWidth * a.boardHeight;
                         int areaB = b.boardWidth * b.boardHeight;
                         int cmp = areaB.CompareTo(areaA); // descending
-                        return cmp != 0 ? cmp : DateTiebreak(a, b);
+                        if (cmp != 0)
+                            return cmp;
+                        int timeCmp = a.solveTime.CompareTo(b.solveTime);
+                        return timeCmp != 0 ? timeCmp : DateTiebreak(a, b);
                     }
                 );
                 break;

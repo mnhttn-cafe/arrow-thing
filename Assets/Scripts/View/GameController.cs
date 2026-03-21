@@ -309,41 +309,33 @@ public sealed class GameController : MonoBehaviour
 
     private void CreateBoardAndView()
     {
-        _board = new Board(_w, _h);
-        var boardGo = new GameObject("BoardView");
-        _boardView = boardGo.AddComponent<BoardView>();
-        _boardView.Init(_board, visualSettings, spawnArrows: false);
+        (_board, _boardView) = BoardSetupHelper.CreateBoardAndView(_w, _h, visualSettings);
     }
 
     private void SetupCamera()
     {
         if (mainCamera == null)
             return;
-        _camCtrl = mainCamera.gameObject.GetComponent<CameraController>();
-        if (_camCtrl == null)
-            _camCtrl = mainCamera.gameObject.AddComponent<CameraController>();
-        _camCtrl.Init(_board);
-        if (GameSettings.IsSet)
-            _camCtrl.ZoomSpeed = PlayerPrefs.GetFloat(
-                GameSettings.ZoomSpeedPrefKey,
-                GameSettings.DefaultZoomSpeed
-            );
+        float? zoom = GameSettings.IsSet
+            ? PlayerPrefs.GetFloat(GameSettings.ZoomSpeedPrefKey, GameSettings.DefaultZoomSpeed)
+            : null;
+        _camCtrl = BoardSetupHelper.SetupCamera(mainCamera, _board, zoom);
     }
 
     // --- Work coroutines (no UI code — just work + _loadProgress) ---
 
     private IEnumerator RestoreBoard(ReplayData priorData)
     {
-        var snapshotArrows = new List<Arrow>(priorData.boardSnapshot.Count);
-        foreach (List<Cell> arrowCells in priorData.boardSnapshot)
-            snapshotArrows.Add(new Arrow(arrowCells));
-
-        int totalArrows = snapshotArrows.Count;
+        int totalArrows = priorData.boardSnapshot.Count;
         int totalSteps = totalArrows * 2;
-        var restorer = _board.RestoreArrowsIncremental(snapshotArrows);
+        var restorer = BoardSetupHelper.RestoreBoardFromSnapshot(
+            _board,
+            _boardView,
+            priorData.boardSnapshot,
+            FrameBudgetMs
+        );
 
-        int viewedCount = 0;
-        while (true)
+        while (restorer.MoveNext())
         {
             if (_cancelRequested)
             {
@@ -351,23 +343,7 @@ public sealed class GameController : MonoBehaviour
                 yield break;
             }
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            bool done = false;
-            while (sw.ElapsedMilliseconds < FrameBudgetMs)
-            {
-                if (!restorer.MoveNext())
-                {
-                    done = true;
-                    break;
-                }
-                if (viewedCount < totalArrows)
-                    _boardView.AddArrowView(snapshotArrows[viewedCount++]);
-            }
-
             _loadProgress = (float)restorer.Current / totalSteps;
-
-            if (done)
-                break;
             yield return null;
         }
     }

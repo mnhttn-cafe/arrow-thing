@@ -320,7 +320,70 @@ After board clear, before showing the victory popup:
   - Add replay HUD elements to UILayoutTests.cs
   - Add trophy button, mini leaderboard, "New Best!" label, "Watch Replay" button assertions
 
-- [ ] 5.2 Manual test cases (to be filled in after implementation)
+- [x] 5.2 Manual test cases
+
+#### Leaderboard Screen
+
+| # | Test | Steps | Expected | Pass? |
+|---|------|-------|----------|-------|
+| L1 | Trophy button opens leaderboard | From mode-select, tap trophy icon (top-right) | Leaderboard scene loads, Small tab selected, Fastest sort active | |
+| L2 | Tab switching | Tap each tab (Small → Medium → Large → XLarge → All) | List updates to show entries for that board size; All tab shows entries from all sizes with size labels | |
+| L3 | Sort switching | On All tab: tap Fastest, Biggest, Favorites | List reorders correctly; Biggest sort hidden on size-specific tabs | |
+| L4 | Biggest sort fallback | Select Biggest sort on All tab, then switch to Small tab | Sort falls back to Fastest (Biggest button hidden) | |
+| L5 | Empty state | Select a tab with no entries | "No scores yet" message shown; scroll area hidden | |
+| L6 | Personal best highlight | Complete a game on Small, open leaderboard Small tab | Fastest entry has gold highlight styling | |
+| L7 | Favorite toggle | Tap star icon on an entry | Star fills/unfills; entry appears first under Favorites sort | |
+| L8 | Delete non-favorited | Tap triple-dot → Delete on a non-favorited entry | Entry removed immediately, list refreshes | |
+| L9 | Delete favorited | Tap triple-dot → Delete on a favorited entry | Confirmation modal appears; "Yes" deletes, "No" cancels | |
+| L10 | Context menu dismiss | Tap triple-dot, then tap outside the menu | Context menu closes | |
+| L11 | Local/Global toggle | Tap "Global" button | "Coming Soon" overlay shown; scroll area hidden. Tap "Local" restores list | |
+| L12 | Back button | Tap back button | Returns to MainMenu scene | |
+| L13 | Auto-scroll from victory | Complete a game (personal best), tap "View Leaderboard" | Correct tab selected, entry highlighted with focused style, scrolled into view | |
+| L14 | Best+focused compound style | Complete a personal best on Small, tap "View Leaderboard" | Entry shows gold background + gold border (not blue focused style) | |
+| L15 | Play replay from entry | Tap play button on a leaderboard entry | Replay viewer opens with correct board | |
+| L16 | Return from replay | Play a replay from Large tab, exit replay | Returns to leaderboard, Large tab selected, replayed entry highlighted | |
+
+#### Replay Viewer
+
+| # | Test | Steps | Expected | Pass? |
+|---|------|-------|----------|-------|
+| R1 | Loading and playback | Open a replay from leaderboard | Loading bar fills, board appears, playback starts automatically | |
+| R2 | Lead-in timer | Watch the start of a replay | 0.5s pause before first arrow clears (first clear visible) | |
+| R3 | Arrow animations | Watch arrows being cleared during replay | Pull-out animations play for clears; bump animations play for rejects | |
+| R4 | Tap indicators | Watch clear and reject events | White rings at clear positions, red rings at reject positions | |
+| R5 | Play/Pause | Tap play/pause button | Playback pauses/resumes; button text toggles between ▶ and \|\| | |
+| R6 | Speed cycle | Tap speed button repeatedly | Cycles through 0.5x → 1x → 2x → 4x → 0.5x; playback speed changes | |
+| R7 | Seek forward | Drag seek handle forward while paused | Board state updates (arrows removed), time label updates | |
+| R8 | Seek backward | Drag seek handle backward | Board rebuilds from scratch with arrows re-added, time label updates | |
+| R9 | Seek while playing | Drag seek handle while playing | Playback pauses during drag, resumes after release | |
+| R10 | Progress bar accuracy | Watch a full replay to completion | Progress bar reaches 100%, time label matches total time, no overshoot | |
+| R11 | Auto-pause at end | Let a replay play to completion | Playback pauses; pressing play restarts from beginning | |
+| R12 | Clearable highlighting | Toggle "Clearable" button on | All currently clearable arrows tinted electric cyan; updates after each clear | |
+| R13 | Highlight toggle off | Toggle "Clearable" button off | All arrows return to normal palette colors | |
+| R14 | Highlight after seek | Enable highlighting, seek to different position | Highlights update correctly for the new board state | |
+| R15 | Controls toggle hide | Tap the down-arrow toggle button (bottom-right) | Controls bar hides; toggle icon changes to up-arrow; toggle moves down | |
+| R16 | Controls toggle show | Tap the up-arrow toggle button | Controls bar reappears; toggle icon changes to down-arrow; toggle moves up | |
+| R17 | Camera pan/zoom | Pan (drag) and zoom (scroll/pinch) during replay | Camera moves freely; playback continues normally | |
+| R18 | Exit button | Tap X button (top-left) | Returns to the scene that launched the replay (leaderboard or menu) | |
+
+#### Victory Screen Integration
+
+| # | Test | Steps | Expected | Pass? |
+|---|------|-------|----------|-------|
+| V1 | Result recorded | Complete a game | Entry appears in leaderboard for that board size | |
+| V2 | Personal best detection | Complete a game with best time for that size | Timer turns gold, "New Best!" label appears in victory popup | |
+| V3 | Non-best result | Complete a game slower than existing best | Timer stays white, no "New Best!" label | |
+| V4 | View Leaderboard button | Tap "View Leaderboard" in victory popup | Leaderboard opens to correct tab with entry highlighted | |
+
+#### Cross-Feature
+
+| # | Test | Steps | Expected | Pass? |
+|---|------|-------|----------|-------|
+| X1 | Full flow | Play game → victory → View Leaderboard → play replay → exit → verify entry | All transitions work, entry persists, replay matches original game | |
+| X2 | Multiple board sizes | Complete games on Small, Medium, Large | Each appears in correct tab; All tab shows all three | |
+| X3 | Cap enforcement | Add 51 entries to Small (non-favorited) | Slowest entry pruned; 50 remain; replay file deleted | |
+| X4 | Favorited cap exemption | Favorite 50 entries on Small, add 51st | 51st entry added (no pruning since all are favorited) | |
+| X5 | Data persistence | Complete a game, close and reopen the app | Leaderboard entry and replay still present | |
 
 - [ ] 5.3 Update documentation
   - Update `docs/TechnicalDesign.md` with new classes and architecture

@@ -3,9 +3,10 @@
 ## Current State
 
 - **Arrow coloring** — implemented. `ArrowColoring.AssignColors()` in domain layer; `BoardView` applies palette colors after spawn.
-- **Replay recording** — partially implemented. `ReplayEvent`, `ReplayRecorder`, `ReplayData` exist in domain layer. Events are recorded during play and persisted in save files. Viewer and server submission not yet built.
+- **Replay recording** — implemented. `ReplayEvent`, `ReplayRecorder`, `ReplayData` exist in domain layer. Events are recorded during play and persisted in save files. Replay viewer built (see below). Server submission not yet built.
 - **Local saves / autosave** — implemented. Initial board snapshot persisted in save file; resumes without re-generation.
-- **Local leaderboards & personal best** — not yet implemented.
+- **Local leaderboards & personal best** — implemented. `LeaderboardStore` (domain) + `LeaderboardManager` (view) with per-config/global caps, favorites, 3 sort criteria. Dedicated leaderboard scene with 5 size tabs, Local/Global toggle. Victory screen records results, detects personal best.
+- **Replay viewer** — implemented. Dedicated scene with `ReplayViewController`, `ReplayPlayer` (domain), seek/speed/play-pause controls, tap indicators, clearable highlighting (electric cyan). Accessed via play button on leaderboard entries.
 
 Versions are tagged when a coherent chunk of work lands, not on a fixed schedule.
 
@@ -13,15 +14,15 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 
 ## Planned Features
 
-### Replay Viewer
+### Replay Viewer (Implemented)
 
 A dedicated scene for watching replays. Accessed via the play button on leaderboard entries.
 
-- **Board setup**: restores the board from the initial arrow configuration stored in the replay data (no generation step). `BoardView` renders the board but user input is disabled.
-- **Playback**: `ReplayPlayer` iterates events by `t`, waiting real-time between events to match the original pacing. On each event, it calls the appropriate `BoardView` method (clear or reject) exactly as `InputHandler` would during live play. All existing animations (pull-out, bump, reject flash) play normally.
-- **Tap indicator**: `TapIndicator` spawns a brief visual pulse (expanding ring that fades out) at the exact world-space `pos` from each event. This shows where the player actually tapped, not just which cell was resolved.
-- **Timer**: `GameTimerView` displays the replay time, driven by event timestamps rather than real time input.
-- **Controls**: back button to return to the leaderboard. No pause/scrub for initial release — just real-time playback.
+- **Board setup**: restores the board from the initial arrow configuration stored in the replay data (no generation step) via `BoardSetupHelper`. Camera pan/zoom enabled.
+- **Playback**: `ReplayPlayer` (domain, pure C#) provides time-based playback with 0.5s lead-in and 1.0s exit padding. `ReplayViewController` advances the player each frame, executes clear (animated pull-out) and reject (bump) events on `BoardView`, and spawns tap indicators.
+- **Tap indicator**: `TapIndicatorPool` spawns expanding/fading ring sprites (procedurally generated, no asset) at exact world-space tap positions. White for clears, red for rejects.
+- **Controls**: seek slider (drag to scrub forward/backward), play/pause, speed cycle (0.5×/1×/2×/4×), exit button, controls bar toggle (show/hide), clearable highlighting toggle (electric cyan tint on clearable arrows).
+- **Seek**: forward seek applies clears incrementally; backward seek rebuilds from snapshot. Pauses playback during drag, resumes on release.
 
 ### Server Foundation
 
@@ -285,30 +286,35 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 
 ---
 
-## New Scripts (Planned)
+## New Scripts
 
-| Script | Layer | Purpose |
-|--------|-------|---------|
-| `ReplayVerifier` | Domain | Simulates replay for verification (derives cells from positions) |
-| `ApiClient` | View | HTTP client, JWT, error handling, offline detection |
-| `AccountManager` | View | Account icon UI (login/register/display name/logout), token storage |
-| `LeaderboardView` | View | Leaderboard display UI (top 50 dedicated / top 10 victory inline) |
-| `LeaderboardSceneController` | View | Dedicated leaderboard scene: tabs, local/global toggle, replay buttons |
-| `OnlineController` | View | Coordinates online flow (request game → play → submit) |
-| `ReplayPlayer` | View | Drives replay playback: schedules events by timestamp, triggers clears/rejects on `BoardView` |
-| `ReplaySceneController` | View | Replay viewer scene: board + timer + tap indicator + playback controls |
-| `TapIndicator` | View | Visual pulse at tap position during replay playback |
+| Script | Layer | Status | Purpose |
+|--------|-------|--------|---------|
+| `LeaderboardEntry` | Domain | Done | One leaderboard entry (metadata, no replay data) |
+| `LeaderboardStore` | Domain | Done | Pure C# leaderboard storage with caps, sorting, favorites |
+| `ReplayPlayer` | Domain | Done | Time-based replay playback engine with speed/seek |
+| `LeaderboardManager` | View | Done | Singleton persistence layer (file I/O, GZip replays) |
+| `LeaderboardScreenController` | View | Done | Dedicated leaderboard scene: tabs, sorts, context menu, auto-scroll |
+| `BoardSetupHelper` | View | Done | Shared board/view/camera setup (extracted from GameController) |
+| `ReplayViewController` | View | Done | Replay viewer scene: playback, seek, controls, highlighting |
+| `TapIndicator` | View | Done | Expanding/fading ring at tap position during replay |
+| `TapIndicatorPool` | View | Done | Object pool for tap indicators with procedural ring sprite |
+| `ReplayVerifier` | Domain | Planned | Simulates replay for server-side verification |
+| `ApiClient` | View | Planned | HTTP client, JWT, error handling, offline detection |
+| `AccountManager` | View | Planned | Account icon UI (login/register/display name/logout), token storage |
+| `OnlineController` | View | Planned | Coordinates online flow (request game → play → submit) |
 
-## Modified Scripts (Planned)
+## Modified Scripts
 
 | Script | Changes |
 |--------|---------|
 | `InputHandler` | ~~Record events to `ReplayRecorder` on each tap~~ (done) |
-| `MainMenuController` | Add account icon button (top-right), leaderboard button on mode select |
-| `VictoryController` | Inline top-10 leaderboard, personal best gold highlight, "New Best!" indicator |
-| `GameTimerView` | Gold color on personal best during board-clear sequence |
-| `GameController` | Wire `OnlineController` |
-| `GameSettings` | Add `Seed` field (received from server for online games) |
+| `MainMenuController` | Trophy button on mode select (done). Account icon button (planned) |
+| `VictoryController` | Personal best gold highlight, "New Best!" indicator, "View Leaderboard" button (done). Inline top-10 leaderboard (planned) |
+| `GameController` | Refactored to use `BoardSetupHelper` (done). Wire `OnlineController` (planned) |
+| `GameSettings` | `StartReplay`/`ClearReplay` for replay scene transition, `LeaderboardFocusGameId` for auto-scroll (done). Server `Seed` field (planned) |
+| `BoardView` | `ClearArrowAnimated`, `UpdateClearableHighlights`, `ClearAllHighlights` (done) |
+| `ArrowView` | `SetHighlight(bool)` for clearable highlighting (done) |
 
 ---
 

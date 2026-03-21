@@ -9,6 +9,12 @@ public sealed class ReplayPlayer
 {
     private static readonly float[] SpeedSteps = { 0.5f, 1f, 2f, 4f };
 
+    /// <summary>Seconds of lead-in before the first event fires, so early clears are visible.</summary>
+    public const double LeadInSeconds = 0.5;
+
+    /// <summary>Seconds of padding after the last event so exit animations can play out.</summary>
+    public const double ExitPaddingSeconds = 1.0;
+
     private readonly ReplayData _data;
     private readonly List<ReplayEvent> _timedEvents; // only clear/reject events (have positions)
     private readonly double[] _eventTimes; // seconds from start for each timed event
@@ -80,20 +86,32 @@ public sealed class ReplayPlayer
         }
 
         _eventTimes = times.ToArray();
-        _totalDuration =
+        // Shift all event times by lead-in so early clears don't fire at t=0
+        for (int i = 0; i < _eventTimes.Length; i++)
+            _eventTimes[i] += LeadInSeconds;
+
+        double rawDuration =
             _data.finalTime >= 0
                 ? _data.finalTime
-                : (_eventTimes.Length > 0 ? _eventTimes[_eventTimes.Length - 1] : 0);
+                : (
+                    _eventTimes.Length > 0 ? _eventTimes[_eventTimes.Length - 1] - LeadInSeconds : 0
+                );
+        _totalDuration = rawDuration + LeadInSeconds + ExitPaddingSeconds;
     }
 
     public double CurrentTime => _currentTime;
     public double TotalDuration => _totalDuration;
+
+    /// <summary>Duration excluding exit padding — use for UI display and slider.</summary>
+    public double DisplayDuration => _totalDuration - ExitPaddingSeconds;
+
     public float PlaybackSpeed => SpeedSteps[_speedIndex];
     public bool IsPlaying { get; set; } = true;
     public bool IsFinished => _currentIndex >= _timedEvents.Count;
 
-    /// <summary>Current playback position as 0–1.</summary>
-    public double NormalizedTime => _totalDuration > 0 ? _currentTime / _totalDuration : 0;
+    /// <summary>Current playback position as 0–1, clamped to display duration.</summary>
+    public double NormalizedTime =>
+        DisplayDuration > 0 ? Math.Min(1.0, _currentTime / DisplayDuration) : 0;
 
     /// <summary>Number of timed events (clears + rejects).</summary>
     public int TimedEventCount => _timedEvents.Count;
@@ -141,13 +159,13 @@ public sealed class ReplayPlayer
     }
 
     /// <summary>
-    /// Seeks to a normalized time (0–1). Returns a <see cref="SeekResult"/> describing
-    /// what events need to be applied or undone by the view layer.
+    /// Seeks to a normalized time (0–1) mapped to <see cref="DisplayDuration"/>.
+    /// Returns a <see cref="SeekResult"/> describing what events need to be applied or undone.
     /// </summary>
     public SeekResult SeekTo(double normalizedTime)
     {
         normalizedTime = Math.Max(0, Math.Min(1, normalizedTime));
-        double targetTime = normalizedTime * _totalDuration;
+        double targetTime = normalizedTime * DisplayDuration;
 
         // Find the target event index (first event after targetTime)
         int targetIndex = 0;

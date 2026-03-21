@@ -4,6 +4,10 @@ using NUnit.Framework;
 [TestFixture]
 public class ReplayPlayerTests
 {
+    // Lead-in offset applied to all event times
+    private static readonly double L = ReplayPlayer.LeadInSeconds;
+    private static readonly double E = ReplayPlayer.ExitPaddingSeconds;
+
     // ── Basic playback ───────────────────────────────────────────────────────
 
     [Test]
@@ -11,8 +15,8 @@ public class ReplayPlayerTests
     {
         var player = new ReplayPlayer(MakeReplayData(3, 1.0));
 
-        // Advance past all events
-        var fired = player.Advance(10.0);
+        // Advance past all events (lead-in + events)
+        var fired = player.Advance(100.0);
 
         Assert.AreEqual(3, fired.Count);
         Assert.AreEqual(ReplayEventType.Clear, fired[0].type);
@@ -23,13 +27,25 @@ public class ReplayPlayerTests
     [Test]
     public void Advance_FiresOnlyEventsUpToCurrentTime()
     {
-        var player = new ReplayPlayer(MakeReplayData(3, 2.0)); // events at 2, 4, 6
+        var player = new ReplayPlayer(MakeReplayData(3, 2.0)); // events at L+2, L+4, L+6
 
-        var fired1 = player.Advance(3.0); // should fire event at t=2
+        // Advance past the first event but not the second
+        var fired1 = player.Advance(L + 3.0); // t = L+3, fires event at L+2
         Assert.AreEqual(1, fired1.Count);
 
-        var fired2 = player.Advance(2.5); // advance to t=5.5, should fire event at t=4
+        // Advance 2.5 more to t = L+5.5, fires event at L+4
+        var fired2 = player.Advance(2.5);
         Assert.AreEqual(1, fired2.Count);
+    }
+
+    [Test]
+    public void Advance_NothingFiresDuringLeadIn()
+    {
+        var player = new ReplayPlayer(MakeReplayData(3, 1.0)); // events at L+1, L+2, L+3
+
+        // Advance only through lead-in period
+        var fired = player.Advance(L - 0.01);
+        Assert.AreEqual(0, fired.Count);
     }
 
     [Test]
@@ -69,12 +85,13 @@ public class ReplayPlayerTests
     [Test]
     public void Advance_RespectsPlaybackSpeed()
     {
-        var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // events at 5 and 10
+        var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // events at L+5, L+10
         player.CycleSpeed(); // 2x
 
-        // At 2x, advancing 3s of real time = 6s of playback time
-        var fired = player.Advance(3.0);
-        Assert.AreEqual(1, fired.Count); // event at t=5
+        // At 2x, advancing (L+5+0.5)/2 real seconds reaches just past L+5
+        double realTime = (L + 5.5) / 2.0;
+        var fired = player.Advance(realTime);
+        Assert.AreEqual(1, fired.Count); // event at L+5
     }
 
     // ── Seek forward ─────────────────────────────────────────────────────────
@@ -82,10 +99,13 @@ public class ReplayPlayerTests
     [Test]
     public void SeekTo_Forward_ReturnsEventsToApply()
     {
-        var player = new ReplayPlayer(MakeReplayData(4, 2.5)); // events at 2.5, 5, 7.5, 10
-        // Total duration = 10
+        // events at L+2.5, L+5, L+7.5, L+10; total = 10+L
+        var player = new ReplayPlayer(MakeReplayData(4, 2.5));
 
-        var result = player.SeekTo(0.6); // seek to t=6, should include events at 2.5 and 5
+        // Seek to a point that includes the first 2 events
+        double targetTime = L + 5.5;
+        double norm = targetTime / player.TotalDuration;
+        var result = player.SeekTo(norm);
         Assert.IsTrue(result.IsForward);
         Assert.AreEqual(2, result.EventsToApply.Count);
         Assert.AreEqual(0, result.EventsToUndo.Count);
@@ -94,9 +114,10 @@ public class ReplayPlayerTests
     [Test]
     public void SeekTo_Forward_UpdatesCurrentTime()
     {
-        var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // total = 10
-        player.SeekTo(0.5); // t = 5
-        Assert.AreEqual(5.0, player.CurrentTime, 0.01);
+        var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // total = 10+L
+        double target = L + 5.0;
+        player.SeekTo(target / player.TotalDuration);
+        Assert.AreEqual(target, player.CurrentTime, 0.01);
     }
 
     // ── Seek backward ────────────────────────────────────────────────────────
@@ -104,16 +125,18 @@ public class ReplayPlayerTests
     [Test]
     public void SeekTo_Backward_ReturnsEventsToUndo()
     {
-        var player = new ReplayPlayer(MakeReplayData(4, 2.5)); // events at 2.5, 5, 7.5, 10
+        // events at L+2.5, L+5, L+7.5, L+10; total = 10+L
+        var player = new ReplayPlayer(MakeReplayData(4, 2.5));
 
         // Advance past all events
         player.Advance(100.0);
         Assert.AreEqual(4, player.CurrentEventIndex);
 
-        // Seek back to t=3 (only first event at 2.5 should remain)
-        var result = player.SeekTo(0.3); // t=3
+        // Seek back to t = L+3 (only first event at L+2.5 should remain)
+        double target = L + 3.0;
+        var result = player.SeekTo(target / player.TotalDuration);
         Assert.IsTrue(result.IsBackward);
-        Assert.AreEqual(3, result.EventsToUndo.Count); // undo events at 5, 7.5, 10
+        Assert.AreEqual(3, result.EventsToUndo.Count); // undo events at L+5, L+7.5, L+10
     }
 
     [Test]
@@ -129,15 +152,17 @@ public class ReplayPlayerTests
     [Test]
     public void SeekTo_BackwardThenForward_Works()
     {
-        var player = new ReplayPlayer(MakeReplayData(4, 2.5)); // events at 2.5, 5, 7.5, 10
+        // events at L+2.5, L+5, L+7.5, L+10; total = 10+L
+        var player = new ReplayPlayer(MakeReplayData(4, 2.5));
         player.Advance(100.0);
 
         // Seek back
         player.SeekTo(0.0);
         Assert.AreEqual(0, player.CurrentEventIndex);
 
-        // Seek forward again
-        var result = player.SeekTo(0.6); // t=6
+        // Seek forward to include first 2 events
+        double target = L + 5.5;
+        var result = player.SeekTo(target / player.TotalDuration);
         Assert.IsTrue(result.IsForward);
         Assert.AreEqual(2, result.EventsToApply.Count);
     }
@@ -147,17 +172,18 @@ public class ReplayPlayerTests
     [Test]
     public void NormalizedTime_ProgressesDuringPlayback()
     {
-        var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // total = 10
+        var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // total = 10+L
         Assert.AreEqual(0.0, player.NormalizedTime, 0.01);
 
-        player.Advance(5.0);
+        double halfDuration = player.TotalDuration / 2.0;
+        player.Advance(halfDuration);
         Assert.AreEqual(0.5, player.NormalizedTime, 0.01);
     }
 
     [Test]
     public void NormalizedTime_ClampsToOne()
     {
-        var player = new ReplayPlayer(MakeReplayData(1, 5.0)); // total = 5
+        var player = new ReplayPlayer(MakeReplayData(1, 5.0));
         player.Advance(100.0);
         Assert.LessOrEqual(player.NormalizedTime, 1.0);
     }
@@ -234,11 +260,11 @@ public class ReplayPlayerTests
     }
 
     [Test]
-    public void TotalDuration_UsesFinalTimeWhenSet()
+    public void TotalDuration_IncludesLeadInAndExitPadding()
     {
-        var data = MakeReplayData(2, 3.0); // events at 3, 6; finalTime = 6
+        var data = MakeReplayData(2, 3.0); // raw finalTime = 6
         var player = new ReplayPlayer(data);
-        Assert.AreEqual(6.0, player.TotalDuration, 0.01);
+        Assert.AreEqual(6.0 + L + E, player.TotalDuration, 0.01);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

@@ -11,6 +11,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Game.unity
     guid: 5f0d2f6816deaa8499c3967fa8b33cda
+  - enabled: 1
+    path: Assets/Scenes/Leaderboard.unity
+    guid: 3ad9c1c7691712a458b6c3c27b283c55
+  - enabled: 1
+    path: Assets/Scenes/ReplayViewer.unity
+    guid: 21a1038f14c70ef40a67c8698d6a701f
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
