@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Text;
 using NUnit.Framework;
 
@@ -72,17 +74,34 @@ public class ReplayStorageSizeTests
         string json = data.ToJson();
         int byteSize = Encoding.UTF8.GetByteCount(json);
         double kb = byteSize / 1024.0;
-        double mb = kb / 1024.0;
+
+        // Compress with GZip
+        byte[] jsonBytes = Encoding.UTF8.GetBytes(json);
+        int compressedSize;
+        using (var ms = new MemoryStream())
+        {
+            using (var gz = new GZipStream(ms, CompressionLevel.Optimal, leaveOpen: true))
+                gz.Write(jsonBytes, 0, jsonBytes.Length);
+            compressedSize = (int)ms.Length;
+        }
+
+        double compressedKb = compressedSize / 1024.0;
+        double ratio = (double)compressedSize / byteSize * 100;
 
         // Log results
         TestContext.WriteLine($"Board: {width}x{height}");
         TestContext.WriteLine($"  Arrows: {arrowCount}");
         TestContext.WriteLine($"  Clear events: {cleared}");
-        TestContext.WriteLine($"  Snapshot cells: {snapshot.Count} arrows");
-        TestContext.WriteLine($"  JSON size: {byteSize:N0} bytes ({kb:F1} KB / {mb:F3} MB)");
-        TestContext.WriteLine($"  Per 50 entries: {kb * 50:F1} KB ({mb * 50:F3} MB)");
+        TestContext.WriteLine($"  JSON size: {byteSize:N0} bytes ({kb:F1} KB)");
+        TestContext.WriteLine(
+            $"  GZip size: {compressedSize:N0} bytes ({compressedKb:F1} KB) — {ratio:F1}% of original"
+        );
+        TestContext.WriteLine(
+            $"  Per 50 entries: raw {kb * 50:F1} KB, gzip {compressedKb * 50:F1} KB"
+        );
 
-        // Sanity check — just ensure it serialized
+        // Sanity check
         Assert.Greater(byteSize, 0);
+        Assert.Less(compressedSize, byteSize, "GZip should reduce size");
     }
 }
