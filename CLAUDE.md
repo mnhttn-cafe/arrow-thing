@@ -34,6 +34,7 @@ View layer scripts live in `Assets/Scripts/View/`:
 - **`ArrowMeshBuilder`** — static builder for polyline body mesh with arc-length UV windowing.
 - **`VisualSettings`** — `ScriptableObject` with colors, widths, animation curves, and durations.
 - **`BoardCoords`** — static coordinate mapping (cell ↔ world space).
+- **`SnapSlider`** — reusable slider row: custom track+handle, value label, +/- buttons, optional lock button (snap-to-grid toggle). Used for custom board-size pickers and settings sliders.
 
 ## Core Types (`Assets/Scripts/Domain/Models/`)
 

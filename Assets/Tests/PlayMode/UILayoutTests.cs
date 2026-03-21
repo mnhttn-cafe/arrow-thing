@@ -126,7 +126,7 @@ public class UILayoutTests
             modeSelect.Q<Button>("preset-medium"),
             modeSelect.Q<Button>("preset-large"),
             modeSelect.Q<Button>("preset-xlarge"),
-            modeSelect.Q("preset-custom"),
+            modeSelect.Q<Button>("preset-custom"),
             modeSelect.Q<Button>("start-btn"),
             modeSelect.Q<Button>("mode-back-btn")
         );
@@ -158,8 +158,8 @@ public class UILayoutTests
             ctx,
             warn,
             settings.Q<Label>(className: "section-label"),
-            settings.Q<Slider>("drag-threshold-slider"),
-            settings.Q<Slider>("zoom-speed-slider"),
+            settings.Q("drag-threshold-row"),
+            settings.Q("zoom-speed-row"),
             settings.Q<Toggle>("arrow-coloring-toggle"),
             settings.Q<Button>("settings-back-btn")
         );

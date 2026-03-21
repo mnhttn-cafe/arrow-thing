@@ -29,12 +29,11 @@ public sealed class MainMenuController : MonoBehaviour
     private Button _presetLarge;
     private Button _presetXLarge;
 
-    // Custom preset card
-    private VisualElement _presetCustom;
-    private SliderInt _customWidthSlider;
-    private SliderInt _customHeightSlider;
-    private Label _customWidthValue;
-    private Label _customHeightValue;
+    // Custom preset + slider panel
+    private Button _presetCustom;
+    private VisualElement _customPanel;
+    private SnapSlider _customWidthSnap;
+    private SnapSlider _customHeightSnap;
     private bool _isCustomSelected;
 
     // Currently selected board size (default to small)
@@ -83,24 +82,35 @@ public sealed class MainMenuController : MonoBehaviour
         _presetLarge.clicked += () => SelectPreset(40, 40);
         _presetXLarge.clicked += () => SelectPreset(100, 100);
 
-        // Custom preset card
-        _presetCustom = _modeSelect.Q("preset-custom");
-        _customWidthSlider = _modeSelect.Q<SliderInt>("custom-width-slider");
-        _customHeightSlider = _modeSelect.Q<SliderInt>("custom-height-slider");
-        _customWidthValue = _modeSelect.Q<Label>("custom-width-value");
-        _customHeightValue = _modeSelect.Q<Label>("custom-height-value");
+        // Custom preset button + slider panel
+        _presetCustom = _modeSelect.Q<Button>("preset-custom");
+        _customPanel = _modeSelect.Q("custom-panel");
 
-        _presetCustom.RegisterCallback<ClickEvent>(_ => SelectCustom());
-        _customWidthSlider.RegisterValueChangedCallback(evt =>
-        {
-            _customWidthValue.text = evt.newValue.ToString();
-            SelectCustom();
-        });
-        _customHeightSlider.RegisterValueChangedCallback(evt =>
-        {
-            _customHeightValue.text = evt.newValue.ToString();
-            SelectCustom();
-        });
+        _customWidthSnap = new SnapSlider(
+            CustomDimMin,
+            CustomDimMax,
+            20f,
+            smallStep: 1f,
+            snapStep: 10f,
+            format: "0",
+            showLock: true
+        );
+        _customWidthSnap.OnValueChanged += _ => SelectCustom();
+        _customPanel.Q("custom-width-row").Add(_customWidthSnap.Root);
+
+        _customHeightSnap = new SnapSlider(
+            CustomDimMin,
+            CustomDimMax,
+            20f,
+            smallStep: 1f,
+            snapStep: 10f,
+            format: "0",
+            showLock: true
+        );
+        _customHeightSnap.OnValueChanged += _ => SelectCustom();
+        _customPanel.Q("custom-height-row").Add(_customHeightSnap.Root);
+
+        _presetCustom.clicked += SelectCustom;
 
         _modeSelect.Q<Button>("start-btn").clicked += OnStart;
         _modeSelect.Q<Button>("mode-back-btn").clicked += OnModeBack;
@@ -111,15 +121,21 @@ public sealed class MainMenuController : MonoBehaviour
             GameSettings.DefaultDragThreshold
         );
 
-        var dragSlider = _settings.Q<Slider>("drag-threshold-slider");
-        var dragValueLabel = _settings.Q<Label>("drag-threshold-value");
-        dragSlider.value = savedThreshold;
-        dragValueLabel.text = Mathf.RoundToInt(savedThreshold).ToString();
-        dragSlider.RegisterValueChangedCallback(evt =>
+        var dragSnap = new SnapSlider(
+            GameSettings.MinDragThreshold,
+            GameSettings.MaxDragThreshold,
+            savedThreshold,
+            smallStep: 1f,
+            snapStep: 0f,
+            format: "0",
+            showLock: false
+        );
+        dragSnap.OnValueChanged += val =>
         {
-            dragValueLabel.text = Mathf.RoundToInt(evt.newValue).ToString();
-            PlayerPrefs.SetFloat(GameSettings.DragThresholdPrefKey, evt.newValue);
-        });
+            PlayerPrefs.SetFloat(GameSettings.DragThresholdPrefKey, val);
+        };
+        dragSnap.Root.AddToClassList("setting-snap-slider");
+        _settings.Q("drag-threshold-row").Add(dragSnap.Root);
 
         // Settings: zoom speed slider
         float savedZoom = PlayerPrefs.GetFloat(
@@ -127,15 +143,21 @@ public sealed class MainMenuController : MonoBehaviour
             GameSettings.DefaultZoomSpeed
         );
 
-        var zoomSlider = _settings.Q<Slider>("zoom-speed-slider");
-        var zoomValueLabel = _settings.Q<Label>("zoom-speed-value");
-        zoomSlider.value = savedZoom;
-        zoomValueLabel.text = savedZoom.ToString("F1");
-        zoomSlider.RegisterValueChangedCallback(evt =>
+        var zoomSnap = new SnapSlider(
+            GameSettings.MinZoomSpeed,
+            GameSettings.MaxZoomSpeed,
+            savedZoom,
+            smallStep: 0.1f,
+            snapStep: 0f,
+            format: "F1",
+            showLock: false
+        );
+        zoomSnap.OnValueChanged += val =>
         {
-            zoomValueLabel.text = evt.newValue.ToString("F1");
-            PlayerPrefs.SetFloat(GameSettings.ZoomSpeedPrefKey, evt.newValue);
-        });
+            PlayerPrefs.SetFloat(GameSettings.ZoomSpeedPrefKey, val);
+        };
+        zoomSnap.Root.AddToClassList("setting-snap-slider");
+        _settings.Q("zoom-speed-row").Add(zoomSnap.Root);
 
         // Settings: arrow coloring toggle
         bool savedColoring = PlayerPrefs.GetInt(GameSettings.ArrowColoringPrefKey, 0) == 1;
@@ -178,10 +200,8 @@ public sealed class MainMenuController : MonoBehaviour
                 SelectPreset(GameSettings.Width, GameSettings.Height);
             else
             {
-                _customWidthSlider.SetValueWithoutNotify(GameSettings.Width);
-                _customHeightSlider.SetValueWithoutNotify(GameSettings.Height);
-                _customWidthValue.text = GameSettings.Width.ToString();
-                _customHeightValue.text = GameSettings.Height.ToString();
+                _customWidthSnap.SetValueWithoutNotify(GameSettings.Width);
+                _customHeightSnap.SetValueWithoutNotify(GameSettings.Height);
                 SelectCustom();
             }
         }
@@ -233,14 +253,16 @@ public sealed class MainMenuController : MonoBehaviour
         _isCustomSelected = false;
         _selectedWidth = width;
         _selectedHeight = height;
+        SetVisible(_customPanel, false);
         UpdateAllPresetHighlights();
     }
 
     private void SelectCustom()
     {
         _isCustomSelected = true;
-        _selectedWidth = _customWidthSlider.value;
-        _selectedHeight = _customHeightSlider.value;
+        _selectedWidth = Mathf.RoundToInt(_customWidthSnap.Value);
+        _selectedHeight = Mathf.RoundToInt(_customHeightSnap.Value);
+        SetVisible(_customPanel, true);
         UpdateAllPresetHighlights();
     }
 

@@ -19,11 +19,15 @@ public static class GameSettings
     // PlayerPrefs keys and defaults for settings persisted across sessions.
     public const string DragThresholdPrefKey = "DragThreshold";
     public const float DefaultDragThreshold = 15f;
+    public const float MinDragThreshold = 5f;
+    public const float MaxDragThreshold = 60f;
 
     public const string ArrowColoringPrefKey = "ArrowColoring";
 
     public const string ZoomSpeedPrefKey = "ZoomSpeed";
     public const float DefaultZoomSpeed = 1f;
+    public const float MinZoomSpeed = 0.2f;
+    public const float MaxZoomSpeed = 5f;
 
     public static void Apply(int width, int height)
     {
