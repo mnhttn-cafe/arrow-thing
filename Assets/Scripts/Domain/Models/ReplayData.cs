@@ -23,6 +23,10 @@ public sealed class ReplayData
     /// <summary>Inspection phase duration in seconds, as configured when the board was created.</summary>
     public float inspectionDuration;
 
+    /// <summary>Application version at the time of recording (version 3+). Null for older replays.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string gameVersion;
+
     /// <summary>
     /// Initial arrow configuration — all arrows on the board before any clears (version 2+).
     /// Each inner list is one arrow's cells in head-to-tail order. On resume, the board is

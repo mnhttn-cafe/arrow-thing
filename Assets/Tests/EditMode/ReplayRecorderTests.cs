@@ -196,7 +196,7 @@ public class ReplayRecorderTests
             new List<Cell> { new Cell(0, 0), new Cell(1, 0) },
         };
         var data = rec.ToReplayData("g", 0, 5, 5, 10, 15f, boardSnapshot: snapshot);
-        Assert.AreEqual(2, data.version);
+        Assert.AreEqual(3, data.version);
     }
 
     [Test]

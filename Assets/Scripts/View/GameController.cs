@@ -747,7 +747,8 @@ public sealed class GameController : MonoBehaviour
             _h,
             _maxLen,
             _inspectionDur,
-            boardSnapshot: _initialBoardSnapshot
+            boardSnapshot: _initialBoardSnapshot,
+            gameVersion: UnityEngine.Application.version
         );
     }
 

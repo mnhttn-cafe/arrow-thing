@@ -126,6 +126,7 @@ public sealed class ReplayRecorder
     /// one arrow's cells (head to tail). Required for all new saves.
     /// </param>
     /// <param name="finalTime">Pass the solve elapsed at completion, or -1 for in-progress.</param>
+    /// <param name="gameVersion">Application version string, passed from the view layer.</param>
     public ReplayData ToReplayData(
         string gameId,
         int seed,
@@ -134,18 +135,20 @@ public sealed class ReplayRecorder
         int maxArrowLength,
         float inspectionDuration,
         List<List<Cell>> boardSnapshot = null,
-        double finalTime = -1.0
+        double finalTime = -1.0,
+        string gameVersion = null
     )
     {
         return new ReplayData
         {
-            version = 2,
+            version = 3,
             gameId = gameId,
             seed = seed,
             boardWidth = boardWidth,
             boardHeight = boardHeight,
             maxArrowLength = maxArrowLength,
             inspectionDuration = inspectionDuration,
+            gameVersion = gameVersion,
             boardSnapshot = boardSnapshot,
             events = new List<ReplayEvent>(_events),
             finalTime = finalTime,
