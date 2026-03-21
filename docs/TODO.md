@@ -55,11 +55,26 @@ None — all design decisions resolved before implementation.
 
 ## Manual Test Cases
 
-(to be filled in after implementation)
+### Custom board-size sliders (width & height)
 
-- [ ] Custom width slider: drag freely, drag in locked mode (snaps), +/- in locked mode, toggle lock.
-- [ ] Custom height slider: same.
-- [ ] Settings drag threshold: +/- step by 1, slider moves continuously.
-- [ ] Settings zoom speed: +/- step by 0.1.
-- [ ] Restore state: returning from a game restores the correct custom dimensions.
-- [ ] Mobile: all buttons tappable, no layout overflow.
+- [ ] **Locked snap drag** — Slider starts locked (■). Drag the slider; value should snap to multiples of 10 (2, 10, 20, 30 … 400). Label updates to match.
+- [ ] **+/- buttons always step by 1** — In both locked and unlocked mode, `+` and `−` step by 1. Verify clamping at 2 (min) and 400 (max).
+- [ ] **Unlock toggle** — Click the lock button (■ → □). Slider should now move freely in steps of 1.
+- [ ] **Re-lock preserves value** — Set a non-grid value (e.g. 37) via +/-, then click lock (□ → ■). Value should stay at 37 (no snap on toggle). Next drag will snap.
+- [ ] **Play and return** — Select custom preset, set width=50 height=30, start a game, go back to menu. Custom card should still show 50×30.
+
+### Settings sliders
+
+- [ ] **Drag threshold** — Open settings. Slider range 5–60. Drag moves continuously. `+`/`−` step by 1. No lock button visible. Value displays as integer.
+- [ ] **Zoom speed** — Slider range 0.2–5.0. `+`/`−` step by 0.1. No lock button visible. Value displays with one decimal (e.g. "1.5").
+- [ ] **Persistence** — Change drag threshold to a non-default value, close and reopen the app. Value should be restored from PlayerPrefs.
+
+### Layout
+
+- [ ] **Desktop** — All snap-slider rows fit within their containers. No overflow or clipping on the custom card or settings panel.
+- [ ] **Custom card height** — Selecting the custom card expands it (height:auto). Deselecting should collapse it cleanly.
+
+### Integration
+
+- [ ] **Start game with custom size** — Select custom, set 15×25, press Start. Board should generate at 15×25.
+- [ ] **Preset still works** — Select Small (10×10), start game. Board generates at 10×10 (presets bypass snap sliders).

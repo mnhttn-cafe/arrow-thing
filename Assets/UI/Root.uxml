@@ -32,18 +32,20 @@
             <ui:Button name="preset-medium" class="preset-btn" text="Medium&#10;20 × 20" />
             <ui:Button name="preset-large"  class="preset-btn" text="Large&#10;40 × 40" />
             <ui:Button name="preset-xlarge" class="preset-btn" text="XLarge&#10;100 × 100" />
-            <ui:VisualElement name="preset-custom" class="preset-btn preset-btn--custom">
-                <ui:Label class="preset-custom-title" text="Custom" />
-                <ui:VisualElement name="custom-width-row" class="preset-custom-row">
-                    <ui:Label class="preset-custom-dim-label" text="W" />
-                </ui:VisualElement>
-                <ui:VisualElement name="custom-height-row" class="preset-custom-row">
-                    <ui:Label class="preset-custom-dim-label" text="H" />
-                </ui:VisualElement>
+            <ui:Button name="preset-custom" class="preset-btn" text="Custom" />
+        </ui:VisualElement>
+        <ui:VisualElement name="custom-panel" class="custom-panel screen--hidden">
+            <ui:VisualElement name="custom-width-row" class="preset-custom-row">
+                <ui:Label class="preset-custom-dim-label" text="W" />
+            </ui:VisualElement>
+            <ui:VisualElement name="custom-height-row" class="preset-custom-row">
+                <ui:Label class="preset-custom-dim-label" text="H" />
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:Button name="start-btn" class="start-btn" text="Start" />
-        <ui:Button name="mode-back-btn" class="menu-btn" text="Back" />
+        <ui:VisualElement class="mode-action-row">
+            <ui:Button name="mode-back-btn" class="mode-action-btn mode-back-btn" text="Back" />
+            <ui:Button name="start-btn" class="mode-action-btn start-btn" text="Start" />
+        </ui:VisualElement>
     </ui:VisualElement>
 
     <ui:VisualElement name="settings" class="screen screen--hidden">

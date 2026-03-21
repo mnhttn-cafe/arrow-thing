@@ -79,21 +79,14 @@
     border-color: rgb(120, 180, 240);
 }
 
-/* Custom preset card — spans 2 grid columns */
-.preset-btn--custom {
-    width: 332px;
-    height: auto;
-    min-height: 80px;
+/* Custom slider panel — appears below preset grid when Custom is selected */
+.custom-panel {
+    width: 80%;
+    max-width: 500px;
+    margin-top: 8px;
     padding: 8px 12px;
-    justify-content: center;
-    align-items: stretch;
-}
-
-.preset-custom-title {
-    font-size: 14px;
-    color: rgb(180, 180, 200);
-    margin-bottom: 4px;
-    -unity-text-align: middle-center;
+    background-color: rgb(50, 70, 90);
+    border-radius: 8px;
 }
 
 .preset-custom-row {
@@ -104,26 +97,50 @@
 
 .preset-custom-dim-label {
     font-size: 14px;
-    color: rgb(200, 200, 210);
-    width: 14px;
+    color: rgb(255, 255, 255);
+    width: 20px;
     margin-right: 4px;
     -unity-text-align: middle-center;
 }
 
 
-/* Start button on mode select */
-.start-btn {
-    width: 300px;
-    padding: 14px 0;
+/* Action row: Back + Start side by side */
+.mode-action-row {
+    flex-direction: row;
+    justify-content: center;
     margin-top: 16px;
-    font-size: 30px;
+}
+
+/* Shared base for both action buttons */
+.mode-action-btn {
+    width: 145px;
+    padding: 14px 0;
+    margin: 0 5px;
+    font-size: 26px;
     color: rgb(255, 255, 255);
-    background-color: rgb(40, 120, 60);
     border-radius: 8px;
     border-width: 0;
     -unity-text-align: middle-center;
-    -unity-font-style: bold;
     flex-shrink: 1;
+}
+
+/* Back button styling */
+.mode-back-btn {
+    background-color: rgb(60, 60, 80);
+}
+
+.mode-back-btn:hover {
+    background-color: rgb(80, 80, 110);
+}
+
+.mode-back-btn:active {
+    background-color: rgb(100, 100, 140);
+}
+
+/* Start button styling */
+.start-btn {
+    background-color: rgb(40, 120, 60);
+    -unity-font-style: bold;
 }
 
 .start-btn:hover {
@@ -343,57 +360,51 @@
     flex-grow: 1;
 }
 
-/* Slider fills remaining space */
-.snap-slider__slider {
+/* Custom track */
+.snap-slider__track {
     flex-grow: 1;
-    margin-right: 4px;
-}
-
-/* Flat track: thin bar, no visible border */
-.snap-slider__slider .unity-base-slider__tracker {
-    height: 6px;
-    border-radius: 3px;
+    height: 22px;
+    margin: 0 4px 0 0;
     background-color: rgb(50, 55, 75);
-    border-width: 0;
 }
 
-/* Dragger: same height as track, brighter fill */
-.snap-slider__slider .unity-base-slider__dragger {
-    width: 14px;
-    height: 6px;
-    border-radius: 3px;
+/* Draggable handle */
+.snap-slider__handle {
+    position: absolute;
+    width: 22px;
+    height: 22px;
     background-color: rgb(140, 195, 240);
-    border-width: 0;
 }
 
 /* Value display */
 .snap-slider__value {
     font-size: 13px;
-    color: rgb(200, 200, 210);
+    color: rgb(255, 255, 255);
     width: 34px;
     -unity-text-align: middle-center;
-    margin-right: 2px;
+    margin: 0;
     flex-shrink: 0;
 }
 
-/* +/- button column */
-.snap-slider__btn-column {
-    flex-direction: column;
-    margin-right: 2px;
+/* Pill button row: ( - ][ + ][ lock ) */
+.snap-slider__btn-row {
+    flex-direction: row;
+    align-items: center;
     flex-shrink: 0;
 }
 
+/* Shared base for all pill segments */
 .snap-slider__step-btn {
     width: 22px;
-    height: 14px;
+    height: 22px;
     padding: 0;
+    margin: 0;
     font-size: 12px;
-    color: rgb(200, 200, 210);
+    color: rgb(255, 255, 255);
     background-color: rgb(50, 55, 75);
-    border-radius: 3px;
+    border-radius: 0;
     border-width: 0;
     -unity-text-align: middle-center;
-    margin-bottom: 1px;
     flex-shrink: 0;
 }
 
@@ -405,17 +416,14 @@
     background-color: rgb(90, 100, 135);
 }
 
-/* Lock button */
 .snap-slider__lock-btn {
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    font-size: 14px;
-    color: rgb(140, 140, 165);
+    width: 22px;
+    height: 22px;
+    padding: 4px;
+    margin: 0;
     background-color: rgb(45, 48, 65);
-    border-radius: 4px;
+    border-radius: 0;
     border-width: 0;
-    -unity-text-align: middle-center;
     flex-shrink: 0;
 }
 
@@ -423,14 +431,35 @@
     background-color: rgb(65, 70, 95);
 }
 
-/* Active = currently snapped/locked */
-.snap-slider__lock-btn--active {
-    color: rgb(120, 195, 255);
-    background-color: rgb(35, 55, 85);
+/* Pill corners: first = left rounded, last = right rounded, middle = flat */
+.snap-slider__btn--first {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
 }
 
-.snap-slider__lock-btn--active:hover {
-    background-color: rgb(45, 70, 105);
+.snap-slider__btn--middle {
+    border-radius: 0;
+}
+
+.snap-slider__btn--last {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+/* Lock icon child element (same pattern as link-icon buttons) */
+.snap-slider__lock-icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.snap-slider__lock-icon--locked {
+    background-image: url("/Assets/Art/lock_closed.png");
+    -unity-background-image-tint-color: rgb(120, 195, 255);
+}
+
+.snap-slider__lock-icon--unlocked {
+    background-image: url("/Assets/Art/lock_open.png");
+    -unity-background-image-tint-color: rgb(140, 140, 165);
 }
 
 /* Settings sliders: stretch to fill the 300 px setting-row */

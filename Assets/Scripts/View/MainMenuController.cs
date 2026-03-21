@@ -29,8 +29,9 @@ public sealed class MainMenuController : MonoBehaviour
     private Button _presetLarge;
     private Button _presetXLarge;
 
-    // Custom preset card
-    private VisualElement _presetCustom;
+    // Custom preset + slider panel
+    private Button _presetCustom;
+    private VisualElement _customPanel;
     private SnapSlider _customWidthSnap;
     private SnapSlider _customHeightSnap;
     private bool _isCustomSelected;
@@ -81,8 +82,9 @@ public sealed class MainMenuController : MonoBehaviour
         _presetLarge.clicked += () => SelectPreset(40, 40);
         _presetXLarge.clicked += () => SelectPreset(100, 100);
 
-        // Custom preset card
-        _presetCustom = _modeSelect.Q("preset-custom");
+        // Custom preset button + slider panel
+        _presetCustom = _modeSelect.Q<Button>("preset-custom");
+        _customPanel = _modeSelect.Q("custom-panel");
 
         _customWidthSnap = new SnapSlider(
             CustomDimMin,
@@ -94,7 +96,7 @@ public sealed class MainMenuController : MonoBehaviour
             showLock: true
         );
         _customWidthSnap.OnValueChanged += _ => SelectCustom();
-        _modeSelect.Q("custom-width-row").Add(_customWidthSnap.Root);
+        _customPanel.Q("custom-width-row").Add(_customWidthSnap.Root);
 
         _customHeightSnap = new SnapSlider(
             CustomDimMin,
@@ -106,9 +108,9 @@ public sealed class MainMenuController : MonoBehaviour
             showLock: true
         );
         _customHeightSnap.OnValueChanged += _ => SelectCustom();
-        _modeSelect.Q("custom-height-row").Add(_customHeightSnap.Root);
+        _customPanel.Q("custom-height-row").Add(_customHeightSnap.Root);
 
-        _presetCustom.RegisterCallback<ClickEvent>(_ => SelectCustom());
+        _presetCustom.clicked += SelectCustom;
 
         _modeSelect.Q<Button>("start-btn").clicked += OnStart;
         _modeSelect.Q<Button>("mode-back-btn").clicked += OnModeBack;
@@ -251,6 +253,7 @@ public sealed class MainMenuController : MonoBehaviour
         _isCustomSelected = false;
         _selectedWidth = width;
         _selectedHeight = height;
+        SetVisible(_customPanel, false);
         UpdateAllPresetHighlights();
     }
 
@@ -259,6 +262,7 @@ public sealed class MainMenuController : MonoBehaviour
         _isCustomSelected = true;
         _selectedWidth = Mathf.RoundToInt(_customWidthSnap.Value);
         _selectedHeight = Mathf.RoundToInt(_customHeightSnap.Value);
+        SetVisible(_customPanel, true);
         UpdateAllPresetHighlights();
     }
 

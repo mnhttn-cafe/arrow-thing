@@ -3,12 +3,11 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Reusable slider row: [slider] [value] [+/-] [lock (optional)]
+/// Reusable slider row: [track+handle] [value] [- + lock?]
 ///
-/// The lock button toggles snap-to-grid mode. When locked the slider and step buttons
-/// both move in <see cref="snapStep"/> increments; when free they use <see cref="smallStep"/>.
-/// Pass showLock=false (and/or snapStep=0) to hide the lock button — used for settings
-/// sliders that have no coarse grid.
+/// The lock button toggles snap-to-grid mode. When locked the slider drag
+/// snaps in <see cref="_snapStep"/> increments; +/- always use <see cref="_smallStep"/>.
+/// Pass showLock=false (and/or snapStep=0) to hide the lock button.
 /// </summary>
 public sealed class SnapSlider
 {
@@ -17,12 +16,14 @@ public sealed class SnapSlider
     /// Current value. Always clamped to [min, max].
     public float Value { get; private set; }
 
-    /// Fired whenever the value changes (drag, step buttons, lock snap).
+    /// Fired whenever the value changes (drag, step buttons).
     public event Action<float> OnValueChanged;
 
-    private readonly Slider _slider;
+    private readonly VisualElement _track;
+    private readonly VisualElement _handle;
     private readonly Label _valueLabel;
     private readonly Button _lockBtn;
+    private VisualElement _lockIcon;
 
     private readonly float _min;
     private readonly float _max;
@@ -31,14 +32,8 @@ public sealed class SnapSlider
     private readonly string _format;
 
     private bool _snapped;
+    private bool _dragging;
 
-    /// <param name="min">Minimum value.</param>
-    /// <param name="max">Maximum value.</param>
-    /// <param name="initialValue">Starting value (snapped if lock starts active).</param>
-    /// <param name="smallStep">Step for +/- in free mode.</param>
-    /// <param name="snapStep">Coarse snap increment. 0 = no lock button.</param>
-    /// <param name="format">"0" = integer display; "F1"/"F2" = decimal.</param>
-    /// <param name="showLock">Show the lock/unlock button (requires snapStep > 0).</param>
     public SnapSlider(
         float min,
         float max,
@@ -56,7 +51,7 @@ public sealed class SnapSlider
         _format = format;
 
         bool hasLock = showLock && snapStep > 0f;
-        _snapped = hasLock; // start locked when a snap grid is defined
+        _snapped = hasLock;
 
         float clamped = Mathf.Clamp(initialValue, min, max);
         Value = _snapped ? SnapToGrid(clamped) : clamped;
@@ -64,72 +59,128 @@ public sealed class SnapSlider
         Root = new VisualElement();
         Root.AddToClassList("snap-slider");
 
-        // 1. Slider
-        _slider = new Slider(min, max);
-        _slider.AddToClassList("snap-slider__slider");
-        _slider.SetValueWithoutNotify(Value);
-        _slider.RegisterValueChangedCallback(OnSliderChanged);
-        Root.Add(_slider);
+        // 1. Custom track + handle
+        _track = new VisualElement();
+        _track.AddToClassList("snap-slider__track");
+
+        _handle = new VisualElement();
+        _handle.AddToClassList("snap-slider__handle");
+        _track.Add(_handle);
+
+        _track.RegisterCallback<GeometryChangedEvent>(_ => UpdateHandlePosition());
+        _track.RegisterCallback<PointerDownEvent>(OnTrackPointerDown);
+        _track.RegisterCallback<PointerMoveEvent>(OnTrackPointerMove);
+        _track.RegisterCallback<PointerUpEvent>(OnTrackPointerUp);
+
+        Root.Add(_track);
 
         // 2. Value label
         _valueLabel = new Label(FormatValue(Value));
         _valueLabel.AddToClassList("snap-slider__value");
         Root.Add(_valueLabel);
 
-        // 3. Step buttons — vertical column, + on top
-        var btnCol = new VisualElement();
-        btnCol.AddToClassList("snap-slider__btn-column");
+        // 3. Pill button row: ( - ][ + ][ lock ) or ( - ][ + )
+        var btnRow = new VisualElement();
+        btnRow.AddToClassList("snap-slider__btn-row");
+
+        var decBtn = new Button(() => Step(-1f));
+        decBtn.AddToClassList("snap-slider__step-btn");
+        decBtn.AddToClassList("snap-slider__btn--first");
+        decBtn.text = "-";
+        btnRow.Add(decBtn);
 
         var incBtn = new Button(() => Step(1f));
         incBtn.AddToClassList("snap-slider__step-btn");
         incBtn.text = "+";
-        btnCol.Add(incBtn);
+        btnRow.Add(incBtn);
 
-        var decBtn = new Button(() => Step(-1f));
-        decBtn.AddToClassList("snap-slider__step-btn");
-        decBtn.text = "\u2212"; // − (proper minus, not hyphen)
-        btnCol.Add(decBtn);
-
-        Root.Add(btnCol);
-
-        // 4. Lock/unlock button (optional)
         if (hasLock)
         {
+            incBtn.AddToClassList("snap-slider__btn--middle");
+
             _lockBtn = new Button(ToggleLock);
             _lockBtn.AddToClassList("snap-slider__lock-btn");
+            _lockBtn.AddToClassList("snap-slider__btn--last");
+
+            var lockIcon = new VisualElement();
+            lockIcon.AddToClassList("snap-slider__lock-icon");
+            _lockBtn.Add(lockIcon);
+            _lockIcon = lockIcon;
+
             RefreshLockBtn();
-            Root.Add(_lockBtn);
+            btnRow.Add(_lockBtn);
         }
+        else
+        {
+            incBtn.AddToClassList("snap-slider__btn--last");
+        }
+
+        Root.Add(btnRow);
     }
 
     /// Set value without firing <see cref="OnValueChanged"/>.
-    /// Does not snap even when in locked mode — used to restore saved state.
     public void SetValueWithoutNotify(float val)
     {
         Value = Mathf.Clamp(val, _min, _max);
-        _slider.SetValueWithoutNotify(Value);
         _valueLabel.text = FormatValue(Value);
+        UpdateHandlePosition();
+    }
+
+    // ── Drag handling ────────────────────────────────────────────────────────
+
+    private void OnTrackPointerDown(PointerDownEvent evt)
+    {
+        _dragging = true;
+        _track.CapturePointer(evt.pointerId);
+        ApplyDrag(evt.localPosition.x);
+    }
+
+    private void OnTrackPointerMove(PointerMoveEvent evt)
+    {
+        if (!_dragging)
+            return;
+        ApplyDrag(evt.localPosition.x);
+    }
+
+    private void OnTrackPointerUp(PointerUpEvent evt)
+    {
+        if (!_dragging)
+            return;
+        _dragging = false;
+        _track.ReleasePointer(evt.pointerId);
+    }
+
+    private void ApplyDrag(float localX)
+    {
+        float trackWidth = _track.resolvedStyle.width;
+        float handleWidth = _handle.resolvedStyle.width;
+        if (trackWidth <= handleWidth)
+            return;
+
+        float usable = trackWidth - handleWidth;
+        float t = Mathf.Clamp01((localX - handleWidth * 0.5f) / usable);
+        float raw = Mathf.Lerp(_min, _max, t);
+        float val = _snapped ? SnapToGrid(raw) : raw;
+        CommitValue(val);
+    }
+
+    private void UpdateHandlePosition()
+    {
+        float trackWidth = _track.resolvedStyle.width;
+        float handleWidth = _handle.resolvedStyle.width;
+        if (float.IsNaN(trackWidth) || float.IsNaN(handleWidth) || trackWidth <= handleWidth)
+            return;
+
+        float usable = trackWidth - handleWidth;
+        float t = Mathf.InverseLerp(_min, _max, Value);
+        _handle.style.left = t * usable;
     }
 
     // ── Private ──────────────────────────────────────────────────────────────
 
-    private void OnSliderChanged(ChangeEvent<float> evt)
-    {
-        float val = _snapped ? SnapToGrid(evt.newValue) : evt.newValue;
-        Value = val;
-        // Correct slider thumb position when snap moved the value.
-        if (Math.Abs(val - evt.newValue) > 0.0001f)
-            _slider.SetValueWithoutNotify(val);
-        _valueLabel.text = FormatValue(val);
-        OnValueChanged?.Invoke(val);
-    }
-
     private void Step(float dir)
     {
-        float step = _snapped ? _snapStep : _smallStep;
-        float newVal = Mathf.Clamp(Value + dir * step, _min, _max);
-        if (_snapped)
-            newVal = SnapToGrid(newVal);
+        float newVal = Mathf.Clamp(Value + dir * _smallStep, _min, _max);
         CommitValue(newVal);
     }
 
@@ -137,15 +188,13 @@ public sealed class SnapSlider
     {
         _snapped = !_snapped;
         RefreshLockBtn();
-        if (_snapped)
-            CommitValue(SnapToGrid(Value));
     }
 
     private void CommitValue(float val)
     {
         Value = val;
-        _slider.SetValueWithoutNotify(val);
         _valueLabel.text = FormatValue(val);
+        UpdateHandlePosition();
         OnValueChanged?.Invoke(val);
     }
 
@@ -164,13 +213,17 @@ public sealed class SnapSlider
 
     private void RefreshLockBtn()
     {
-        if (_lockBtn == null)
+        if (_lockIcon == null)
             return;
-        // ■ = locked/snapped, □ = free  (U+25A0 / U+25A1, widely available in fonts)
-        _lockBtn.text = _snapped ? "\u25a0" : "\u25a1";
         if (_snapped)
-            _lockBtn.AddToClassList("snap-slider__lock-btn--active");
+        {
+            _lockIcon.AddToClassList("snap-slider__lock-icon--locked");
+            _lockIcon.RemoveFromClassList("snap-slider__lock-icon--unlocked");
+        }
         else
-            _lockBtn.RemoveFromClassList("snap-slider__lock-btn--active");
+        {
+            _lockIcon.RemoveFromClassList("snap-slider__lock-icon--locked");
+            _lockIcon.AddToClassList("snap-slider__lock-icon--unlocked");
+        }
     }
 }
