@@ -86,7 +86,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ### `ReplayData` (`sealed class`)
 
 - Full save/replay record for one game session.
-- Contains: `version`, `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `boardSnapshot` (initial arrow configuration — all arrows before any clears), `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
+- Contains: `version` (currently 3), `gameId` (UUID), `seed`, board dimensions, `inspectionDuration`, `gameVersion` (application version at recording time, v3+), `boardSnapshot` (initial arrow configuration — all arrows before any clears), `List<ReplayEvent> events`, `finalTime` (-1 = in-progress).
 - `boardSnapshot` — each inner list is one arrow's cells in head-to-tail order. On resume, the board is restored from this snapshot and clear events are replayed. Null for v1 legacy saves (falls back to seed-based regeneration).
 - `ComputedSolveElapsed` — derived property that sums active solve intervals from event timestamps, excluding `session_leave`→`session_rejoin` gaps. Used by `GameTimer.Resume` to restore the timer.
 - Serializes to JSON via `Newtonsoft.Json`. Stored at `Application.persistentDataPath/savegame.json`.
@@ -103,6 +103,28 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - Return type of `BoardView.TryClearArrow`. Values: `Blocked = 0`, `Cleared`, `ClearedFirst`, `ClearedLast`.
 - `Blocked = 0` so all success values are nonzero for easy truthiness-style checks.
 - `ClearedFirst`/`ClearedLast` drive timer phase transitions in `InputHandler`.
+
+### `LeaderboardEntry` (`sealed class`)
+
+- One entry in the local leaderboard index. Stored in `leaderboard.json` (without replay data).
+- Fields: `gameId` (maps to replay file), `seed`, `boardWidth`, `boardHeight`, `solveTime`, `completedAt` (ISO 8601 UTC), `isFavorite`, `gameVersion`.
+- Constructor from `ReplayData` extracts board params, computes solve time, and captures timestamp and game version.
+
+### `LeaderboardStore` (`sealed class`)
+
+- Pure C# leaderboard storage. Manages entries with per-config (50) and global (500) caps.
+- Favorited entries are exempt from automatic pruning. When a cap is exceeded, the slowest non-favorited entry is pruned and its `gameId` returned for replay file cleanup.
+- `AddEntry`, `GetEntries(w,h)`, `GetAllEntries`, `GetPersonalBest(w,h)`, `GetNeighborEntries(w,h,time,count)`, `SetFavorite`, `RemoveEntry`.
+- `SortBy(entries, SortCriterion)` — static sort by `Fastest` (solveTime asc), `Biggest` (area desc), or `Favorites` (favorited first, then solveTime).
+- JSON serialization via `Newtonsoft.Json` (`ToJson`/`FromJson`).
+
+### `ReplayPlayer` (`sealed class`)
+
+- Pure C# replay playback engine. Takes `ReplayData`, provides time-based playback with speed control.
+- Filters to timed events (clear/reject), computes relative timestamps excluding pauses.
+- `Advance(deltaTime)` returns fired events. `SeekTo(normalizedTime)` returns `SeekResult` with `EventsToApply` (forward) and `EventsToUndo` (backward) for incremental board state changes.
+- Speed steps: 0.5×, 1×, 2×, 4×. `CycleSpeed()` cycles through them.
+- Tracks `ClearedEventIndices` for backward seek (re-add arrows in reverse order).
 
 ### `BoardGeneration` (`static class`)
 
@@ -133,7 +155,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ### Main Menu (`MainMenu` Scene)
 
 - **`MainMenuController`** — drives the main menu UI via UI Toolkit. Manages three screens (Main Menu, Mode Select, Settings) toggled via USS `display: none`. Mode Select presents a flex-wrap preset grid (Small 10×10, Medium 20×20, Large 40×40, XLarge 100×100) plus a Custom button that toggles a slider panel with width/height `SnapSlider` controls (range 2–400, snap-to-10 grid with lock toggle). Start and Back buttons are placed side by side in a horizontal row to save vertical space. Custom selection is restored when returning from a game if dimensions don't match a preset. On Start, writes chosen dimensions to `GameSettings` and loads the Game scene. Desktop-only quit button (top-left X) opens a confirmation modal; hidden on mobile via `Application.isMobilePlatform`. When a saved game exists, a teal "Continue" button appears below "Play"; "Play" always goes to mode select (no confirmation modal). "Continue" calls `GameSettings.Resume()` and loads the Game scene.
-- **`GameSettings`** (static class, domain layer) — holds `Width`, `Height`, `MaxArrowLength`, `IsSet`, `IsResuming`, and `ResumeData`. Also holds `PlayerPrefs` key constants and defaults for persisted settings (drag threshold, zoom speed, arrow coloring). `GameController` reads from it when `IsSet` is true. `Apply()` sets board params for a new game; `ResumeFromSave()` flags a deferred resume (save loaded later by `GameController`); `SetResumeData(ReplayData)` populates resume data after loading; `Reset()` clears all.
+- **`GameSettings`** (static class, domain layer) — holds `Width`, `Height`, `MaxArrowLength`, `IsSet`, `IsResuming`, and `ResumeData`. Also holds `PlayerPrefs` key constants and defaults for persisted settings (drag threshold, zoom speed, arrow coloring). `GameController` reads from it when `IsSet` is true. `Apply()` sets board params for a new game; `ResumeFromSave()` flags a deferred resume (save loaded later by `GameController`); `SetResumeData(ReplayData)` populates resume data after loading; `Reset()` clears all. Replay viewer support: `IsReplaying`, `ReplaySource`, `ReturnScene` properties with `StartReplay(replayData, returnScene)` / `ClearReplay()` methods for scene transition to the Replay scene.
 - **`SaveManager`** (static class, view layer) — saves/loads/deletes the in-progress game JSON at `Application.persistentDataPath/savegame.json`. Wraps `Newtonsoft.Json` serialization. `LoadAsync` coroutine runs file I/O and deserialization on a background thread (falls back to synchronous on WebGL). Safe: catches I/O exceptions, logs warnings, auto-deletes on corruption.
 
 ### Scene Wiring
@@ -142,7 +164,8 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. Exposes `SetInputEnabled` to suppress all input during the victory sequence. On each tap: records `start_solve` (if transitioning from inspection), then `clear` or `reject` to the optional `ReplayRecorder`. On non-final clears, fires an `onArrowCleared` callback (used by `GameController` for autosave). Timer phase transitions driven by input-precision wall-clock timestamps.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom is derived from the initial fit (not configurable). Clamped to board bounds. `ZoomToFit` smoothly returns to the initial view with a SmoothStep coroutine.
 - **`GameTimerView`** — drives a `GameTimer` each frame and updates the HUD timer label. During inspection: grey whole-second countdown, turns red at a configurable warning threshold. During solving: white whole-second count-up. On finish: precise millisecond display.
-- **`VictoryController`** — handles the board-cleared sequence. On last arrow clear, `OnLastArrowClearing` starts the camera zoom-to-fit in parallel with the pull-out animation. After both complete, `OnBoardCleared` triggers grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu buttons. Font size auto-scales for long messages. Hides the game HUD when the popup appears.
+- **`VictoryController`** — handles the board-cleared sequence. On last arrow clear, `OnLastArrowClearing` starts the camera zoom-to-fit in parallel with the pull-out animation. After both complete, `OnBoardCleared` triggers grid fade → victory popup with a randomized playful message, final solve time, and Play Again / Menu / View Leaderboard buttons. Records the result to `LeaderboardManager`, detects personal best (gold timer + "New Best!" label). Font size auto-scales for long messages. Hides the game HUD when the popup appears. Receives a `buildReplayData` delegate from `GameController` to construct the completed `ReplayData` with `finalTime` set.
+- **`LeaderboardManager`** (singleton, view layer) — wraps `LeaderboardStore` with file-based persistence. Auto-bootstraps via `RuntimeInitializeOnLoadMethod`; persists across scenes via `DontDestroyOnLoad`. Index stored as `leaderboard.json`; replays stored individually as GZip-compressed JSON at `replays/{gameId}.json.gz` under `Application.persistentDataPath`. `RecordResult(ReplayData)` builds entry, saves index + replay, prunes slowest non-favorited if caps exceeded. `LoadReplay(gameId)` tries GZip first, falls back to plain JSON. `IsPersonalBest`, `SetFavorite`, `RemoveEntry` delegate to store + save.
 
 ### Board and Arrow Rendering
 
@@ -209,6 +232,9 @@ The menu UI (UI Toolkit) is designed and tested for desktop resolutions only. On
   - generation validity, correctness, and determinism under fixed seeds
   - occupancy and bounds invariants
   - generation performance benchmarks (to catch regressions)
+  - leaderboard store: add/get/sort/cap enforcement/personal best/favorites/neighbor entries/serialization
+  - replay player: advance/seek/speed/boundary conditions
+  - replay storage sizing (`[Explicit]`): raw and GZip-compressed sizes across board configurations
 
 ### PlayMode Tests (`Assets/Tests/PlayMode/`)
 
@@ -282,3 +308,4 @@ WebGL player settings: Gzip compression, JS decompression fallback enabled, hash
 - 2026-03-16: MVP (v0.1) declared complete. v0.2 planning started: authoritative ASP.NET Core server sharing domain code via monorepo shared `.csproj`, input-based replay system with sequence-numbered events, size-partitioned leaderboards (local + global), simple account system (username/display name/JWT). Offline-first design — game always playable without server. See [`OnlineRoadmap.md`](OnlineRoadmap.md).
 - 2026-03-20: Added `SnapSlider` reusable UI component. Replaces Unity's built-in `Slider`/`SliderInt` with a custom track+handle (pointer-captured drag), pill-shaped +/- and lock buttons, and PNG lock icons. Custom board-size sliders extracted from the preset card into a toggled panel below the grid. Start and Back buttons placed side by side to save vertical space in portrait.
 - 2026-03-18: Added save-game and cancel-generation QoL features. Save uses the same event-log format as the planned replay system (`ReplayEvent`, `ReplayData`, `ReplayRecorder`) — the save file doubles as a partial replay. `SaveManager` persists to `Application.persistentDataPath/savegame.json`; `LoadAsync` runs file I/O on a background thread (synchronous fallback on WebGL). Resume restores the board from the saved initial snapshot via `Board.RestoreArrowsIncremental` (no generation step), replays clear events to reconstruct current state, and restores the solve timer via `GameTimer.Resume()`. Save file loading is deferred to the game scene (after the loading overlay is visible) to avoid menu lag. Cancel generation shows a confirmation modal. Leave-game modal always shown: "Save game?" when arrows cleared (with replace warning if a different save exists); "Leave game?" when no arrows cleared. Autosave writes every 10 clears when no conflicting save exists. `InputHandler` records all tap events to the `ReplayRecorder` and fires `onArrowCleared` for autosave. `end_solve` event recorded on board completion. `GameController` refactored into focused helper methods; loading overlay rendering decoupled from work coroutines (Update-driven). Arrows displayed incrementally during generation and restore. `BoardGridRenderer` rewritten as single tiling quad. `GameSettings` mutable properties replaced with `PlayerPrefs` key constants — consumers read `PlayerPrefs` directly.
+- 2026-03-21: Added local leaderboard system (Phase 1-2). Domain layer: `LeaderboardEntry` model, `LeaderboardStore` (pure C# with per-config/global caps, favorite exemption, 3 sort criteria), `ReplayPlayer` (playback engine with speed control and incremental seek). `ReplayData` bumped to v3 with `gameVersion` field. `Board.GetDependents()` exposed for targeted clearable highlight updates. View layer: `LeaderboardManager` singleton (auto-bootstrap, file I/O with GZip-compressed replays, split index+replay storage). `VictoryController` records results, shows "New Best!" on personal best, adds "View Leaderboard" button. Replays viewable only from leaderboard screen (not victory popup). `GameSettings` extended with `StartReplay`/`ClearReplay` for replay viewer scene transition.
