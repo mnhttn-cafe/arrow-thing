@@ -63,11 +63,41 @@ public static class GameSettings
         ResumeData = data;
     }
 
+    /// <summary>True when the next scene load should enter replay playback mode.</summary>
+    public static bool IsReplaying { get; private set; }
+
+    /// <summary>The replay data to play back when IsReplaying is true.</summary>
+    public static ReplayData ReplaySource { get; private set; }
+
+    /// <summary>Scene to return to after exiting the replay viewer.</summary>
+    public static string ReturnScene { get; private set; }
+
+    /// <summary>
+    /// Configure replay playback. Call before loading the Replay scene.
+    /// </summary>
+    public static void StartReplay(ReplayData replayData, string returnScene)
+    {
+        IsReplaying = true;
+        ReplaySource = replayData;
+        ReturnScene = returnScene ?? "MainMenu";
+    }
+
+    /// <summary>Clears replay state after the Replay scene has consumed it.</summary>
+    public static void ClearReplay()
+    {
+        IsReplaying = false;
+        ReplaySource = null;
+        ReturnScene = null;
+    }
+
     public static void Reset()
     {
         IsSet = false;
         IsResuming = false;
         ResumeData = null;
+        IsReplaying = false;
+        ReplaySource = null;
+        ReturnScene = null;
         Width = 0;
         Height = 0;
         MaxArrowLength = 0;

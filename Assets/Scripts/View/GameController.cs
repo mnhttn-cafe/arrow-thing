@@ -577,7 +577,8 @@ public sealed class GameController : MonoBehaviour
             _w,
             _h,
             _timer,
-            hudUIDocument
+            hudUIDocument,
+            BuildReplayData
         );
         _boardView.LastArrowClearing += () =>
         {

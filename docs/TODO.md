@@ -92,15 +92,7 @@ After board clear, before showing the victory popup:
 
 **Victory popup additions**:
 - "New Best!" gold label (hidden unless applicable)
-- **Mini leaderboard** (side panel within victory-box):
-  - Shows 5 entries from local leaderboard for the current board size, centered on the player's just-completed time
-  - Each row: rank number + solve time only (minimal)
-  - Current play highlighted (distinct background or border)
-  - Personal best highlighted in gold
-  - **Local / Global toggle** — small pill toggle above the mini list
-    - Local (default): shows local data
-    - Global: shows "Coming Soon" text
-- **"Watch Replay" button** — replays the game just completed (loads Replay scene with current replay data, return destination = main menu since game state is gone after leaving)
+- **"View Leaderboard" button** — navigates to the leaderboard screen (replays are viewable from there)
 
 ### Replay Viewer
 
@@ -114,10 +106,8 @@ After board clear, before showing the victory popup:
 - GameController refactored to delegate to this helper (no behavior change, just extraction)
 - ReplayViewController uses the same helper
 
-**Entry points**:
-- Leaderboard screen → play button on entry row
-- Victory screen → "Watch Replay" button
-- Both set `GameSettings.StartReplay(replayData, returnScene)` → load Replay scene
+**Entry point**:
+- Leaderboard screen → play button on entry row → `GameSettings.StartReplay(replayData, "MainMenu")` → load Replay scene
 
 **`ReplayPlayer`** (domain class, pure C#):
 - Takes `ReplayData`, provides playback logic
@@ -224,9 +214,7 @@ After board clear, before showing the victory popup:
   - After board clear, call `LeaderboardManager.RecordResult()`
   - Check personal best; if yes, set gold timer + show "New Best!" label
   - Add "New Best!" label to VictoryPopup.uxml (hidden by default)
-  - Add mini leaderboard panel to VictoryPopup.uxml (5 entries, rank + time, current play highlighted)
-  - Add Local/Global toggle to mini leaderboard (Global shows "Coming Soon")
-  - Add "Watch Replay" button to victory popup
+  - Add "View Leaderboard" button to VictoryPopup.uxml (navigates to leaderboard screen)
 
 ### Phase 3: Leaderboard UI
 

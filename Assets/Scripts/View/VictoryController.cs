@@ -5,6 +5,7 @@ using UnityEngine.UIElements;
 /// <summary>
 /// Handles the board-cleared sequence: zoom-to-fit + arrow pull-out run in parallel,
 /// then grid fade-out, then victory popup with a randomized message and Play Again / Menu buttons.
+/// Records the result to the leaderboard and shows a "New Best!" indicator when applicable.
 /// </summary>
 public sealed class VictoryController : MonoBehaviour
 {
@@ -51,6 +52,8 @@ public sealed class VictoryController : MonoBehaviour
     private VisualElement _overlay;
     private Label _messageLabel;
     private Label _timeLabel;
+    private Label _newBestLabel;
+    private System.Func<ReplayData> _buildReplayData;
 
     [SerializeField]
     private float zoomOutDuration = 0.6f;
@@ -71,7 +74,8 @@ public sealed class VictoryController : MonoBehaviour
         int boardWidth,
         int boardHeight,
         GameTimer timer = null,
-        UIDocument hudDocument = null
+        UIDocument hudDocument = null,
+        System.Func<ReplayData> buildReplayData = null
     )
     {
         _uiDocument = uiDocument;
@@ -81,14 +85,20 @@ public sealed class VictoryController : MonoBehaviour
         _boardWidth = boardWidth;
         _boardHeight = boardHeight;
         _timer = timer;
+        _buildReplayData = buildReplayData;
 
         var root = _uiDocument.rootVisualElement;
         _overlay = root.Q("victory-overlay");
         _messageLabel = root.Q<Label>("victory-message");
         _timeLabel = root.Q<Label>("victory-time");
+        _newBestLabel = root.Q<Label>("new-best-label");
 
         root.Q<Button>("play-again-btn").clicked += OnPlayAgain;
         root.Q<Button>("menu-btn").clicked += OnMenu;
+
+        var viewLbBtn = root.Q<Button>("view-leaderboard-btn");
+        if (viewLbBtn != null)
+            viewLbBtn.clicked += OnViewLeaderboard;
     }
 
     /// <summary>
@@ -153,7 +163,36 @@ public sealed class VictoryController : MonoBehaviour
         if (_hudDocument != null)
             _hudDocument.rootVisualElement.style.display = DisplayStyle.None;
 
+        RecordToLeaderboard();
+
         _overlay.RemoveFromClassList("victory--hidden");
+    }
+
+    private void RecordToLeaderboard()
+    {
+        var manager = LeaderboardManager.Instance;
+        if (manager == null || _timer == null)
+            return;
+
+        double solveTime = _timer.SolveElapsed;
+        bool isNewBest = manager.IsPersonalBest(_boardWidth, _boardHeight, solveTime);
+
+        // Build and record the completed replay
+        var replayData = _buildReplayData?.Invoke();
+        if (replayData != null)
+        {
+            replayData.finalTime = solveTime;
+            manager.RecordResult(replayData);
+        }
+
+        // Show "New Best!" label and gold timer
+        if (isNewBest)
+        {
+            if (_newBestLabel != null)
+                _newBestLabel.RemoveFromClassList("victory--hidden");
+            if (_timeLabel != null)
+                _timeLabel.AddToClassList("victory-time--gold");
+        }
     }
 
     private static string FormatTime(double seconds)
@@ -171,6 +210,12 @@ public sealed class VictoryController : MonoBehaviour
         if (mins > 0)
             return $"{mins}:{secs:D2}.{millis:D3}";
         return $"{secs}.{millis:D3}";
+    }
+
+    private void OnViewLeaderboard()
+    {
+        SceneManager.LoadScene("MainMenu");
+        // TODO: Phase 3 — navigate directly to leaderboard screen after load
     }
 
     private void OnPlayAgain()
