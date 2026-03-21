@@ -121,7 +121,13 @@ public sealed class LeaderboardStore
         switch (criterion)
         {
             case SortCriterion.Fastest:
-                sorted.Sort((a, b) => a.solveTime.CompareTo(b.solveTime));
+                sorted.Sort(
+                    (a, b) =>
+                    {
+                        int cmp = a.solveTime.CompareTo(b.solveTime);
+                        return cmp != 0 ? cmp : DateTiebreak(a, b);
+                    }
+                );
                 break;
             case SortCriterion.Biggest:
                 sorted.Sort(
@@ -129,7 +135,8 @@ public sealed class LeaderboardStore
                     {
                         int areaA = a.boardWidth * a.boardHeight;
                         int areaB = b.boardWidth * b.boardHeight;
-                        return areaB.CompareTo(areaA); // descending
+                        int cmp = areaB.CompareTo(areaA); // descending
+                        return cmp != 0 ? cmp : DateTiebreak(a, b);
                     }
                 );
                 break;
@@ -137,14 +144,22 @@ public sealed class LeaderboardStore
                 sorted.Sort(
                     (a, b) =>
                     {
-                        // Favorites first, then by solve time
                         int favCmp = b.isFavorite.CompareTo(a.isFavorite);
-                        return favCmp != 0 ? favCmp : a.solveTime.CompareTo(b.solveTime);
+                        if (favCmp != 0)
+                            return favCmp;
+                        int timeCmp = a.solveTime.CompareTo(b.solveTime);
+                        return timeCmp != 0 ? timeCmp : DateTiebreak(a, b);
                     }
                 );
                 break;
         }
         return sorted;
+    }
+
+    /// <summary>Tiebreaker: older entries first (ascending by completedAt).</summary>
+    private static int DateTiebreak(LeaderboardEntry a, LeaderboardEntry b)
+    {
+        return string.Compare(a.completedAt, b.completedAt, System.StringComparison.Ordinal);
     }
 
     public string ToJson()
