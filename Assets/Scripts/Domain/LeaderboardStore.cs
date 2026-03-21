@@ -57,7 +57,7 @@ public sealed class LeaderboardStore
     /// <summary>
     /// Returns up to <paramref name="count"/> entries for the given board size,
     /// centered around <paramref name="targetTime"/> when sorted by fastest time.
-    /// Used for the victory mini-leaderboard.
+    /// Useful for showing entries near a specific time.
     /// </summary>
     public List<LeaderboardEntry> GetNeighborEntries(
         int width,
