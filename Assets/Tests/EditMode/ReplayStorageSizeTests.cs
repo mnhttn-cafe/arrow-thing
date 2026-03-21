@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Text;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 [TestFixture]
@@ -70,7 +69,7 @@ public class ReplayStorageSizeTests
             gameVersion: "1.0.0"
         );
 
-        string json = JsonConvert.SerializeObject(data);
+        string json = data.ToJson();
         int byteSize = Encoding.UTF8.GetByteCount(json);
         double kb = byteSize / 1024.0;
         double mb = kb / 1024.0;

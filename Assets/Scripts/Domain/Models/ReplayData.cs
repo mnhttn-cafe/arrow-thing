@@ -79,4 +79,7 @@ public sealed class ReplayData
             return elapsed;
         }
     }
+
+    /// <summary>Serializes this instance to a JSON string.</summary>
+    public string ToJson() => JsonConvert.SerializeObject(this);
 }
