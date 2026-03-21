@@ -90,6 +90,12 @@ public static class GameSettings
         ReturnScene = null;
     }
 
+    /// <summary>
+    /// When set, the Leaderboard scene auto-scrolls to this entry on load.
+    /// Consumed and cleared by LeaderboardScreenController.
+    /// </summary>
+    public static string LeaderboardFocusGameId { get; set; }
+
     public static void Reset()
     {
         IsSet = false;
@@ -98,6 +104,7 @@ public static class GameSettings
         IsReplaying = false;
         ReplaySource = null;
         ReturnScene = null;
+        LeaderboardFocusGameId = null;
         Width = 0;
         Height = 0;
         MaxArrowLength = 0;

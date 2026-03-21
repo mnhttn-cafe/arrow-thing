@@ -54,6 +54,7 @@ public sealed class VictoryController : MonoBehaviour
     private Label _timeLabel;
     private Label _newBestLabel;
     private System.Func<ReplayData> _buildReplayData;
+    private string _recordedGameId;
 
     [SerializeField]
     private float zoomOutDuration = 0.6f;
@@ -182,7 +183,8 @@ public sealed class VictoryController : MonoBehaviour
         if (replayData != null)
         {
             replayData.finalTime = solveTime;
-            manager.RecordResult(replayData);
+            var entry = manager.RecordResult(replayData);
+            _recordedGameId = entry.gameId;
         }
 
         // Show "New Best!" label and gold timer
@@ -214,8 +216,8 @@ public sealed class VictoryController : MonoBehaviour
 
     private void OnViewLeaderboard()
     {
-        SceneManager.LoadScene("MainMenu");
-        // TODO: Phase 3 — navigate directly to leaderboard screen after load
+        GameSettings.LeaderboardFocusGameId = _recordedGameId;
+        SceneManager.LoadScene("Leaderboard");
     }
 
     private void OnPlayAgain()

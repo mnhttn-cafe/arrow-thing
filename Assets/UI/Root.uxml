@@ -26,6 +26,9 @@
     </ui:VisualElement>
 
     <ui:VisualElement name="mode-select" class="screen screen--hidden">
+        <ui:Button name="trophy-btn" class="trophy-btn">
+            <ui:VisualElement class="trophy-icon" />
+        </ui:Button>
         <ui:Label class="section-label" text="Select Board Size" />
         <ui:VisualElement class="preset-grid">
             <ui:Button name="preset-small"  class="preset-btn" text="Small&#10;10 × 10" />

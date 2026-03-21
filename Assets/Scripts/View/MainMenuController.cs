@@ -115,6 +115,10 @@ public sealed class MainMenuController : MonoBehaviour
         _modeSelect.Q<Button>("start-btn").clicked += OnStart;
         _modeSelect.Q<Button>("mode-back-btn").clicked += OnModeBack;
 
+        var trophyBtn = _modeSelect.Q<Button>("trophy-btn");
+        if (trophyBtn != null)
+            trophyBtn.clicked += OnTrophy;
+
         // Settings: drag threshold slider
         float savedThreshold = PlayerPrefs.GetFloat(
             GameSettings.DragThresholdPrefKey,
@@ -291,6 +295,11 @@ public sealed class MainMenuController : MonoBehaviour
     {
         GameSettings.Apply(_selectedWidth, _selectedHeight);
         SceneManager.LoadScene("Game");
+    }
+
+    private void OnTrophy()
+    {
+        SceneManager.LoadScene("Leaderboard");
     }
 
     private void OnQuitPressed()
