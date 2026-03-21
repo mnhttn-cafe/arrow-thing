@@ -43,7 +43,6 @@
 
         <!-- Context menu (floating) -->
         <ui:VisualElement name="lb-context-menu" class="lb-context-menu lb--hidden">
-            <ui:Button name="ctx-favorite-btn" class="lb-ctx-btn" text="Favorite" />
             <ui:Button name="ctx-delete-btn" class="lb-ctx-btn lb-ctx-btn--danger" text="Delete" />
         </ui:VisualElement>
 

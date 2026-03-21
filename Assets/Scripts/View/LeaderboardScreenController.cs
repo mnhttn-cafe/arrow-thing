@@ -30,7 +30,6 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private VisualElement _comingSoon;
     private VisualElement _contextMenu;
     private VisualElement _deleteModal;
-    private Button _ctxFavoriteBtn;
 
     private Button[] _tabButtons;
     private Button[] _sortButtons;
@@ -42,6 +41,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     // Context menu state
     private string _contextGameId;
     private bool _contextIsFavorite;
+    private string _pendingDeleteGameId;
 
     // Focus (auto-scroll) state from victory screen
     private string _focusGameId;
@@ -83,9 +83,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         _sortButtons[1].clicked += () => SelectSort(SortCriterion.Biggest);
         _sortButtons[2].clicked += () => SelectSort(SortCriterion.Favorites);
 
-        // Context menu buttons
-        _ctxFavoriteBtn = _root.Q<Button>("ctx-favorite-btn");
-        _ctxFavoriteBtn.clicked += OnContextFavorite;
+        // Context menu buttons (delete only — favorite is a direct icon toggle)
         _root.Q<Button>("ctx-delete-btn").clicked += OnContextDelete;
 
         // Delete modal buttons
@@ -310,14 +308,18 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         dateLabel.tooltip = FormatExactDate(entry.completedAt);
         row.Add(dateLabel);
 
-        // Favorite icon
+        // Favorite icon (clickable toggle)
+        string capturedGameId = entry.gameId;
+        bool capturedFav = entry.isFavorite;
+        var favBtn = new Button(() => OnToggleFavorite(capturedGameId, capturedFav));
+        favBtn.AddToClassList("lb-fav-btn");
         var favIcon = new VisualElement();
         favIcon.AddToClassList("lb-fav-icon");
         favIcon.AddToClassList(entry.isFavorite ? "lb-fav-icon--on" : "lb-fav-icon--off");
-        row.Add(favIcon);
+        favBtn.Add(favIcon);
+        row.Add(favBtn);
 
         // Play button
-        string capturedGameId = entry.gameId;
         var playBtn = new Button(() => OnPlayReplay(capturedGameId));
         playBtn.AddToClassList("lb-play-btn");
         var playIcon = new VisualElement();
@@ -325,8 +327,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         playBtn.Add(playIcon);
         row.Add(playBtn);
 
-        // Context menu trigger
-        bool capturedFav = entry.isFavorite;
+        // Context menu trigger (delete only)
         var ctxBtn = new Button(() => ShowContextMenu(capturedGameId, capturedFav, row));
         ctxBtn.AddToClassList("lb-ctx-trigger");
         var ctxIcon = new VisualElement();
@@ -349,7 +350,6 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     {
         _contextGameId = gameId;
         _contextIsFavorite = isFavorite;
-        _ctxFavoriteBtn.text = isFavorite ? "Unfavorite" : "Favorite";
 
         // Position near the anchor row
         var rowBounds = anchorRow.worldBound;
@@ -378,16 +378,11 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         DismissContextMenu();
     }
 
-    private void OnContextFavorite()
+    private void OnToggleFavorite(string gameId, bool currentlyFavorite)
     {
-        if (_contextGameId == null)
-            return;
-
         var manager = LeaderboardManager.Instance;
         if (manager != null)
-            manager.SetFavorite(_contextGameId, !_contextIsFavorite);
-
-        DismissContextMenu();
+            manager.SetFavorite(gameId, !currentlyFavorite);
         RefreshList();
     }
 
@@ -399,6 +394,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         // If favorited, show confirmation modal
         if (_contextIsFavorite)
         {
+            _pendingDeleteGameId = _contextGameId;
             DismissContextMenu();
             ShowElement(_deleteModal, true);
         }
@@ -411,12 +407,20 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private void OnDeleteConfirm()
     {
         ShowElement(_deleteModal, false);
-        PerformDelete();
+        if (_pendingDeleteGameId != null)
+        {
+            var manager = LeaderboardManager.Instance;
+            if (manager != null)
+                manager.RemoveEntry(_pendingDeleteGameId);
+            _pendingDeleteGameId = null;
+            RefreshList();
+        }
     }
 
     private void OnDeleteCancel()
     {
         ShowElement(_deleteModal, false);
+        _pendingDeleteGameId = null;
     }
 
     private void PerformDelete()
@@ -448,7 +452,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         }
 
         GameSettings.StartReplay(replay, "Leaderboard");
-        SceneManager.LoadScene("Replay");
+        SceneManager.LoadScene("ReplayViewer");
     }
 
     // --- Navigation ---
