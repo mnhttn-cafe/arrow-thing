@@ -23,7 +23,7 @@ public class UILayoutTests
         + "LEVEL ENTIRELY ITS DANGEROUS DONT DO IT NO!!!!!!!!!"; // len 130 → 20px
 
     // Aspect ratios that are expected to have layout issues with current fixed-px CSS.
-    private static readonly string[] KnownIssueRatios = { "9:16" };
+    private static readonly string[] KnownIssueRatios = { };
 
     private GameObject _uiHost;
     private PanelSettings _panelSettings;
@@ -558,6 +558,58 @@ public class UILayoutTests
         );
     }
 
+    // ───────── Leaderboard — Entry Rows (All tab, with size column) ─────────
+
+    [UnityTest]
+    public IEnumerator Leaderboard_EntryRows_AllTab_FitWithinBounds(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        // Populate the list with mock entry rows matching CreateEntryRow layout (All tab = size column visible)
+        var list = root.Q("lb-list");
+        for (int i = 0; i < 3; i++)
+            list.Add(CreateMockEntryRow(i + 1, showSize: true));
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_EntryRows_All @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        // Assert each row and all its children fit within panel bounds
+        var rows = list.Query(className: "lb-entry").ToList();
+        foreach (var row in rows)
+            UILayoutTestHelper.AssertAllVisibleChildren(row, panelBounds, ctx, warn);
+    }
+
+    // ───────── Leaderboard — Entry Rows (Size tab, no size column) ─────────
+
+    [UnityTest]
+    public IEnumerator Leaderboard_EntryRows_SizeTab_FitWithinBounds(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        var list = root.Q("lb-list");
+        for (int i = 0; i < 3; i++)
+            list.Add(CreateMockEntryRow(i + 1, showSize: false));
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_EntryRows_Size @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        var rows = list.Query(className: "lb-entry").ToList();
+        foreach (var row in rows)
+            UILayoutTestHelper.AssertAllVisibleChildren(row, panelBounds, ctx, warn);
+    }
+
     // ───────── Leaderboard — Empty State ─────────
 
     [UnityTest]
@@ -784,5 +836,58 @@ public class UILayoutTests
                 return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Builds a mock leaderboard entry row matching the structure in
+    /// LeaderboardScreenController.CreateEntryRow, using USS classes from Leaderboard.uss.
+    /// </summary>
+    private static VisualElement CreateMockEntryRow(int rank, bool showSize)
+    {
+        var row = new VisualElement();
+        row.AddToClassList("lb-entry");
+
+        var rankLabel = new Label($"#{rank}");
+        rankLabel.AddToClassList("lb-rank");
+        row.Add(rankLabel);
+
+        if (showSize)
+        {
+            var sizeLabel = new Label("100\u00d7100");
+            sizeLabel.AddToClassList("lb-size");
+            row.Add(sizeLabel);
+        }
+
+        var timeLabel = new Label("12:34.567");
+        timeLabel.AddToClassList("lb-time");
+        row.Add(timeLabel);
+
+        var dateLabel = new Label("3 days ago");
+        dateLabel.AddToClassList("lb-date");
+        row.Add(dateLabel);
+
+        var favBtn = new Button();
+        favBtn.AddToClassList("lb-fav-btn");
+        var favIcon = new VisualElement();
+        favIcon.AddToClassList("lb-fav-icon");
+        favIcon.AddToClassList("lb-fav-icon--off");
+        favBtn.Add(favIcon);
+        row.Add(favBtn);
+
+        var playBtn = new Button();
+        playBtn.AddToClassList("lb-play-btn");
+        var playIcon = new VisualElement();
+        playIcon.AddToClassList("lb-play-icon");
+        playBtn.Add(playIcon);
+        row.Add(playBtn);
+
+        var ctxBtn = new Button();
+        ctxBtn.AddToClassList("lb-ctx-trigger");
+        var ctxIcon = new VisualElement();
+        ctxIcon.AddToClassList("lb-ctx-trigger-icon");
+        ctxBtn.Add(ctxIcon);
+        row.Add(ctxBtn);
+
+        return row;
     }
 }

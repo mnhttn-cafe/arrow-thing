@@ -33,6 +33,7 @@ public static class UILayoutTestHelper
             yield return new AspectRatio("4:3", 1024, 768);
             yield return new AspectRatio("21:9", 2560, 1080);
             yield return new AspectRatio("9:16", 1080, 1920);
+            yield return new AspectRatio("9:19 mobile", 390, 844);
             yield return new AspectRatio("1:1", 1000, 1000);
         }
     }

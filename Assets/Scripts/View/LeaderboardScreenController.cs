@@ -188,6 +188,8 @@ public sealed class LeaderboardScreenController : MonoBehaviour
                 _tabButtons[i].RemoveFromClassList("lb-tab--active");
         }
 
+        DismissContextMenu();
+
         // "Biggest" sort is only useful on the All tab
         bool isAllTab = Tabs[index].w == 0 && Tabs[index].h == 0;
         ShowElement(_sortButtons[1], isAllTab);
@@ -201,6 +203,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
     private void SelectSort(SortCriterion criterion)
     {
+        DismissContextMenu();
         _activeSortCriterion = criterion;
         int idx = (int)criterion;
         for (int i = 0; i < _sortButtons.Length; i++)
@@ -401,6 +404,13 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
     private void OnScrollPointerDown(PointerDownEvent evt)
     {
+        // Dismiss context menu if open (StopPropagation prevents OnRootPointerDown)
+        DismissContextMenu();
+
+        // Only drag-scroll when content overflows the viewport
+        if (_scroll.verticalScroller.highValue <= 0)
+            return;
+
         _isDragScrolling = true;
         _dragScrollStartY = evt.position.y;
         _dragScrollStartValue = _scroll.verticalScroller.value;

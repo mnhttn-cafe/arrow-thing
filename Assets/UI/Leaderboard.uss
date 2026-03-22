@@ -37,10 +37,12 @@
 }
 
 .lb-title {
-    font-size: 26px;
+    font-size: 20px;
     color: rgb(255, 255, 255);
     -unity-font-style: bold;
     flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
 }
 
 /* Local/Global toggle */
@@ -50,11 +52,11 @@
 }
 
 .lb-scope-btn {
-    font-size: 14px;
+    font-size: 13px;
     color: rgb(160, 160, 180);
     background-color: rgb(45, 45, 60);
     border-width: 0;
-    padding: 6px 16px;
+    padding: 5px 10px;
     margin: 0 1px;
 }
 
@@ -180,7 +182,7 @@
 .lb-entry {
     flex-direction: row;
     align-items: center;
-    padding: 8px 12px;
+    padding: 8px 8px;
     margin-bottom: 2px;
     background-color: rgb(32, 32, 44);
     border-radius: 6px;
@@ -212,7 +214,7 @@
 .lb-rank {
     font-size: 14px;
     color: rgb(120, 120, 140);
-    width: 36px;
+    width: 28px;
     -unity-text-align: middle-left;
     flex-shrink: 0;
 }
@@ -224,7 +226,7 @@
 .lb-size {
     font-size: 13px;
     color: rgb(140, 140, 160);
-    width: 60px;
+    width: 52px;
     -unity-text-align: middle-left;
     flex-shrink: 0;
 }
@@ -239,20 +241,20 @@
 .lb-date {
     font-size: 12px;
     color: rgb(110, 110, 130);
-    width: 70px;
+    width: 62px;
     -unity-text-align: middle-right;
     flex-shrink: 0;
-    margin-right: 8px;
+    margin-right: 4px;
 }
 
 .lb-fav-btn {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     padding: 4px;
     background-color: transparent;
     border-width: 0;
     flex-shrink: 0;
-    margin-right: 4px;
+    margin-right: 2px;
 }
 
 .lb-fav-btn:hover {
@@ -276,14 +278,14 @@
 }
 
 .lb-play-btn {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     padding: 5px;
     background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 14px;
+    border-radius: 13px;
     border-width: 0;
     flex-shrink: 0;
-    margin-right: 4px;
+    margin-right: 2px;
 }
 
 .lb-play-btn:hover {
@@ -298,11 +300,11 @@
 }
 
 .lb-ctx-trigger {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     padding: 5px;
     background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 14px;
+    border-radius: 13px;
     border-width: 0;
     flex-shrink: 0;
 }

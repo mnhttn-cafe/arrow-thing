@@ -301,14 +301,17 @@
 .modal-box {
     background-color: rgb(40, 40, 55);
     border-radius: 12px;
-    padding: 32px 48px;
+    padding: 24px 24px;
     align-items: center;
+    max-width: 90%;
 }
 
 .modal-label {
-    font-size: 28px;
+    font-size: 24px;
     color: rgb(255, 255, 255);
     margin-bottom: 24px;
+    white-space: normal;
+    -unity-text-align: middle-center;
 }
 
 .modal-buttons {
