@@ -1,4 +1,4 @@
-name: Deploy WebGL to GitHub Pages
+name: Deploy WebGL to Cloudflare Pages
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -14,8 +14,6 @@ concurrency:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build-webgl:
@@ -62,19 +60,9 @@ jobs:
           # build due to these uncommitted changes.
           allowDirtyBuild: true
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: build/WebGL/WebGL
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build-webgl
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy build/WebGL/WebGL --project-name=arrow-thing

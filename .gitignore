@@ -67,6 +67,9 @@ Desktop.ini
 # Never ignore Asset meta files
 ![Aa]ssets/**/*.meta
 
+# Secrets
+.env
+
 # Claude Code
 .claude/
 .mcp.json
@@ -77,3 +80,7 @@ Assets/Resources.meta
 
 # Keep package lock file tracked
 ![Pp]ackages/packages-lock.json
+
+# Server project files (override Unity *.csproj ignore)
+!server/**/*.csproj
+!server/**/*.sln

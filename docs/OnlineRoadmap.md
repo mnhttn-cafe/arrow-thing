@@ -14,23 +14,147 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 
 ## Planned Features
 
-### Replay Viewer (Implemented)
-
-A dedicated scene for watching replays. Accessed via the play button on leaderboard entries.
-
-- **Board setup**: restores the board from the initial arrow configuration stored in the replay data (no generation step) via `BoardSetupHelper`. Camera pan/zoom enabled.
-- **Playback**: `ReplayPlayer` (domain, pure C#) provides time-based playback with 0.5s lead-in and 1.0s exit padding. `ReplayViewController` advances the player each frame, executes clear (animated pull-out) and reject (bump) events on `BoardView`, and spawns tap indicators.
-- **Tap indicator**: `TapIndicatorPool` spawns expanding/fading ring sprites (procedurally generated, no asset) at exact world-space tap positions. White for clears, red for rejects.
-- **Controls**: seek slider (drag to scrub forward/backward), play/pause, speed cycle (0.5×/1×/2×/4×), exit button, controls bar toggle (show/hide), clearable highlighting toggle (electric cyan tint on clearable arrows).
-- **Seek**: forward seek applies clears incrementally; backward seek rebuilds from snapshot. Pauses playback during drag, resumes on release.
-
 ### Server Foundation
 
-- **ASP.NET Core 8 Minimal API** — lightweight, C#, shares domain code.
+- **ASP.NET Core 8 Minimal API** — lightweight (~30-50 MB idle RAM in Docker), C#, shares domain code. Use Workstation GC in container (`<ServerGarbageCollection>false</ServerGarbageCollection>`) for lower memory on small VPS.
 - **Entity Framework Core** — ORM. PostgreSQL for production, SQLite for dev/testing.
 - **BCrypt** — password hashing.
 - **JWT** — stateless auth tokens.
-- **Hosting**: Self-hosted VPS (Hetzner/DigitalOcean). Docker Compose (ASP.NET + PostgreSQL). Dedicated non-root user with scoped privileges runs the server. SSH key + password auth, no root SSH. Credentials and secrets via `.env` file on the host (not in repo). Deploy via GitHub Actions SSH step.
+
+### VPS Hosting
+
+**Provider**: Hetzner Cloud CCX13 — 2 dedicated vCPU (AMD), 8 GB RAM, 80 GB SSD, ~$14.49/mo ($19.99/mo after April 1 2026 price adjustment). Ashburn (US East) datacenter. IPv6-only (no IPv4 add-on); Cloudflare proxy provides IPv4 reachability for clients.
+
+**Stack**: Docker Compose (ASP.NET API + PostgreSQL) behind Nginx reverse proxy, fronted by Cloudflare for TLS termination, IPv4→IPv6 translation, and DDoS protection.
+
+#### Initial Server Setup
+
+1. **Create the VPS** — Hetzner Cloud Console. Dedicated CPU CCX13 (AMD), Ashburn location, Ubuntu 24.04 LTS image, IPv6-only networking. Add SSH key during creation (no password-only access from the start).
+
+2. **First login & system update**
+   - SSH in as `root` with the key added at creation.
+   - `apt update && apt upgrade -y` — patch everything immediately.
+   - `apt install -y ufw fail2ban curl git unattended-upgrades` — baseline tools.
+
+3. **Create a deploy user**
+   - `adduser deploy` — dedicated non-root user.
+   - `usermod -aG sudo deploy` — sudo access for administration.
+   - Copy the SSH authorized key to the deploy user: `rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy/`.
+   - Verify SSH login as `deploy` before proceeding.
+
+4. **Harden SSH** (`/etc/ssh/sshd_config`)
+   - `PermitRootLogin no` — disable root SSH entirely.
+   - `PasswordAuthentication no` — key-only auth.
+   - `PubkeyAuthentication yes`
+   - `MaxAuthTries 3`
+   - `AllowUsers deploy`
+   - Restart sshd: `systemctl restart sshd`.
+
+5. **Firewall (UFW)**
+   - `ufw default deny incoming && ufw default allow outgoing`
+   - `ufw allow OpenSSH` (port 22)
+   - `ufw allow 80/tcp` (HTTP)
+   - `ufw allow 443/tcp` (HTTPS)
+   - `ufw enable`
+   - PostgreSQL (5432) is **not** exposed — only reachable within the Docker network.
+   - Optional: restrict ports 80/443 to [Cloudflare's IP ranges](https://www.cloudflare.com/ips/) only, so the origin server is not directly accessible. Reduces exposure to scanners.
+
+6. **Fail2Ban**
+   - Default config protects SSH out of the box. Enable and start: `systemctl enable fail2ban && systemctl start fail2ban`.
+   - Bans IPs after repeated failed SSH attempts.
+
+7. **Automatic security updates**
+   - `dpkg-reconfigure --priority=low unattended-upgrades` — enable automatic security patches.
+   - Keeps the OS patched without manual intervention.
+
+#### Docker Setup
+
+8. **Install Docker Engine** — follow the official Docker docs for Ubuntu (apt repository method, not snap).
+   - Add `deploy` to the `docker` group: `usermod -aG docker deploy`. Log out and back in.
+   - Install Docker Compose plugin (`docker compose`).
+
+9. **Docker Compose layout** on the VPS:
+   ```
+   /home/deploy/arrow-thing/
+   ├── docker-compose.yml
+   ├── .env                    # secrets (not in repo)
+   └── nginx/
+       └── nginx.conf
+   ```
+
+10. **Docker Compose file** — three services:
+    - **api** — ASP.NET Core app. Built from repo Dockerfile. Exposes port 5000 internally only. Reads connection string and JWT secret from environment.
+    - **db** — PostgreSQL 16. Named volume for data persistence (`pgdata`). Not exposed to host network. Configured via `.env` (password, database name).
+    - **nginx** — Reverse proxy. Exposed on ports 80 and 443. Proxies to `api:5000`. TLS is terminated at Cloudflare; nginx receives plain HTTP from Cloudflare (or encrypted if using Full (Strict) mode — see TLS section).
+
+11. **`.env` file** (on host, never in repo):
+    ```
+    POSTGRES_USER=arrowthing
+    POSTGRES_PASSWORD=<generated-strong-password>
+    POSTGRES_DB=arrowthing
+    JWT_SECRET=<generated-256-bit-key>
+    ASPNETCORE_ENVIRONMENT=Production
+    ```
+
+#### Cloudflare & Domain
+
+12. **Domain** — point a subdomain (e.g., `api.arrowthing.com`) AAAA record to the VPS IPv6 address. Proxy through Cloudflare (orange cloud icon enabled).
+
+13. **Cloudflare configuration**
+    - **SSL/TLS mode**: "Full (Strict)" — Cloudflare encrypts to the origin. Requires a valid cert on the origin server.
+    - **Origin certificate**: generate a free Cloudflare Origin CA cert (valid 15 years, trusted only by Cloudflare — not browsers). Install on nginx. No certbot or renewal needed.
+    - **IPv4 reachability**: Cloudflare's edge has IPv4 addresses. Browsers connect to Cloudflare over IPv4 or IPv6; Cloudflare proxies to the origin over IPv6. Players never need IPv6 support.
+    - **DDoS protection**: included on free tier. Automatic L3/L4/L7 mitigation.
+    - **Caching**: disable caching for API routes (set a Page Rule or Cache Rule: `api.arrowthing.com/api/*` → Cache Level: Bypass). API responses must not be cached.
+    - **Rate limiting**: Cloudflare's free tier includes basic rate limiting rules. Use these for auth endpoints as a first layer; nginx rate limiting remains as a second layer.
+    - **WebSocket support**: enabled by default on free tier. Required for future PvP.
+
+#### Nginx Configuration
+
+14. **Reverse proxy config** (`nginx/nginx.conf`):
+    - Listen on 443 with the Cloudflare Origin CA cert + key (for Full Strict mode). Listen on 80 and redirect to 443.
+    - Proxy `/api/*` to `http://api:5000`.
+    - Set `X-Forwarded-For` from Cloudflare's `CF-Connecting-IP` header, `X-Forwarded-Proto`.
+    - `client_max_body_size 1m` — replays are small; reject large payloads early.
+    - **Rate limiting**: `limit_req_zone` on `/api/auth/register` and `/api/auth/login` (e.g., 5 req/min per IP) to slow brute-force and spam registration. General API routes: 30 req/min per IP. Use `CF-Connecting-IP` as the key (not `$remote_addr`, which would be Cloudflare's edge IP).
+    - CORS headers: `Access-Control-Allow-Origin` set to the GitHub Pages domain only (not `*`).
+    - Security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`.
+
+#### PostgreSQL Hardening
+
+15. **No external access** — PostgreSQL listens only on the Docker internal network. No port binding to the host.
+
+16. **Dedicated database user** — the `.env` credentials are for the application user, not the PostgreSQL superuser. The app user has `CONNECT`, `SELECT`, `INSERT`, `UPDATE`, `DELETE` on application tables only. Create via an init script mounted into the Postgres container.
+
+17. **Backups**
+    - Daily `pg_dump` via cron on the host: `docker compose exec db pg_dump -U arrowthing arrowthing | gzip > /home/deploy/backups/arrowthing_$(date +%F).sql.gz`
+    - Retain last 14 days, delete older. Simple cron + `find -mtime +14 -delete`.
+    - **Test restores periodically** — a backup you haven't tested is not a backup.
+    - Optional: upload to Hetzner Object Storage (S3-compatible) or offsite for disaster recovery.
+
+#### CI/CD Deployment
+
+18. **GitHub Actions workflow** — triggers on push to `main` (or a `deploy` tag):
+    - Build the Docker image for the API.
+    - Push to GitHub Container Registry (ghcr.io) or build on-server.
+    - SSH into VPS as `deploy` (using a GitHub Actions secret for the SSH private key).
+    - Pull the latest image and `docker compose up -d --build api`.
+    - Run EF Core migrations as part of app startup (or a separate migration step).
+    - Health check: `curl -f https://api.arrowthing.com/health` after deploy.
+
+19. **SSH key for CI** — generate a dedicated key pair for GitHub Actions. Add the public key to `deploy`'s `authorized_keys`. Store the private key as a GitHub Actions secret. This key is scoped to the `deploy` user only.
+
+#### Monitoring & Reliability
+
+20. **Health endpoint** — `/health` returns 200 OK. Used by CI and optionally by an external uptime monitor (e.g., UptimeRobot free tier, or Hetzner's built-in monitoring).
+
+21. **Docker restart policy** — `restart: unless-stopped` on all services. Containers recover from crashes and survive host reboots.
+
+22. **Logging** — Docker's default JSON log driver. Set `max-size: 10m` and `max-file: 3` in `docker-compose.yml` to prevent disk exhaustion. Application logs to stdout (ASP.NET default).
+
+23. **Disk monitoring** — set up a simple cron alert if disk usage exceeds 80%. `df -h / | awk 'NR==2 {print $5}'` piped to a notification (or just check Hetzner Cloud Console metrics).
+
+24. **Database connection pooling** — EF Core's default pooling is sufficient for low traffic. If needed later, add PgBouncer as a sidecar container.
 
 ### Accounts
 
@@ -315,12 +439,6 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 | `GameSettings` | `StartReplay`/`ClearReplay` for replay scene transition, `LeaderboardFocusGameId` for auto-scroll (done). Server `Seed` field (planned) |
 | `BoardView` | `ClearArrowAnimated`, `UpdateClearableHighlights`, `ClearAllHighlights` (done) |
 | `ArrowView` | `SetHighlight(bool)` for clearable highlighting (done) |
-
----
-
-## Open Questions
-
-1. **WebGL HTTP client**: Unity's `UnityWebRequest` works in WebGL but has CORS constraints. Server must set appropriate CORS headers. Any concerns with the target hosting setup?
 
 ---
 
