@@ -163,7 +163,40 @@ public class UILayoutTests
             settings.Q("drag-threshold-row"),
             settings.Q("zoom-speed-row"),
             settings.Q<Toggle>("arrow-coloring-toggle"),
+            settings.Q<Button>("clear-scores-btn"),
             settings.Q<Button>("settings-back-btn")
+        );
+    }
+
+    // ───────── Clear Scores Modal ─────────
+
+    [UnityTest]
+    public IEnumerator ClearScoresModal_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+
+        root.Q("main-menu").AddToClassList("screen--hidden");
+        root.Q("clear-scores-modal").RemoveFromClassList("screen--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var modal = root.Q("clear-scores-modal");
+        var panelBounds = root.worldBound;
+        string ctx = $"ClearScoresModal @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            modal,
+            panelBounds,
+            ctx,
+            warn,
+            modal.Q<Label>(className: "modal-label"),
+            modal.Q<Label>(className: "modal-sublabel"),
+            modal.Q<Button>("clear-scores-yes-btn"),
+            modal.Q<Button>("clear-scores-no-btn")
         );
     }
 

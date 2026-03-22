@@ -23,9 +23,10 @@ public sealed class LeaderboardStore
     /// </summary>
     public string AddEntry(LeaderboardEntry entry)
     {
-        _entries.Add(entry);
+        // Prune before adding so the new entry is never a pruning candidate
         string pruned = EnforcePerConfigCap(entry.boardWidth, entry.boardHeight);
         pruned ??= EnforceGlobalCap();
+        _entries.Add(entry);
         return pruned;
     }
 
@@ -110,6 +111,17 @@ public sealed class LeaderboardStore
     }
 
     /// <summary>
+    /// Removes all non-favorited entries. Returns the gameIds of removed entries
+    /// so their replay files can be deleted.
+    /// </summary>
+    public List<string> RemoveAllNonFavorited()
+    {
+        var removed = _entries.Where(e => !e.isFavorite).Select(e => e.gameId).ToList();
+        _entries.RemoveAll(e => !e.isFavorite);
+        return removed;
+    }
+
+    /// <summary>
     /// Returns a sorted copy of the given entries by the specified criterion.
     /// </summary>
     public static List<LeaderboardEntry> SortBy(
@@ -187,7 +199,7 @@ public sealed class LeaderboardStore
         var configEntries = _entries
             .Where(e => e.boardWidth == width && e.boardHeight == height)
             .ToList();
-        if (configEntries.Count <= MaxEntriesPerConfig)
+        if (configEntries.Count < MaxEntriesPerConfig)
             return null;
 
         return PruneSlowest(configEntries);
@@ -195,7 +207,7 @@ public sealed class LeaderboardStore
 
     private string EnforceGlobalCap()
     {
-        if (_entries.Count <= MaxEntriesGlobal)
+        if (_entries.Count < MaxEntriesGlobal)
             return null;
 
         return PruneSlowest(_entries);

@@ -192,17 +192,31 @@
 .rh-play-btn {
     width: 56px;
     height: 40px;
-    font-size: 18px;
-    color: rgb(220, 220, 235);
     background-color: rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     border-width: 0;
-    -unity-text-align: middle-center;
     margin-right: 12px;
+    align-items: center;
+    justify-content: center;
 }
 
 .rh-play-btn:hover {
     background-color: rgba(255, 255, 255, 0.18);
+}
+
+.rh-play-icon {
+    width: 20px;
+    height: 20px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(220, 220, 235);
+}
+
+.rh-play-icon--play {
+    background-image: url("/Assets/Art/play_icon.png");
+}
+
+.rh-play-icon--pause {
+    background-image: url("/Assets/Art/pause_icon.png");
 }
 
 .rh-speed-btn {

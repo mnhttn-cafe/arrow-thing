@@ -99,6 +99,14 @@ public sealed class LeaderboardManager : MonoBehaviour
         DeleteReplay(gameId);
     }
 
+    public void RemoveAllNonFavorited()
+    {
+        var removed = _store.RemoveAllNonFavorited();
+        SaveIndex();
+        foreach (var gameId in removed)
+            DeleteReplay(gameId);
+    }
+
     /// <summary>
     /// Loads a replay from disk. Returns null if the file is missing or corrupted.
     /// Tries GZip first, then falls back to plain JSON for backwards compatibility.

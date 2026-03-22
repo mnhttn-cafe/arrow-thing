@@ -322,6 +322,20 @@
     margin: 0 8px;
 }
 
+.modal-sublabel {
+    font-size: 18px;
+    color: rgb(160, 160, 180);
+    margin-bottom: 24px;
+}
+
+.menu-btn--danger {
+    color: rgb(255, 100, 100);
+}
+
+.menu-btn--danger:hover {
+    background-color: rgba(255, 100, 100, 0.15);
+}
+
 /* Trophy button (mode-select, top-right corner) */
 .trophy-btn {
     position: absolute;

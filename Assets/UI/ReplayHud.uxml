@@ -35,7 +35,9 @@
 
         <!-- Playback controls -->
         <ui:VisualElement class="rh-playback-row">
-            <ui:Button name="play-pause-btn" class="rh-play-btn" text="| |" />
+            <ui:Button name="play-pause-btn" class="rh-play-btn">
+                <ui:VisualElement name="play-pause-icon" class="rh-play-icon rh-play-icon--pause" />
+            </ui:Button>
             <ui:Button name="speed-btn" class="rh-speed-btn" text="1x" />
         </ui:VisualElement>
     </ui:VisualElement>

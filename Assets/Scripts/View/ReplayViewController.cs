@@ -56,6 +56,7 @@ public sealed class ReplayViewController : MonoBehaviour
     private VisualElement _seekFill;
     private VisualElement _seekHandle;
     private Button _playPauseBtn;
+    private VisualElement _playPauseIcon;
     private Button _speedBtn;
     private Button _exitBtn;
     private Button _highlightBtn;
@@ -223,6 +224,7 @@ public sealed class ReplayViewController : MonoBehaviour
         _seekFill = root.Q("seek-fill");
         _seekHandle = root.Q("seek-handle");
         _playPauseBtn = root.Q<Button>("play-pause-btn");
+        _playPauseIcon = root.Q("play-pause-icon");
         _speedBtn = root.Q<Button>("speed-btn");
         _exitBtn = root.Q<Button>("exit-btn");
         _highlightBtn = root.Q<Button>("highlight-btn");
@@ -742,9 +744,19 @@ public sealed class ReplayViewController : MonoBehaviour
 
     private void UpdatePlayPauseButton()
     {
-        if (_playPauseBtn == null)
+        if (_playPauseIcon == null)
             return;
-        _playPauseBtn.text = _player != null && _player.IsPlaying ? "| |" : "\u25B6";
+        bool isPlaying = _player != null && _player.IsPlaying;
+        if (isPlaying)
+        {
+            _playPauseIcon.RemoveFromClassList("rh-play-icon--play");
+            _playPauseIcon.AddToClassList("rh-play-icon--pause");
+        }
+        else
+        {
+            _playPauseIcon.RemoveFromClassList("rh-play-icon--pause");
+            _playPauseIcon.AddToClassList("rh-play-icon--play");
+        }
     }
 
     private static string FormatTime(double seconds)

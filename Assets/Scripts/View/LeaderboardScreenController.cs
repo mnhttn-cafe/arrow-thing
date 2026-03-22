@@ -43,6 +43,11 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private bool _contextIsFavorite;
     private string _pendingDeleteGameId;
 
+    // Drag-to-scroll state
+    private bool _isDragScrolling;
+    private float _dragScrollStartY;
+    private float _dragScrollStartValue;
+
     // Focus (auto-scroll) state from victory screen
     private string _focusGameId;
 
@@ -90,8 +95,16 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         _root.Q<Button>("delete-yes-btn").clicked += OnDeleteConfirm;
         _root.Q<Button>("delete-no-btn").clicked += OnDeleteCancel;
 
-        // Dismiss context menu on click outside
+        // Dismiss context menu on click outside or scroll
         _root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
+        _scroll.RegisterCallback<WheelEvent>(_ => DismissContextMenu());
+        _scroll.verticalScroller.valueChanged += _ => DismissContextMenu();
+
+        // Drag-to-scroll on content area
+        _scroll.RegisterCallback<PointerDownEvent>(OnScrollPointerDown);
+        _scroll.RegisterCallback<PointerMoveEvent>(OnScrollPointerMove);
+        _scroll.RegisterCallback<PointerUpEvent>(OnScrollPointerUp);
+        _scroll.RegisterCallback<PointerCaptureOutEvent>(_ => _isDragScrolling = false);
 
         // Handle auto-scroll from victory
         _focusGameId = GameSettings.LeaderboardFocusGameId;
@@ -198,6 +211,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
                 _sortButtons[i].RemoveFromClassList("lb-sort-btn--active");
         }
         RefreshList();
+        _scroll.verticalScroller.value = 0;
     }
 
     private void SetScope(bool isGlobal, Button localBtn, Button globalBtn)
@@ -351,11 +365,28 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         _contextGameId = gameId;
         _contextIsFavorite = isFavorite;
 
-        // Position near the anchor row
+        // Position near the anchor row, flipping above if it would overflow
         var rowBounds = anchorRow.worldBound;
-        _contextMenu.style.top = rowBounds.yMax;
+        float panelHeight = _root.resolvedStyle.height;
+        float menuHeight = _contextMenu.resolvedStyle.height;
+        if (menuHeight <= 0)
+            menuHeight = 60; // fallback estimate
+
+        bool fitsBelow = rowBounds.yMax + menuHeight <= panelHeight;
+
         _contextMenu.style.right = 16;
         _contextMenu.style.left = StyleKeyword.Auto;
+
+        if (fitsBelow)
+        {
+            _contextMenu.style.top = rowBounds.yMax;
+            _contextMenu.style.bottom = StyleKeyword.Auto;
+        }
+        else
+        {
+            _contextMenu.style.bottom = panelHeight - rowBounds.yMin;
+            _contextMenu.style.top = StyleKeyword.Auto;
+        }
 
         ShowElement(_contextMenu, true);
     }
@@ -364,6 +395,33 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     {
         ShowElement(_contextMenu, false);
         _contextGameId = null;
+    }
+
+    // --- Drag-to-scroll ---
+
+    private void OnScrollPointerDown(PointerDownEvent evt)
+    {
+        _isDragScrolling = true;
+        _dragScrollStartY = evt.position.y;
+        _dragScrollStartValue = _scroll.verticalScroller.value;
+        _scroll.CapturePointer(evt.pointerId);
+        evt.StopPropagation();
+    }
+
+    private void OnScrollPointerMove(PointerMoveEvent evt)
+    {
+        if (!_isDragScrolling)
+            return;
+        float delta = _dragScrollStartY - evt.position.y;
+        _scroll.verticalScroller.value = _dragScrollStartValue + delta;
+    }
+
+    private void OnScrollPointerUp(PointerUpEvent evt)
+    {
+        if (!_isDragScrolling)
+            return;
+        _isDragScrolling = false;
+        _scroll.ReleasePointer(evt.pointerId);
     }
 
     private void OnRootPointerDown(PointerDownEvent evt)

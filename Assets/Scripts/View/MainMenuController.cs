@@ -21,6 +21,7 @@ public sealed class MainMenuController : MonoBehaviour
     private VisualElement _modeSelect;
     private VisualElement _settings;
     private VisualElement _quitModal;
+    private VisualElement _clearScoresModal;
     private VisualElement _infoPanel;
 
     // Preset buttons for selection highlight
@@ -47,6 +48,7 @@ public sealed class MainMenuController : MonoBehaviour
         _modeSelect = root.Q("mode-select");
         _settings = root.Q("settings");
         _quitModal = root.Q("quit-modal");
+        _clearScoresModal = root.Q("clear-scores-modal");
 
         // Main menu buttons
         var playBtn = _mainMenu.Q<Button>("play-btn");
@@ -175,6 +177,9 @@ public sealed class MainMenuController : MonoBehaviour
 
         // Settings buttons
         _settings.Q<Button>("settings-back-btn").clicked += OnSettingsBack;
+        _settings.Q<Button>("clear-scores-btn").clicked += OnClearScores;
+        _clearScoresModal.Q<Button>("clear-scores-yes-btn").clicked += OnClearScoresConfirm;
+        _clearScoresModal.Q<Button>("clear-scores-no-btn").clicked += OnClearScoresCancel;
 
         // Info button + panel
         _infoPanel = _mainMenu.Q("info-panel");
@@ -318,6 +323,24 @@ public sealed class MainMenuController : MonoBehaviour
     private void OnQuitCancel()
     {
         SetVisible(_quitModal, false);
+    }
+
+    private void OnClearScores()
+    {
+        SetVisible(_clearScoresModal, true);
+    }
+
+    private void OnClearScoresConfirm()
+    {
+        SetVisible(_clearScoresModal, false);
+        var manager = LeaderboardManager.Instance;
+        if (manager != null)
+            manager.RemoveAllNonFavorited();
+    }
+
+    private void OnClearScoresCancel()
+    {
+        SetVisible(_clearScoresModal, false);
     }
 
     private void OnInfoToggle()

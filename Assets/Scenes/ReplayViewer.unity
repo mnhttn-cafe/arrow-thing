@@ -243,7 +243,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ArrowThing::ReplayViewController
   visualSettings: {fileID: 11400000, guid: f7b34a78b24c8fb408fadddec598eca5, type: 2}
   mainCamera: {fileID: 19724928}
-  inputActions: {fileID: 0}
+  inputActions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   hudUIDocument: {fileID: 334940402}
   tapRingSprite: {fileID: 2518857019707007837, guid: e96641500fc695f4fa1e82e2a0aca66e, type: 3}
   tapIndicatorDuration: 0.4
