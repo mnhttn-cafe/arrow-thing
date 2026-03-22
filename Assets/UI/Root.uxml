@@ -26,6 +26,9 @@
     </ui:VisualElement>
 
     <ui:VisualElement name="mode-select" class="screen screen--hidden">
+        <ui:Button name="trophy-btn" class="trophy-btn">
+            <ui:VisualElement class="trophy-icon" />
+        </ui:Button>
         <ui:Label class="section-label" text="Select Board Size" />
         <ui:VisualElement class="preset-grid">
             <ui:Button name="preset-small"  class="preset-btn" text="Small&#10;10 × 10" />
@@ -64,7 +67,20 @@
             <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
         </ui:VisualElement>
 
+        <ui:Button name="clear-scores-btn" class="menu-btn menu-btn--danger" text="Clear All Scores" />
+
         <ui:Button name="settings-back-btn" class="menu-btn" text="Back" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="clear-scores-modal" class="modal-overlay screen--hidden">
+        <ui:VisualElement class="modal-box">
+            <ui:Label class="modal-label" text="Delete all non-favorited scores?" />
+            <ui:Label class="modal-sublabel" text="Favorited entries will be kept." />
+            <ui:VisualElement class="modal-buttons">
+                <ui:Button name="clear-scores-yes-btn" class="menu-btn menu-btn--danger" text="Delete" />
+                <ui:Button name="clear-scores-no-btn" class="menu-btn" text="Cancel" />
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 
     <ui:VisualElement name="quit-modal" class="modal-overlay screen--hidden">

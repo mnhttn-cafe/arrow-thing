@@ -15,7 +15,7 @@ public static class SaveManager
     private static string SavePath => Path.Combine(Application.persistentDataPath, FileName);
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-    [DllImport("__Internal")]
+    [System.Runtime.InteropServices.DllImport("__Internal")]
     private static extern void SyncFilesystem();
 #endif
 

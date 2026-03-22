@@ -77,6 +77,10 @@ Before committing or opening a PR, verify changes abide by `CONTRIBUTING.md`:
 - `docs/TODO.md` is deleted before the PR is merge-ready.
 - No docs inconsistencies introduced.
 
+## Unity Editor Configuration
+
+When a problem can be solved by assigning a reference, toggling a setting, or configuring an asset in the Unity Editor inspector (e.g., assigning an `InputActionAsset` to a `SerializeField`, adding a preset to the Preset Manager, changing texture import settings), tell the user to do it manually rather than writing code workarounds or trying to edit `.unity`/`.asset` files. Unity scene and asset files are fragile YAML — prefer editor-driven configuration over programmatic hacks.
+
 ## Key Design Rules
 
 - Arrow minimum length: 2 cells. No hard maximum; practical caps are per-mode tuning variables.

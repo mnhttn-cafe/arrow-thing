@@ -215,6 +215,13 @@ public sealed class Board
     /// <summary>Returns the set of arrows that block <paramref name="arrow"/> from being cleared.</summary>
     internal HashSet<Arrow> GetDependencies(Arrow arrow) => _dependsOn[arrow];
 
+    /// <summary>Returns the set of arrows that depend on <paramref name="arrow"/> (i.e., arrows that
+    /// become clearable candidates when <paramref name="arrow"/> is removed).</summary>
+    public IReadOnlyCollection<Arrow> GetDependents(Arrow arrow) =>
+        _dependedOnBy.TryGetValue(arrow, out var deps)
+            ? deps
+            : (IReadOnlyCollection<Arrow>)System.Array.Empty<Arrow>();
+
     /// <summary>Returns whether <paramref name="target"/> lies strictly forward of <paramref name="head"/> along <paramref name="direction"/>.</summary>
     public static bool IsInRay(Cell target, Cell head, Arrow.Direction direction) =>
         direction switch

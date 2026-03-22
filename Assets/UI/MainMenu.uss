@@ -322,6 +322,44 @@
     margin: 0 8px;
 }
 
+.modal-sublabel {
+    font-size: 18px;
+    color: rgb(160, 160, 180);
+    margin-bottom: 24px;
+}
+
+.menu-btn--danger {
+    color: rgb(255, 100, 100);
+}
+
+.menu-btn--danger:hover {
+    background-color: rgba(255, 100, 100, 0.15);
+}
+
+/* Trophy button (mode-select, top-right corner) */
+.trophy-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    padding: 8px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    border-width: 0;
+}
+
+.trophy-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.trophy-icon {
+    flex-grow: 1;
+    background-image: url("/Assets/Art/trophy_icon.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(255, 215, 0);
+}
+
 /* Section label */
 .section-label {
     font-size: 28px;

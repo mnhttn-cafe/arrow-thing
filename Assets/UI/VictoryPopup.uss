@@ -41,6 +41,19 @@
     -unity-text-align: middle-center;
 }
 
+.new-best-label {
+    font-size: 22px;
+    color: rgb(255, 215, 0);
+    -unity-font-style: bold;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    -unity-text-align: middle-center;
+}
+
+.victory-time--gold {
+    color: rgb(255, 215, 0);
+}
+
 .victory-btn {
     width: 240px;
     padding: 14px 0;
@@ -71,4 +84,18 @@
 
 .victory-btn--primary:active {
     background-color: rgb(60, 180, 90);
+}
+
+.victory-btn--leaderboard {
+    font-size: 20px;
+    padding: 10px 0;
+    background-color: rgb(50, 80, 120);
+}
+
+.victory-btn--leaderboard:hover {
+    background-color: rgb(60, 100, 150);
+}
+
+.victory-btn--leaderboard:active {
+    background-color: rgb(70, 120, 180);
 }

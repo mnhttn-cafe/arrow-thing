@@ -1,0 +1,6 @@
+<linker>
+  <!-- Preserve MeshCollider — Unity UI Toolkit internally requires it for panel raycasting. -->
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="nothing">
+    <type fullname="UnityEngine.MeshCollider" preserve="all" />
+  </assembly>
+</linker>

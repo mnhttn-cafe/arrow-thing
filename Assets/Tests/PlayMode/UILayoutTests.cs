@@ -11,6 +11,8 @@ public class UILayoutTests
     private const string MainMenuUxmlPath = "Assets/UI/Root.uxml";
     private const string VictoryUxmlPath = "Assets/UI/VictoryPopup.uxml";
     private const string GameHudUxmlPath = "Assets/UI/GameHud.uxml";
+    private const string LeaderboardUxmlPath = "Assets/UI/Leaderboard.uxml";
+    private const string ReplayHudUxmlPath = "Assets/UI/ReplayHud.uxml";
     private const string PanelSettingsPath = "Assets/Settings/UI/PanelSettings.asset";
 
     // Representative messages for each font-size tier in VictoryController.
@@ -161,7 +163,40 @@ public class UILayoutTests
             settings.Q("drag-threshold-row"),
             settings.Q("zoom-speed-row"),
             settings.Q<Toggle>("arrow-coloring-toggle"),
+            settings.Q<Button>("clear-scores-btn"),
             settings.Q<Button>("settings-back-btn")
+        );
+    }
+
+    // ───────── Clear Scores Modal ─────────
+
+    [UnityTest]
+    public IEnumerator ClearScoresModal_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+
+        root.Q("main-menu").AddToClassList("screen--hidden");
+        root.Q("clear-scores-modal").RemoveFromClassList("screen--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var modal = root.Q("clear-scores-modal");
+        var panelBounds = root.worldBound;
+        string ctx = $"ClearScoresModal @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            modal,
+            panelBounds,
+            ctx,
+            warn,
+            modal.Q<Label>(className: "modal-label"),
+            modal.Q<Label>(className: "modal-sublabel"),
+            modal.Q<Button>("clear-scores-yes-btn"),
+            modal.Q<Button>("clear-scores-no-btn")
         );
     }
 
@@ -417,6 +452,256 @@ public class UILayoutTests
             timeLabel,
             root.Q<Button>("play-again-btn"),
             root.Q<Button>("menu-btn")
+        );
+    }
+
+    // ───────── Mode Select — Trophy Button ─────────
+
+    [UnityTest]
+    public IEnumerator ModeSelect_TrophyButtonVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+
+        root.Q("main-menu").AddToClassList("screen--hidden");
+        root.Q("mode-select").RemoveFromClassList("screen--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var modeSelect = root.Q("mode-select");
+        var panelBounds = root.worldBound;
+        string ctx = $"ModeSelect_Trophy @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(modeSelect, panelBounds, ctx, warn, modeSelect.Q<Button>("trophy-btn"));
+    }
+
+    // ───────── Victory — New Best + View Leaderboard ─────────
+
+    [UnityTest]
+    public IEnumerator Victory_NewBestAndLeaderboard_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(VictoryUxmlPath, ratio);
+
+        var overlay = root.Q("victory-overlay");
+        overlay.RemoveFromClassList("victory--hidden");
+
+        var msgLabel = root.Q<Label>("victory-message");
+        msgLabel.text = ShortMessage;
+        msgLabel.style.fontSize = 40;
+
+        var timeLabel = root.Q<Label>("victory-time");
+        timeLabel.text = "1:23.456";
+
+        // Show New Best label
+        var newBest = root.Q<Label>("new-best-label");
+        newBest.RemoveFromClassList("victory--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"Victory_NewBest @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            overlay,
+            panelBounds,
+            ctx,
+            warn,
+            msgLabel,
+            timeLabel,
+            newBest,
+            root.Q<Button>("view-leaderboard-btn"),
+            root.Q<Button>("play-again-btn"),
+            root.Q<Button>("menu-btn")
+        );
+    }
+
+    // ───────── Leaderboard Screen ─────────
+
+    [UnityTest]
+    public IEnumerator Leaderboard_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var lb = root.Q("leaderboard-root");
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            lb,
+            panelBounds,
+            ctx,
+            warn,
+            lb.Q<Button>("lb-back-btn"),
+            lb.Q<Button>("lb-local-btn"),
+            lb.Q<Button>("lb-global-btn"),
+            lb.Q<Button>("tab-small"),
+            lb.Q<Button>("tab-medium"),
+            lb.Q<Button>("tab-large"),
+            lb.Q<Button>("tab-xlarge"),
+            lb.Q<Button>("tab-all"),
+            lb.Q<Button>("sort-fastest"),
+            lb.Q<Button>("sort-biggest"),
+            lb.Q<Button>("sort-favorites"),
+            lb.Q("lb-scroll")
+        );
+    }
+
+    // ───────── Leaderboard — Empty State ─────────
+
+    [UnityTest]
+    public IEnumerator Leaderboard_EmptyState_Visible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        // Show empty state, hide scroll
+        root.Q("lb-scroll").AddToClassList("lb--hidden");
+        root.Q<Label>("lb-empty").RemoveFromClassList("lb--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var lb = root.Q("leaderboard-root");
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_Empty @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            lb,
+            panelBounds,
+            ctx,
+            warn,
+            lb.Q<Label>("lb-empty"),
+            lb.Q<Button>("lb-back-btn")
+        );
+    }
+
+    // ───────── Leaderboard — Coming Soon Overlay ─────────
+
+    [UnityTest]
+    public IEnumerator Leaderboard_ComingSoon_Visible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        root.Q("lb-coming-soon").RemoveFromClassList("lb--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var lb = root.Q("leaderboard-root");
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_ComingSoon @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(lb, panelBounds, ctx, warn, lb.Q("lb-coming-soon"));
+    }
+
+    // ───────── Leaderboard — Delete Confirmation Modal ─────────
+
+    [UnityTest]
+    public IEnumerator Leaderboard_DeleteModal_Visible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        root.Q("lb-delete-modal").RemoveFromClassList("lb--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var modal = root.Q("lb-delete-modal");
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_DeleteModal @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            modal,
+            panelBounds,
+            ctx,
+            warn,
+            modal.Q<Button>("delete-yes-btn"),
+            modal.Q<Button>("delete-no-btn")
+        );
+    }
+
+    // ───────── Replay HUD ─────────
+
+    [UnityTest]
+    public IEnumerator ReplayHud_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(ReplayHudUxmlPath, ratio);
+
+        // Hide loading overlay as it would be after load
+        root.Q("loading-overlay").style.display = DisplayStyle.None;
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"ReplayHud @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            root,
+            panelBounds,
+            ctx,
+            warn,
+            root.Q<Button>("exit-btn"),
+            root.Q<Button>("highlight-btn"),
+            root.Q<Button>("controls-toggle-btn"),
+            root.Q("controls-bar"),
+            root.Q<Label>("time-current"),
+            root.Q<Label>("time-total"),
+            root.Q("seek-track"),
+            root.Q<Button>("play-pause-btn"),
+            root.Q<Button>("speed-btn")
+        );
+    }
+
+    // ───────── Replay HUD — Loading Overlay ─────────
+
+    [UnityTest]
+    public IEnumerator ReplayHud_LoadingOverlay_Visible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(ReplayHudUxmlPath, ratio);
+
+        root.Q<Label>("loading-percent").text = "50%";
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var overlay = root.Q("loading-overlay");
+        var panelBounds = root.worldBound;
+        string ctx = $"ReplayHud_Loading @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            overlay,
+            panelBounds,
+            ctx,
+            warn,
+            root.Q<Label>("loading-label"),
+            root.Q<Label>("loading-percent")
         );
     }
 

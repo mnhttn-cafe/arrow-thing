@@ -216,6 +216,42 @@ public sealed class BoardView : MonoBehaviour
     }
 
     /// <summary>
+    /// Removes an arrow from the view dictionary and plays the pull-out animation.
+    /// The ArrowView is destroyed after the animation completes.
+    /// Used by the replay viewer for animated clears without gameplay events.
+    /// </summary>
+    public void ClearArrowAnimated(Arrow arrow)
+    {
+        if (!_arrowViews.TryGetValue(arrow, out ArrowView view))
+            return;
+
+        _arrowViews.Remove(arrow);
+        view.PlayPullOut(onComplete: () => Destroy(view.gameObject));
+    }
+
+    /// <summary>
+    /// Highlights all currently clearable arrows with a green tint.
+    /// Non-clearable arrows are restored to their base color.
+    /// </summary>
+    public void UpdateClearableHighlights(Board board)
+    {
+        foreach (var kvp in _arrowViews)
+        {
+            bool clearable = board.IsClearable(kvp.Key);
+            kvp.Value.SetHighlight(clearable);
+        }
+    }
+
+    /// <summary>
+    /// Removes highlight tint from all arrow views, restoring base colors.
+    /// </summary>
+    public void ClearAllHighlights()
+    {
+        foreach (var view in _arrowViews.Values)
+            view.SetHighlight(false);
+    }
+
+    /// <summary>
     /// Shows or hides trail lines on all remaining arrows.
     /// </summary>
     public void SetAllTrailsVisible(bool visible)
