@@ -104,7 +104,7 @@ public class ReplayPlayerTests
 
         // Seek to a point that includes the first 2 events
         double targetTime = L + 5.5;
-        double norm = targetTime / player.TotalDuration;
+        double norm = targetTime / player.DisplayDuration;
         var result = player.SeekTo(norm);
         Assert.IsTrue(result.IsForward);
         Assert.AreEqual(2, result.EventsToApply.Count);
@@ -116,7 +116,7 @@ public class ReplayPlayerTests
     {
         var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // total = 10+L
         double target = L + 5.0;
-        player.SeekTo(target / player.TotalDuration);
+        player.SeekTo(target / player.DisplayDuration);
         Assert.AreEqual(target, player.CurrentTime, 0.01);
     }
 
@@ -134,7 +134,7 @@ public class ReplayPlayerTests
 
         // Seek back to t = L+3 (only first event at L+2.5 should remain)
         double target = L + 3.0;
-        var result = player.SeekTo(target / player.TotalDuration);
+        var result = player.SeekTo(target / player.DisplayDuration);
         Assert.IsTrue(result.IsBackward);
         Assert.AreEqual(3, result.EventsToUndo.Count); // undo events at L+5, L+7.5, L+10
     }
@@ -162,7 +162,7 @@ public class ReplayPlayerTests
 
         // Seek forward to include first 2 events
         double target = L + 5.5;
-        var result = player.SeekTo(target / player.TotalDuration);
+        var result = player.SeekTo(target / player.DisplayDuration);
         Assert.IsTrue(result.IsForward);
         Assert.AreEqual(2, result.EventsToApply.Count);
     }
@@ -172,11 +172,12 @@ public class ReplayPlayerTests
     [Test]
     public void NormalizedTime_ProgressesDuringPlayback()
     {
-        var player = new ReplayPlayer(MakeReplayData(2, 5.0)); // total = 10+L
+        var player = new ReplayPlayer(MakeReplayData(2, 5.0));
         Assert.AreEqual(0.0, player.NormalizedTime, 0.01);
 
-        double halfDuration = player.TotalDuration / 2.0;
-        player.Advance(halfDuration);
+        // NormalizedTime is based on DisplayDuration, so advance half of that
+        double halfDisplay = player.DisplayDuration / 2.0;
+        player.Advance(halfDisplay);
         Assert.AreEqual(0.5, player.NormalizedTime, 0.01);
     }
 
@@ -254,9 +255,9 @@ public class ReplayPlayerTests
         player.SeekTo(-1.0);
         Assert.AreEqual(0.0, player.CurrentTime, 0.01);
 
-        // >1 normalizes to 1
+        // >1 normalizes to 1 (clamped to DisplayDuration)
         player.SeekTo(2.0);
-        Assert.AreEqual(player.TotalDuration, player.CurrentTime, 0.01);
+        Assert.AreEqual(player.DisplayDuration, player.CurrentTime, 0.01);
     }
 
     [Test]
