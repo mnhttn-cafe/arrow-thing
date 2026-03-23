@@ -31,6 +31,7 @@ public class UILayoutTests
     private Vector2Int _originalReferenceResolution;
     private PanelScreenMatchMode _originalMatchMode;
     private float _originalMatch;
+    private RenderTexture _originalTargetTexture;
 
     [UnitySetUp]
     public IEnumerator SetUp()
@@ -43,6 +44,7 @@ public class UILayoutTests
         _originalReferenceResolution = _panelSettings.referenceResolution;
         _originalMatchMode = _panelSettings.screenMatchMode;
         _originalMatch = _panelSettings.match;
+        _originalTargetTexture = _panelSettings.targetTexture;
 
         _uiHost = new GameObject("UILayoutTestHost");
         yield return null;
@@ -54,9 +56,11 @@ public class UILayoutTests
         if (_uiHost != null)
             Object.DestroyImmediate(_uiHost);
 
-        // Restore PanelSettings to avoid polluting other tests.
+        // Clean up test render texture and restore PanelSettings.
         if (_panelSettings != null)
         {
+            UILayoutTestHelper.CleanUpTargetTexture(_panelSettings);
+            _panelSettings.targetTexture = _originalTargetTexture;
             _panelSettings.scaleMode = _originalScaleMode;
             _panelSettings.referenceResolution = _originalReferenceResolution;
             _panelSettings.screenMatchMode = _originalMatchMode;
