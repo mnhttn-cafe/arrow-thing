@@ -27,134 +27,76 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 
 **Stack**: Docker Compose (ASP.NET API + PostgreSQL) behind Nginx reverse proxy, fronted by Cloudflare for TLS termination, IPv4→IPv6 translation, and DDoS protection.
 
-#### Initial Server Setup
+**Current state**: VPS provisioned and hardened (SSH key-only, UFW, fail2ban, unattended-upgrades, Docker). Origin certs and `.env` in place. Backup and disk monitoring cron jobs installed. CI SSH key authorized. Deploy configs version-controlled in `server/deploy/`.
 
-1. **Create the VPS** — Hetzner Cloud Console. Dedicated CPU CCX13 (AMD), Ashburn location, Ubuntu 24.04 LTS image, IPv6-only networking. Add SSH key during creation (no password-only access from the start).
+#### VPS Layout
 
-2. **First login & system update**
-   - SSH in as `root` with the key added at creation.
-   - `apt update && apt upgrade -y` — patch everything immediately.
-   - `apt install -y ufw fail2ban curl git unattended-upgrades` — baseline tools.
+```
+/home/deploy/
+├── arrow-thing/                        # live deployment directory
+│   ├── docker-compose.yml              # from repo (server/deploy/)
+│   ├── init-db.sh                      # from repo (server/deploy/)
+│   ├── .env                            # manual (secrets, not in repo)
+│   └── nginx/
+│       ├── nginx.conf                  # from repo (server/deploy/nginx/)
+│       └── certs/
+│           ├── origin.pem              # manual (Cloudflare origin cert)
+│           ├── origin-key.pem          # manual (origin private key)
+│           └── cloudflare-origin-pull.pem  # from repo
+├── repo/                               # git clone of the project
+└── backups/                            # daily pg_dump output
+```
 
-3. **Create a deploy user**
-   - `adduser deploy` — dedicated non-root user.
-   - `usermod -aG sudo deploy` — sudo access for administration.
-   - Copy the SSH authorized key to the deploy user: `rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy/`.
-   - Verify SSH login as `deploy` before proceeding.
+Run `server/deploy/setup.sh` from the repo root to sync configs, validate nginx, and install cron jobs.
 
-4. **Harden SSH** (`/etc/ssh/sshd_config`)
-   - `PermitRootLogin no` — disable root SSH entirely.
-   - `PasswordAuthentication no` — key-only auth.
-   - `PubkeyAuthentication yes`
-   - `MaxAuthTries 3`
-   - `AllowUsers deploy`
-   - Restart sshd: `systemctl restart sshd`.
+#### Docker Compose — three services
 
-5. **Firewall (UFW)**
-   - `ufw default deny incoming && ufw default allow outgoing`
-   - `ufw allow OpenSSH` (port 22)
-   - `ufw allow 80/tcp` (HTTP)
-   - `ufw allow 443/tcp` (HTTPS)
-   - `ufw enable`
-   - PostgreSQL (5432) is **not** exposed — only reachable within the Docker network.
-   - Optional: restrict ports 80/443 to [Cloudflare's IP ranges](https://www.cloudflare.com/ips/) only, so the origin server is not directly accessible. Reduces exposure to scanners.
+- **api** — ASP.NET Core app. Exposes port 5000 internally only. Reads connection string and JWT secret from environment.
+- **db** — PostgreSQL 16. Named volume for data persistence (`pgdata`). Not exposed to host network. Init script grants DML-only privileges to the app user.
+- **nginx** — Reverse proxy. Only service with published ports (80, 443). Cloudflare Origin cert for Full (Strict) TLS. Authenticated origin pulls verify requests come from Cloudflare. Rate limiting on auth endpoints (5 req/min) and general API (30 req/min), keyed on `CF-Connecting-IP`. CORS restricted to `https://arrow-thing.com`.
 
-6. **Fail2Ban**
-   - Default config protects SSH out of the box. Enable and start: `systemctl enable fail2ban && systemctl start fail2ban`.
-   - Bans IPs after repeated failed SSH attempts.
+Docker bypasses UFW for published ports — this is why only nginx has `ports:` and all inter-container communication uses Docker's internal DNS.
 
-7. **Automatic security updates**
-   - `dpkg-reconfigure --priority=low unattended-upgrades` — enable automatic security patches.
-   - Keeps the OS patched without manual intervention.
+#### Cloudflare Configuration (arrow-thing.com)
 
-#### Docker Setup
+| Setting | Value |
+|---------|-------|
+| **DNS**: `api` AAAA | `2a01:4ff:f0:4178::1`, proxied |
+| **DNS**: `@`, `www` | Cloudflare Pages (automatic) |
+| **Pages project** | `arrow-thing`, deployed via `cloudflare/wrangler-action@v3` |
+| **Pages custom domains** | `arrow-thing.com`, `www.arrow-thing.com` |
+| **SSL/TLS mode** | Full (Strict) |
+| **Origin certificate** | ECC, 15-year, `api.arrow-thing.com` |
+| **Authenticated Origin Pulls** | Enabled (zone-level) |
+| **Redirect Rule** | `www.arrow-thing.com*` → `https://arrow-thing.com${1}` (301) |
+| **Cache Rule** | `api.arrow-thing.com` → bypass cache |
+| **Rate Limiting Rule** | `/api/auth/login` and `/api/auth/register` → block 10s after 5 req/10s per IP |
 
-8. **Install Docker Engine** — follow the official Docker docs for Ubuntu (apt repository method, not snap).
-   - Add `deploy` to the `docker` group: `usermod -aG docker deploy`. Log out and back in.
-   - Install Docker Compose plugin (`docker compose`).
-
-9. **Docker Compose layout** on the VPS:
-   ```
-   /home/deploy/arrow-thing/
-   ├── docker-compose.yml
-   ├── .env                    # secrets (not in repo)
-   └── nginx/
-       └── nginx.conf
-   ```
-
-10. **Docker Compose file** — three services:
-    - **api** — ASP.NET Core app. Built from repo Dockerfile. Exposes port 5000 internally only. Reads connection string and JWT secret from environment.
-    - **db** — PostgreSQL 16. Named volume for data persistence (`pgdata`). Not exposed to host network. Configured via `.env` (password, database name).
-    - **nginx** — Reverse proxy. Exposed on ports 80 and 443. Proxies to `api:5000`. TLS is terminated at Cloudflare; nginx receives plain HTTP from Cloudflare (or encrypted if using Full (Strict) mode — see TLS section).
-
-11. **`.env` file** (on host, never in repo):
-    ```
-    POSTGRES_USER=arrowthing
-    POSTGRES_PASSWORD=<generated-strong-password>
-    POSTGRES_DB=arrowthing
-    JWT_SECRET=<generated-256-bit-key>
-    ASPNETCORE_ENVIRONMENT=Production
-    ```
-
-#### Cloudflare & Domain
-
-12. **Domain** — point a subdomain (e.g., `api.arrowthing.com`) AAAA record to the VPS IPv6 address. Proxy through Cloudflare (orange cloud icon enabled).
-
-13. **Cloudflare configuration**
-    - **SSL/TLS mode**: "Full (Strict)" — Cloudflare encrypts to the origin. Requires a valid cert on the origin server.
-    - **Origin certificate**: generate a free Cloudflare Origin CA cert (valid 15 years, trusted only by Cloudflare — not browsers). Install on nginx. No certbot or renewal needed.
-    - **IPv4 reachability**: Cloudflare's edge has IPv4 addresses. Browsers connect to Cloudflare over IPv4 or IPv6; Cloudflare proxies to the origin over IPv6. Players never need IPv6 support.
-    - **DDoS protection**: included on free tier. Automatic L3/L4/L7 mitigation.
-    - **Caching**: disable caching for API routes (set a Page Rule or Cache Rule: `api.arrowthing.com/api/*` → Cache Level: Bypass). API responses must not be cached.
-    - **Rate limiting**: Cloudflare's free tier includes basic rate limiting rules. Use these for auth endpoints as a first layer; nginx rate limiting remains as a second layer.
-    - **WebSocket support**: enabled by default on free tier. Required for future PvP.
-
-#### Nginx Configuration
-
-14. **Reverse proxy config** (`nginx/nginx.conf`):
-    - Listen on 443 with the Cloudflare Origin CA cert + key (for Full Strict mode). Listen on 80 and redirect to 443.
-    - Proxy `/api/*` to `http://api:5000`.
-    - Set `X-Forwarded-For` from Cloudflare's `CF-Connecting-IP` header, `X-Forwarded-Proto`.
-    - `client_max_body_size 1m` — replays are small; reject large payloads early.
-    - **Rate limiting**: `limit_req_zone` on `/api/auth/register` and `/api/auth/login` (e.g., 5 req/min per IP) to slow brute-force and spam registration. General API routes: 30 req/min per IP. Use `CF-Connecting-IP` as the key (not `$remote_addr`, which would be Cloudflare's edge IP).
-    - CORS headers: `Access-Control-Allow-Origin` set to the GitHub Pages domain only (not `*`).
-    - Security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`.
-
-#### PostgreSQL Hardening
-
-15. **No external access** — PostgreSQL listens only on the Docker internal network. No port binding to the host.
-
-16. **Dedicated database user** — the `.env` credentials are for the application user, not the PostgreSQL superuser. The app user has `CONNECT`, `SELECT`, `INSERT`, `UPDATE`, `DELETE` on application tables only. Create via an init script mounted into the Postgres container.
-
-17. **Backups**
-    - Daily `pg_dump` via cron on the host: `docker compose exec db pg_dump -U arrowthing arrowthing | gzip > /home/deploy/backups/arrowthing_$(date +%F).sql.gz`
-    - Retain last 14 days, delete older. Simple cron + `find -mtime +14 -delete`.
-    - **Test restores periodically** — a backup you haven't tested is not a backup.
-    - Optional: upload to Hetzner Object Storage (S3-compatible) or offsite for disaster recovery.
+**Hetzner Cloud Firewall**: inbound TCP 22, 80, 443 from any; default-allow outbound.
 
 #### CI/CD Deployment
 
-18. **GitHub Actions workflow** — triggers on push to `main` (or a `deploy` tag):
-    - Build the Docker image for the API.
-    - Push to GitHub Container Registry (ghcr.io) or build on-server.
-    - SSH into VPS as `deploy` (using a GitHub Actions secret for the SSH private key).
-    - Pull the latest image and `docker compose up -d --build api`.
-    - Run EF Core migrations as part of app startup (or a separate migration step).
-    - Health check: `curl -f https://api.arrowthing.com/health` after deploy.
+- **WebGL**: GitHub Actions builds Unity, deploys to Cloudflare Pages via Wrangler. Split into build + deploy jobs.
+- **API**: GitHub Actions workflow (to be created with server project). Build Docker image → push to `ghcr.io` → SSH to VPS → pull + `docker compose up -d api` → health check.
+- **GitHub secrets**: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `DISCORD_WEBHOOK_URL`, `UNITY_EMAIL`, `UNITY_LICENSE`, `UNITY_PASSWORD`, `VPS_HOST`, `VPS_SSH_KEY`.
 
-19. **SSH key for CI** — generate a dedicated key pair for GitHub Actions. Add the public key to `deploy`'s `authorized_keys`. Store the private key as a GitHub Actions secret. This key is scoped to the `deploy` user only.
+#### Backups & Monitoring
 
-#### Monitoring & Reliability
+- **Backups**: daily `pg_dump` at 04:00 UTC, gzipped, 14-day retention. Installed via `setup.sh`.
+- **Disk monitoring**: cron alert every 6 hours if usage exceeds 80%.
+- **Docker restart policy**: `restart: unless-stopped` on all services.
+- **Logging**: JSON log driver, `max-size: 10m`, `max-file: 3`.
+- **External uptime**: UptimeRobot (free tier) on `https://api.arrow-thing.com/health` (to be set up after first deploy).
+- **Database connection pooling**: EF Core default; PgBouncer sidecar if needed later.
 
-20. **Health endpoint** — `/health` returns 200 OK. Used by CI and optionally by an external uptime monitor (e.g., UptimeRobot free tier, or Hetzner's built-in monitoring).
+#### Post-First-Deploy Checklist
 
-21. **Docker restart policy** — `restart: unless-stopped` on all services. Containers recover from crashes and survive host reboots.
-
-22. **Logging** — Docker's default JSON log driver. Set `max-size: 10m` and `max-file: 3` in `docker-compose.yml` to prevent disk exhaustion. Application logs to stdout (ASP.NET default).
-
-23. **Disk monitoring** — set up a simple cron alert if disk usage exceeds 80%. `df -h / | awk 'NR==2 {print $5}'` piped to a notification (or just check Hetzner Cloud Console metrics).
-
-24. **Database connection pooling** — EF Core's default pooling is sufficient for low traffic. If needed later, add PgBouncer as a sidecar container.
+- Verify all three containers start: `docker compose up -d`, check `docker ps`.
+- Health check: `curl -f https://api.arrow-thing.com/health` returns 200.
+- Restart policy: `docker kill arrow-thing-api-1` → auto-restart. Reboot → all containers running.
+- Test backup restore after first real data.
+- Restrict UFW ports 80/443 to [Cloudflare IP ranges](https://www.cloudflare.com/ips/) only.
+- Final review: `sudo ufw status verbose`, `docker ps --format "{{.Ports}}"`, verify Postgres not reachable from host.
 
 ### Accounts
 
