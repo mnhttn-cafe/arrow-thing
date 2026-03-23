@@ -16,7 +16,7 @@
 .victory-box {
     background-color: rgb(40, 40, 55);
     border-radius: 12px;
-    padding: 40px 56px;
+    padding: 24px 40px;
     align-items: center;
     max-height: 80%;
     max-width: 90%;
@@ -26,7 +26,7 @@
     font-size: 40px;
     color: rgb(255, 255, 255);
     -unity-font-style: bold;
-    margin-bottom: 32px;
+    margin-bottom: 16px;
     letter-spacing: 2px;
     max-width: 500px;
     white-space: normal;
@@ -36,7 +36,7 @@
 .victory-time {
     font-size: 28px;
     color: rgb(180, 180, 200);
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     letter-spacing: 1px;
     -unity-text-align: middle-center;
 }
