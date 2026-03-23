@@ -16,7 +16,10 @@ cp "$SCRIPT_DIR/docker-compose.yml" "$DEPLOY_DIR/"
 cp "$SCRIPT_DIR/init-db.sh" "$DEPLOY_DIR/"
 chmod +x "$DEPLOY_DIR/init-db.sh"
 cp "$SCRIPT_DIR/nginx/nginx.conf" "$DEPLOY_DIR/nginx/"
-cp "$SCRIPT_DIR/nginx/cloudflare-origin-pull.pem" "$DEPLOY_DIR/nginx/certs/"
+echo "Downloading Cloudflare Authenticated Origin Pull CA certificate..."
+curl -fsSL "https://developers.cloudflare.com/ssl/static/authenticated_origin_pull_ca.pem" \
+  -o "$DEPLOY_DIR/nginx/certs/cloudflare-origin-pull.pem"
+echo "Certificate saved to $DEPLOY_DIR/nginx/certs/cloudflare-origin-pull.pem"
 
 echo "Deploy configs copied to $DEPLOY_DIR"
 
