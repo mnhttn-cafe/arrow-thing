@@ -20,9 +20,13 @@ public sealed class MainMenuController : MonoBehaviour
     private VisualElement _mainMenu;
     private VisualElement _modeSelect;
     private VisualElement _settings;
-    private VisualElement _quitModal;
-    private VisualElement _clearScoresModal;
+    private VisualElement _account;
     private VisualElement _infoPanel;
+
+    private ConfirmModal _quitModal;
+    private ConfirmModal _clearScoresModal;
+
+    private AccountManager _accountManager;
 
     // Preset buttons for selection highlight
     private Button _presetSmall;
@@ -44,11 +48,12 @@ public sealed class MainMenuController : MonoBehaviour
     private void OnEnable()
     {
         var root = uiDocument.rootVisualElement;
+
+        // Screen instances (TemplateContainers — visibility controlled here)
         _mainMenu = root.Q("main-menu");
         _modeSelect = root.Q("mode-select");
         _settings = root.Q("settings");
-        _quitModal = root.Q("quit-modal");
-        _clearScoresModal = root.Q("clear-scores-modal");
+        _account = root.Q("account");
 
         // Main menu buttons
         var playBtn = _mainMenu.Q<Button>("play-btn");
@@ -178,8 +183,27 @@ public sealed class MainMenuController : MonoBehaviour
         // Settings buttons
         _settings.Q<Button>("settings-back-btn").clicked += OnSettingsBack;
         _settings.Q<Button>("clear-scores-btn").clicked += OnClearScores;
-        _clearScoresModal.Q<Button>("clear-scores-yes-btn").clicked += OnClearScoresConfirm;
-        _clearScoresModal.Q<Button>("clear-scores-no-btn").clicked += OnClearScoresCancel;
+
+        // Modals (reusable ConfirmModal template instances)
+        _quitModal = new ConfirmModal(root.Q("quit-modal"), "Quit game?", "Yes", "No");
+        _quitModal.Confirmed += OnQuitConfirm;
+        _quitModal.Cancelled += () => _quitModal.Hide();
+
+        _clearScoresModal = new ConfirmModal(
+            root.Q("clear-scores-modal"),
+            "Delete all non-favorited scores?",
+            "Delete",
+            "Cancel",
+            subtitle: "Favorited entries will be kept.",
+            isDanger: true
+        );
+        _clearScoresModal.Confirmed += OnClearScoresConfirm;
+        _clearScoresModal.Cancelled += () => _clearScoresModal.Hide();
+
+        // Account screen
+        _accountManager = new AccountManager(_account);
+        _mainMenu.Q<Button>("account-btn").clicked += () => ShowScreen(Screen.Account);
+        _account.Q<Button>("account-back-btn").clicked += () => ShowScreen(Screen.MainMenu);
 
         // Info button + panel
         _infoPanel = _mainMenu.Q("info-panel");
@@ -189,10 +213,6 @@ public sealed class MainMenuController : MonoBehaviour
         // Bottom-right link buttons
         _mainMenu.Q<Button>("link-github-btn").clicked += () => Application.OpenURL(GitHubUrl);
         _mainMenu.Q<Button>("link-discord-btn").clicked += () => Application.OpenURL(DiscordUrl);
-
-        // Quit modal buttons
-        _quitModal.Q<Button>("quit-yes-btn").clicked += OnQuitConfirm;
-        _quitModal.Q<Button>("quit-no-btn").clicked += OnQuitCancel;
 
         // Start with main menu visible, everything else hidden
         ShowScreen(Screen.MainMenu);
@@ -225,6 +245,7 @@ public sealed class MainMenuController : MonoBehaviour
         MainMenu,
         ModeSelect,
         Settings,
+        Account,
     }
 
     private void ShowScreen(Screen screen)
@@ -232,7 +253,7 @@ public sealed class MainMenuController : MonoBehaviour
         SetVisible(_mainMenu, screen == Screen.MainMenu);
         SetVisible(_modeSelect, screen == Screen.ModeSelect);
         SetVisible(_settings, screen == Screen.Settings);
-        SetVisible(_quitModal, false);
+        SetVisible(_account, screen == Screen.Account);
     }
 
     private static void SetVisible(VisualElement el, bool visible)
@@ -309,7 +330,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void OnQuitPressed()
     {
-        SetVisible(_quitModal, true);
+        _quitModal.Show();
     }
 
     private void OnQuitConfirm()
@@ -320,27 +341,17 @@ public sealed class MainMenuController : MonoBehaviour
 #endif
     }
 
-    private void OnQuitCancel()
-    {
-        SetVisible(_quitModal, false);
-    }
-
     private void OnClearScores()
     {
-        SetVisible(_clearScoresModal, true);
+        _clearScoresModal.Show();
     }
 
     private void OnClearScoresConfirm()
     {
-        SetVisible(_clearScoresModal, false);
+        _clearScoresModal.Hide();
         var manager = LeaderboardManager.Instance;
         if (manager != null)
             manager.RemoveAllNonFavorited();
-    }
-
-    private void OnClearScoresCancel()
-    {
-        SetVisible(_clearScoresModal, false);
     }
 
     private void OnInfoToggle()

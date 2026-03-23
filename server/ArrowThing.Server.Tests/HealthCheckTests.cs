@@ -1,12 +1,10 @@
-using Microsoft.AspNetCore.Mvc.Testing;
-
 namespace ArrowThing.Server.Tests;
 
-public class HealthCheckTests : IClassFixture<WebApplicationFactory<Program>>
+public class HealthCheckTests : IClassFixture<TestFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestFactory _factory;
 
-    public HealthCheckTests(WebApplicationFactory<Program> factory)
+    public HealthCheckTests(TestFactory factory)
     {
         _factory = factory;
     }

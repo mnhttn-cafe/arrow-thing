@@ -1,3 +1,17 @@
+/* Template instance containers */
+.screen-instance {
+    flex-grow: 1;
+}
+
+.modal-instance {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+}
+
 /* Root containers */
 .screen {
     flex-grow: 1;
@@ -506,4 +520,98 @@
 /* Settings sliders: stretch to fill the 300 px setting-row */
 .setting-snap-slider {
     align-self: stretch;
+}
+
+/* Account button (main menu, top-right) */
+.account-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    padding: 8px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    border-width: 0;
+}
+
+.account-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.account-icon {
+    flex-grow: 1;
+    background-image: url("/Assets/Art/account_icon.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(160, 160, 175);
+}
+
+.account-btn:hover .account-icon {
+    -unity-background-image-tint-color: rgb(220, 220, 230);
+}
+
+/* Account form container */
+.account-form {
+    width: 300px;
+    align-items: center;
+}
+
+.account-form-title {
+    font-size: 20px;
+    color: rgb(200, 200, 210);
+    margin-bottom: 16px;
+    -unity-text-align: middle-center;
+}
+
+.account-field {
+    margin-bottom: 8px;
+}
+
+.account-field Label {
+    font-size: 14px;
+    color: rgb(160, 160, 175);
+    min-width: 0;
+    margin-bottom: 2px;
+}
+
+.account-field .unity-text-field__input {
+    font-size: 16px;
+    color: rgb(255, 255, 255);
+    background-color: rgb(30, 30, 42);
+    border-color: rgba(255, 255, 255, 0.1);
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.account-field .unity-text-field__input:focus {
+    border-color: rgb(120, 180, 240);
+}
+
+.account-error {
+    font-size: 14px;
+    color: rgb(255, 100, 100);
+    margin-bottom: 8px;
+    white-space: normal;
+}
+
+.account-submit-btn {
+    width: auto;
+    align-self: stretch;
+    font-size: 20px;
+    padding: 10px 0;
+}
+
+.account-switch-btn {
+    font-size: 14px;
+    color: rgb(120, 180, 240);
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    padding: 8px 0 0 0;
+    margin: 0;
+    -unity-text-align: middle-center;
+}
+
+.account-switch-btn:hover {
+    color: rgb(160, 210, 255);
 }

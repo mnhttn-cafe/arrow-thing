@@ -86,6 +86,12 @@ public sealed class LeaderboardManager : MonoBehaviour
         return best == null || time < best.solveTime;
     }
 
+    public bool IsFavorite(string gameId)
+    {
+        var entry = _store.FindEntry(gameId);
+        return entry != null && entry.isFavorite;
+    }
+
     public void SetFavorite(string gameId, bool isFavorite)
     {
         _store.SetFavorite(gameId, isFavorite);

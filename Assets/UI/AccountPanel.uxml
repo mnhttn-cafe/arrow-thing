@@ -1,0 +1,37 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="screen">
+        <ui:Label class="section-label" text="Account" />
+
+        <!-- Logged out: Login form (default) -->
+        <ui:VisualElement name="login-form" class="account-form">
+            <ui:Label class="account-form-title" text="Log In" />
+            <ui:TextField name="login-username" class="account-field" label="Username" />
+            <ui:TextField name="login-password" class="account-field" label="Password" />
+            <ui:Label name="login-error" class="account-error screen--hidden" />
+            <ui:Button name="login-submit-btn" class="menu-btn account-submit-btn" text="Log In" />
+            <ui:Button name="switch-to-register-btn" class="account-switch-btn" text="No account? Register" />
+        </ui:VisualElement>
+
+        <!-- Logged out: Register form -->
+        <ui:VisualElement name="register-form" class="account-form screen--hidden">
+            <ui:Label class="account-form-title" text="Create Account" />
+            <ui:TextField name="register-username" class="account-field" label="Username" />
+            <ui:TextField name="register-display-name" class="account-field" label="Display Name" />
+            <ui:TextField name="register-password" class="account-field" label="Password" />
+            <ui:Label name="register-error" class="account-error screen--hidden" />
+            <ui:Button name="register-submit-btn" class="menu-btn account-submit-btn" text="Register" />
+            <ui:Button name="switch-to-login-btn" class="account-switch-btn" text="Have an account? Log in" />
+        </ui:VisualElement>
+
+        <!-- Logged in: Account info -->
+        <ui:VisualElement name="account-info" class="account-form screen--hidden">
+            <ui:Label name="account-greeting" class="account-form-title" />
+            <ui:TextField name="change-display-name" class="account-field" label="Display Name" />
+            <ui:Label name="account-error" class="account-error screen--hidden" />
+            <ui:Button name="save-display-name-btn" class="menu-btn account-submit-btn" text="Save" />
+            <ui:Button name="logout-btn" class="menu-btn menu-btn--danger account-submit-btn" text="Log Out" />
+        </ui:VisualElement>
+
+        <ui:Button name="account-back-btn" class="menu-btn" text="Back" />
+    </ui:VisualElement>
+</ui:UXML>

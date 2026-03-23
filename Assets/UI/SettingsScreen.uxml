@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="screen">
+        <ui:Label class="section-label" text="Settings" />
+
+        <ui:VisualElement name="drag-threshold-row" class="setting-row">
+            <ui:Label class="setting-label" text="Drag Threshold" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="zoom-speed-row" class="setting-row">
+            <ui:Label class="setting-label" text="Zoom Speed" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="setting-row">
+            <ui:Label class="setting-label" text="Arrow Coloring" />
+            <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
+        </ui:VisualElement>
+
+        <ui:Button name="clear-scores-btn" class="menu-btn menu-btn--danger" text="Clear All Scores" />
+
+        <ui:Button name="settings-back-btn" class="menu-btn" text="Back" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -229,22 +229,24 @@ The first arrow clear also starts the solve timer (see `InputHandler` / `GameTim
 ```
 server/
 ├── ArrowThing.Server/           # ASP.NET Core web API (net9.0)
-│   ├── Program.cs               # Minimal API endpoints (/health implemented)
-│   ├── Auth/                    # (planned)
-│   │   ├── AuthService.cs       # Registration, login, JWT issuance
-│   │   └── PasswordHasher.cs    # BCrypt wrapper
+│   ├── Program.cs               # Minimal API endpoints, DB + JWT middleware wiring
+│   ├── Auth/                    # (implemented)
+│   │   ├── AuthService.cs       # Registration, login, display name update
+│   │   ├── AuthDtos.cs          # Request/response records
+│   │   ├── PasswordHasher.cs    # BCrypt wrapper
+│   │   └── JwtHelper.cs         # HMAC-SHA256 token generation + validation
 │   ├── Games/                   # (planned)
 │   │   ├── GameService.cs       # Create game, verify replay, submit score
 │   │   └── GameSession.cs       # Pending game tracking
 │   ├── Leaderboards/            # (planned)
 │   │   └── LeaderboardService.cs
-│   ├── Data/                    # (planned)
-│   │   ├── AppDbContext.cs      # EF Core context
-│   │   └── Migrations/
-│   └── Models/                  # (planned)
-│       ├── User.cs              # Id, Username, PasswordHash, CreatedAt
-│       ├── Score.cs             # Id, UserId, GameId, Time, Seed, BoardConfig, Verified, CreatedAt
-│       └── BoardConfig.cs       # Width, Height (value object for partitioning)
+│   ├── Data/                    # (implemented)
+│   │   ├── AppDbContext.cs      # EF Core context with User DbSet
+│   │   └── Migrations/          # CreateUsers migration
+│   └── Models/                  # (implemented for User, planned for Score)
+│       ├── User.cs              # Id, Username, DisplayName, PasswordHash, CreatedAt
+│       ├── Score.cs             # Id, UserId, GameId, Time, Seed, BoardConfig, Verified, CreatedAt (planned)
+│       └── BoardConfig.cs       # Width, Height (value object for partitioning) (planned)
 ├── ArrowThing.Domain/           # Shared domain code (netstandard2.1, C# 9)
 └── ArrowThing.Server.Tests/     # xUnit integration tests (health check implemented)
 ```
@@ -252,20 +254,20 @@ server/
 ### API Endpoints
 
 ```
-GET    /health                                                       → 200 OK
+GET    /health                                                       → 200 OK                                          [implemented]
 
-POST   /api/auth/register        { username, password, displayName } → { token, displayName }
-POST   /api/auth/login           { username, password } → { token, displayName }
+POST   /api/auth/register        { username, password, displayName } → { token, displayName }                          [implemented]
+POST   /api/auth/login           { username, password }              → { token, displayName }                          [implemented]
 
-PATCH  /api/auth/me              [auth] { displayName } → { displayName }
+PATCH  /api/auth/me              [auth] { displayName }              → { displayName }                                 [implemented]
 
-POST   /api/games                [auth] { width, height } → { gameId, seed, maxArrowLength }
-POST   /api/games/{id}/submit    [auth] { events, finalTime } → { verified, rank, isPersonalBest }
+POST   /api/games                [auth] { width, height }           → { gameId, seed, maxArrowLength }                [planned]
+POST   /api/games/{id}/submit    [auth] { events, finalTime }       → { verified, rank, isPersonalBest }              [planned]
 
-GET    /api/leaderboards/{w}x{h}?limit=50          → { entries: [{ rank, displayName, time, gameId }] }
-GET    /api/leaderboards/{w}x{h}/me                [auth] → { rank, time, personalBest }
+GET    /api/leaderboards/{w}x{h}?limit=50                           → { entries: [{ rank, displayName, time, gameId }] } [planned]
+GET    /api/leaderboards/{w}x{h}/me                [auth]           → { rank, time, personalBest }                    [planned]
 
-GET    /api/replays/{gameId}                        → { seed, width, height, events, finalTime }
+GET    /api/replays/{gameId}                                         → { seed, width, height, events, finalTime }      [planned]
 ```
 
 ### Domain Code Sharing
@@ -369,8 +371,9 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 | `TapIndicator` | View | Done | Expanding/fading ring at tap position during replay |
 | `TapIndicatorPool` | View | Done | Object pool for tap indicators with procedural ring sprite |
 | `ReplayVerifier` | Domain | Planned | Simulates replay for server-side verification |
-| `ApiClient` | View | Started | HTTP client, JWT, error handling, offline detection. Health check implemented. |
-| `AccountManager` | View | Planned | Account icon UI (login/register/display name/logout), token storage |
+| `ApiClient` | View | Done | HTTP client, JWT attachment, auth endpoints, token storage in PlayerPrefs |
+| `AccountManager` | View | Done | Account panel UI (register/login/display name change/logout) |
+| `ConfirmModal` | View | Done | Reusable confirm modal wrapper (configures ConfirmModal.uxml template) |
 | `OnlineController` | View | Planned | Coordinates online flow (request game → play → submit) |
 | `ServerHealthCheck` | Editor | Done | Editor menu item (Tools > Arrow Thing) to test server connectivity |
 
@@ -379,7 +382,7 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 | Script | Changes |
 |--------|---------|
 | `InputHandler` | ~~Record events to `ReplayRecorder` on each tap~~ (done) |
-| `MainMenuController` | Trophy button on mode select (done). Account icon button (planned) |
+| `MainMenuController` | Trophy button on mode select (done). Account icon button (done). Reusable ConfirmModal for quit/clear-scores (done) |
 | `VictoryController` | Personal best gold highlight, "New Best!" indicator, "View Leaderboard" button (done). Inline top-10 leaderboard (planned) |
 | `GameController` | Refactored to use `BoardSetupHelper` (done). Wire `OnlineController` (planned) |
 | `GameSettings` | `StartReplay`/`ClearReplay` for replay scene transition, `LeaderboardFocusGameId` for auto-scroll (done). Server `Seed` field (planned) |

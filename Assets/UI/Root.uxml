@@ -1,96 +1,19 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <Style src="MainMenu.uss" />
 
-    <ui:VisualElement name="main-menu" class="screen">
-        <ui:Button name="quit-btn" class="quit-btn" text="X" />
-        <ui:Button name="info-btn" class="info-btn" text="i" />
-        <ui:VisualElement class="title" />
-        <ui:Button name="play-btn" class="menu-btn" text="Play" />
-        <ui:Button name="continue-btn" class="menu-btn continue-btn screen--hidden" text="Continue" />
-        <ui:Button name="settings-btn" class="menu-btn" text="Settings" />
+    <ui:Template name="MainMenuScreen" src="project://database/Assets/UI/MainMenuScreen.uxml" />
+    <ui:Template name="ModeSelectScreen" src="project://database/Assets/UI/ModeSelectScreen.uxml" />
+    <ui:Template name="SettingsScreen" src="project://database/Assets/UI/SettingsScreen.uxml" />
+    <ui:Template name="ConfirmModal" src="project://database/Assets/UI/ConfirmModal.uxml" />
+    <ui:Template name="AccountPanel" src="project://database/Assets/UI/AccountPanel.uxml" />
 
-        <ui:VisualElement name="info-panel" class="info-panel screen--hidden">
-            <ui:Label name="info-version" class="info-text" />
-            <ui:Label class="info-text" text="Thanks to Yuki (mnhttn-cafe)" />
-            <ui:Label class="info-text info-credit" text="Made with &lt;3 by vicplusplus" />
-        </ui:VisualElement>
+    <!-- Screens -->
+    <ui:Instance template="MainMenuScreen" name="main-menu" class="screen-instance" />
+    <ui:Instance template="ModeSelectScreen" name="mode-select" class="screen-instance screen--hidden" />
+    <ui:Instance template="SettingsScreen" name="settings" class="screen-instance screen--hidden" />
+    <ui:Instance template="AccountPanel" name="account" class="screen-instance screen--hidden" />
 
-        <ui:VisualElement name="link-row" class="link-row">
-            <ui:Button name="link-github-btn" class="link-icon-btn">
-                <ui:VisualElement class="link-icon link-icon--github" />
-            </ui:Button>
-            <ui:Button name="link-discord-btn" class="link-icon-btn">
-                <ui:VisualElement class="link-icon link-icon--discord" />
-            </ui:Button>
-        </ui:VisualElement>
-    </ui:VisualElement>
-
-    <ui:VisualElement name="mode-select" class="screen screen--hidden">
-        <ui:Button name="trophy-btn" class="trophy-btn">
-            <ui:VisualElement class="trophy-icon" />
-        </ui:Button>
-        <ui:Label class="section-label" text="Select Board Size" />
-        <ui:VisualElement class="preset-grid">
-            <ui:Button name="preset-small"  class="preset-btn" text="Small&#10;10 × 10" />
-            <ui:Button name="preset-medium" class="preset-btn" text="Medium&#10;20 × 20" />
-            <ui:Button name="preset-large"  class="preset-btn" text="Large&#10;40 × 40" />
-            <ui:Button name="preset-xlarge" class="preset-btn" text="XLarge&#10;100 × 100" />
-            <ui:Button name="preset-custom" class="preset-btn" text="Custom" />
-        </ui:VisualElement>
-        <ui:VisualElement name="custom-panel" class="custom-panel screen--hidden">
-            <ui:VisualElement name="custom-width-row" class="preset-custom-row">
-                <ui:Label class="preset-custom-dim-label" text="W" />
-            </ui:VisualElement>
-            <ui:VisualElement name="custom-height-row" class="preset-custom-row">
-                <ui:Label class="preset-custom-dim-label" text="H" />
-            </ui:VisualElement>
-        </ui:VisualElement>
-        <ui:VisualElement class="mode-action-row">
-            <ui:Button name="mode-back-btn" class="mode-action-btn mode-back-btn" text="Back" />
-            <ui:Button name="start-btn" class="mode-action-btn start-btn" text="Start" />
-        </ui:VisualElement>
-    </ui:VisualElement>
-
-    <ui:VisualElement name="settings" class="screen screen--hidden">
-        <ui:Label class="section-label" text="Settings" />
-
-        <ui:VisualElement name="drag-threshold-row" class="setting-row">
-            <ui:Label class="setting-label" text="Drag Threshold" />
-        </ui:VisualElement>
-
-        <ui:VisualElement name="zoom-speed-row" class="setting-row">
-            <ui:Label class="setting-label" text="Zoom Speed" />
-        </ui:VisualElement>
-
-        <ui:VisualElement class="setting-row">
-            <ui:Label class="setting-label" text="Arrow Coloring" />
-            <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
-        </ui:VisualElement>
-
-        <ui:Button name="clear-scores-btn" class="menu-btn menu-btn--danger" text="Clear All Scores" />
-
-        <ui:Button name="settings-back-btn" class="menu-btn" text="Back" />
-    </ui:VisualElement>
-
-    <ui:VisualElement name="clear-scores-modal" class="modal-overlay screen--hidden">
-        <ui:VisualElement class="modal-box">
-            <ui:Label class="modal-label" text="Delete all non-favorited scores?" />
-            <ui:Label class="modal-sublabel" text="Favorited entries will be kept." />
-            <ui:VisualElement class="modal-buttons">
-                <ui:Button name="clear-scores-yes-btn" class="menu-btn menu-btn--danger" text="Delete" />
-                <ui:Button name="clear-scores-no-btn" class="menu-btn" text="Cancel" />
-            </ui:VisualElement>
-        </ui:VisualElement>
-    </ui:VisualElement>
-
-    <ui:VisualElement name="quit-modal" class="modal-overlay screen--hidden">
-        <ui:VisualElement class="modal-box">
-            <ui:Label class="modal-label" text="Quit game?" />
-            <ui:VisualElement class="modal-buttons">
-                <ui:Button name="quit-yes-btn" class="menu-btn" text="Yes" />
-                <ui:Button name="quit-no-btn" class="menu-btn" text="No" />
-            </ui:VisualElement>
-        </ui:VisualElement>
-    </ui:VisualElement>
-
+    <!-- Modals (configured by ConfirmModal.cs at runtime) -->
+    <ui:Instance template="ConfirmModal" name="quit-modal" class="modal-instance" />
+    <ui:Instance template="ConfirmModal" name="clear-scores-modal" class="modal-instance" />
 </ui:UXML>

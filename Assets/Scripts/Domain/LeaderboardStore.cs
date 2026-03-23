@@ -40,6 +40,11 @@ public sealed class LeaderboardStore
         return new List<LeaderboardEntry>(_entries);
     }
 
+    public LeaderboardEntry FindEntry(string gameId)
+    {
+        return _entries.Find(e => e.gameId == gameId);
+    }
+
     /// <summary>Returns the fastest entry for the given board size, or null if none exist.</summary>
     public LeaderboardEntry GetPersonalBest(int width, int height)
     {
