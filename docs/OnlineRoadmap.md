@@ -16,7 +16,7 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 
 ### Server Foundation
 
-- **ASP.NET Core 8 Minimal API** — lightweight (~30-50 MB idle RAM in Docker), C#, shares domain code. Use Workstation GC in container (`<ServerGarbageCollection>false</ServerGarbageCollection>`) for lower memory on small VPS.
+- **ASP.NET Core 9 Minimal API** — lightweight (~30-50 MB idle RAM in Docker), C#, shares domain code. Use Workstation GC in container (`<ServerGarbageCollection>false</ServerGarbageCollection>`) for lower memory on small VPS.
 - **Entity Framework Core** — ORM. PostgreSQL for production, SQLite for dev/testing.
 - **BCrypt** — password hashing.
 - **JWT** — stateless auth tokens.
@@ -42,7 +42,7 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 │       └── certs/
 │           ├── origin.pem              # manual (Cloudflare origin cert)
 │           ├── origin-key.pem          # manual (origin private key)
-│           └── cloudflare-origin-pull.pem  # from repo
+│           └── cloudflare-origin-pull.pem  # downloaded by setup.sh
 ├── repo/                               # git clone of the project
 └── backups/                            # daily pg_dump output
 ```
@@ -228,30 +228,32 @@ The first arrow clear also starts the solve timer (see `InputHandler` / `GameTim
 
 ```
 server/
-├── ArrowThing.Server/           # ASP.NET Core web API
-│   ├── Program.cs               # Minimal API endpoints
-│   ├── Auth/
+├── ArrowThing.Server/           # ASP.NET Core web API (net9.0)
+│   ├── Program.cs               # Minimal API endpoints (/health implemented)
+│   ├── Auth/                    # (planned)
 │   │   ├── AuthService.cs       # Registration, login, JWT issuance
 │   │   └── PasswordHasher.cs    # BCrypt wrapper
-│   ├── Games/
+│   ├── Games/                   # (planned)
 │   │   ├── GameService.cs       # Create game, verify replay, submit score
 │   │   └── GameSession.cs       # Pending game tracking
-│   ├── Leaderboards/
+│   ├── Leaderboards/            # (planned)
 │   │   └── LeaderboardService.cs
-│   ├── Data/
+│   ├── Data/                    # (planned)
 │   │   ├── AppDbContext.cs      # EF Core context
 │   │   └── Migrations/
-│   └── Models/
+│   └── Models/                  # (planned)
 │       ├── User.cs              # Id, Username, PasswordHash, CreatedAt
 │       ├── Score.cs             # Id, UserId, GameId, Time, Seed, BoardConfig, Verified, CreatedAt
 │       └── BoardConfig.cs       # Width, Height (value object for partitioning)
-├── ArrowThing.Domain/           # Shared domain code (project reference or symlink)
-└── ArrowThing.Server.Tests/     # Server integration tests
+├── ArrowThing.Domain/           # Shared domain code (netstandard2.1, C# 9)
+└── ArrowThing.Server.Tests/     # xUnit integration tests (health check implemented)
 ```
 
 ### API Endpoints
 
 ```
+GET    /health                                                       → 200 OK
+
 POST   /api/auth/register        { username, password, displayName } → { token, displayName }
 POST   /api/auth/login           { username, password } → { token, displayName }
 
@@ -270,21 +272,22 @@ GET    /api/replays/{gameId}                        → { seed, width, height, e
 
 The domain layer (`Cell`, `Arrow`, `Board`, `BoardGeneration`, `ReplayVerifier`) must compile without Unity references. Current state: already true — all domain code is pure C#.
 
-**Approach**: Monorepo with a shared `ArrowThing.Domain.csproj` that compiles the domain source files via relative paths. No symlinks, no NuGet packages, no file copies. Unity continues using the loose `.cs` files directly; the server references the shared project.
+**Approach**: Monorepo with a shared `ArrowThing.Domain.csproj` that compiles the domain source files via relative paths. No symlinks, no NuGet packages, no file copies. Unity continues using the loose `.cs` files directly; the server references the shared project. **Implemented** — domain builds clean against Unity sources, pinned to C# 9 / netstandard2.1 for Unity compatibility. Newtonsoft.Json added as NuGet dependency (Unity ships it natively).
 
 ```
 arrow-thing/                              # monorepo root
 ├── Assets/Scripts/Domain/                # source of truth (Unity uses directly)
 ├── server/
+│   ├── ArrowThing.sln                    # solution file for all server projects
 │   ├── ArrowThing.Domain/
-│   │   └── ArrowThing.Domain.csproj      # netstandard2.1, <Compile Include="../../Assets/Scripts/Domain/**/*.cs" />
-│   ├── ArrowThing.Server/                # ASP.NET Core API, <ProjectReference> to Domain
+│   │   └── ArrowThing.Domain.csproj      # netstandard2.1 C# 9, <Compile Include="../../Assets/Scripts/Domain/**/*.cs" />
+│   ├── ArrowThing.Server/                # ASP.NET Core net9.0, <ProjectReference> to Domain
 │   │   └── ArrowThing.Server.csproj
-│   └── ArrowThing.Server.Tests/
+│   └── ArrowThing.Server.Tests/          # xUnit integration tests, <ProjectReference> to Server
 │       └── ArrowThing.Server.Tests.csproj
 ```
 
-The domain `.csproj` targets `netstandard2.1` for compatibility with both Unity's C# 9 and .NET 8. No code duplication — one source of truth, two consumers.
+The domain `.csproj` targets `netstandard2.1` with `LangVersion 9` for compatibility with Unity's C# 9 compiler. The server targets `net9.0`. No code duplication — one source of truth, two consumers.
 
 ---
 
@@ -366,9 +369,10 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 | `TapIndicator` | View | Done | Expanding/fading ring at tap position during replay |
 | `TapIndicatorPool` | View | Done | Object pool for tap indicators with procedural ring sprite |
 | `ReplayVerifier` | Domain | Planned | Simulates replay for server-side verification |
-| `ApiClient` | View | Planned | HTTP client, JWT, error handling, offline detection |
+| `ApiClient` | View | Started | HTTP client, JWT, error handling, offline detection. Health check implemented. |
 | `AccountManager` | View | Planned | Account icon UI (login/register/display name/logout), token storage |
 | `OnlineController` | View | Planned | Coordinates online flow (request game → play → submit) |
+| `ServerHealthCheck` | Editor | Done | Editor menu item (Tools > Arrow Thing) to test server connectivity |
 
 ## Modified Scripts
 
