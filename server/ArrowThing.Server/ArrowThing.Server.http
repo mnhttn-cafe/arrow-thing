@@ -1,0 +1,6 @@
+@ArrowThing.Server_HostAddress = http://localhost:5043
+
+GET {{ArrowThing.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
