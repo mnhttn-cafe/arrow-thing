@@ -6,7 +6,7 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
 
 ## Project Status
 
-- Playable on [GitHub Pages](https://vicplusplus.github.io/arrow-thing/)
+- Playable on https://arrow-thing.com/
 - Design docs:
   - [`docs/GDD.md`](docs/GDD.md) (game design)
   - [`docs/TechnicalDesign.md`](docs/TechnicalDesign.md) (technical architecture and class structure)
