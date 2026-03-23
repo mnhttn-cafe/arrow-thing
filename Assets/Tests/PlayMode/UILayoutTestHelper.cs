@@ -40,14 +40,40 @@ public static class UILayoutTestHelper
 
     /// <summary>
     /// Configures PanelSettings to simulate a given screen size.
-    /// Forces ScaleWithScreenSize mode for consistent layout resolution.
+    /// Assigns a RenderTexture as the target so the panel uses the texture
+    /// dimensions as the effective screen size — independent of the actual
+    /// editor window or CI headless resolution.
     /// </summary>
     public static void SetPanelReferenceResolution(PanelSettings panel, int width, int height)
     {
+        // Release any previously assigned test render texture.
+        if (panel.targetTexture != null)
+        {
+            panel.targetTexture.Release();
+            Object.DestroyImmediate(panel.targetTexture);
+        }
+
+        var rt = new RenderTexture(width, height, 0);
+        rt.Create();
+        panel.targetTexture = rt;
+
         panel.scaleMode = PanelScaleMode.ScaleWithScreenSize;
         panel.referenceResolution = new Vector2Int(width, height);
         panel.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
         panel.match = 0.5f;
+    }
+
+    /// <summary>
+    /// Cleans up any RenderTexture assigned by SetPanelReferenceResolution.
+    /// </summary>
+    public static void CleanUpTargetTexture(PanelSettings panel)
+    {
+        if (panel.targetTexture != null)
+        {
+            panel.targetTexture.Release();
+            Object.DestroyImmediate(panel.targetTexture);
+            panel.targetTexture = null;
+        }
     }
 
     /// <summary>
