@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Arrow Thing** — a minimalist speed-clearing puzzle game (Unity 2D URP). Players tap arrows on a grid to clear them; an arrow is clearable only when the ray extending forward from its head to the board boundary contains no other arrow body cells. The dependency graph between arrows must be acyclic (DAG) for a board to be solvable.
 
-The game is free and open-source (MIT). Primary distribution is WebGL on GitHub Pages, deployed automatically via CD pipeline on push to `main`.
+The game is free and open-source (MIT). Primary distribution is WebGL on Cloudflare Pages (https://arrow-thing.com/), deployed automatically via CD pipeline on published release.
 
-**Current status**: Active development. Playable on GitHub Pages. See `docs/OnlineRoadmap.md` for the broader plan.
+**Current status**: Active development. Playable at https://arrow-thing.com/. See `docs/OnlineRoadmap.md` for the broader plan.
 
 Docs: `docs/GDD.md` (game design), `docs/TechnicalDesign.md` (architecture — single source of truth for all technical decisions), `docs/BoardGeneration.md` (generator algorithm), `docs/OnlineRoadmap.md` (planned features). See **Feature Workflow** below for how `docs/TODO.md` is used during feature development.
 
@@ -23,18 +23,25 @@ The board interaction flow: `BoardGeneration` fills `Board` → Unity renders it
 
 View layer scripts live in `Assets/Scripts/View/`:
 
-- **`MainMenuController`** — drives main menu UI (UI Toolkit). Manages screen navigation, board-size preset selection, and scene transition to Game. Desktop-only quit button with confirmation modal.
+- **`MainMenuController`** — drives main menu UI (UI Toolkit). Manages screen navigation, board-size preset selection, and scene transition to Game. Desktop-only quit button with confirmation modal. Shows "Continue" button when a saved game exists; Settings screen includes "Clear All Scores" with confirmation.
 - **`GameController`** — scene entry point. Orchestrated by `GenerateAndSetup` coroutine which delegates to focused helper methods. Creates `Board`, runs generation or snapshot restore, spawns `BoardView` with incremental arrow display, wires `CameraController`, `InputHandler`, and `VictoryController`. Shows loading overlay with progress bar during generation/restore; cancel button opens confirmation modal. Loading overlay rendering decoupled from work (Update-driven). Reads from `GameSettings` when coming from menu; uses inspector fields otherwise.
-- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. `SetInputEnabled` suppresses all input during the victory sequence.
+- **`InputHandler`** — unified PC/mobile input via Unity Input System. Left-click/touch is disambiguated into tap (select arrow) vs drag (pan camera) by a configurable screen-space distance threshold (set on `GameController`, passed via `Init`). Scroll wheel and pinch-to-zoom for camera zoom. `SetInputEnabled` suppresses all input during the victory sequence. Records all tap events to `ReplayRecorder`; fires `onArrowCleared` callback for autosave.
 - **`CameraController`** — orthographic camera with `Pan`/`Zoom`/`PinchZoom`/`ZoomToFit` methods. Fits to board on init; max zoom derived from initial fit. Clamped to board bounds.
-- **`VictoryController`** — handles board-cleared sequence: zoom-to-fit → grid fade-out → victory popup with randomized message and Play Again / Menu buttons. Input is disabled for the entire sequence. Font auto-scales for long messages.
-- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Supports incremental arrow spawning via `AddArrowView`/`ApplyColoring` (used during generation/restore) or batch spawning via `Init(spawnArrows: true)`. `RemoveArrowView` removes without animation (resume replay). `TryClearArrow` checks clearability, removes or flashes reject. Fires `BoardCleared` event after last arrow's pull-out animation.
+- **`GameTimerView`** — drives a `GameTimer` each frame and updates the HUD timer label. Grey countdown during inspection (turns red near zero), white count-up during solving, precise millisecond display on finish.
+- **`VictoryController`** — handles board-cleared sequence: zoom-to-fit → grid fade-out → victory popup with randomized message, final solve time, Play Again / Menu / View Leaderboard buttons. Detects personal best (gold timer + "New Best!" label). Records result to `LeaderboardManager`. Input is disabled for the entire sequence. Font auto-scales for long messages.
+- **`BoardView`** — owns `Dictionary<Arrow, ArrowView>`. Supports incremental arrow spawning via `AddArrowView`/`ApplyColoring` (used during generation/restore) or batch spawning via `Init(spawnArrows: true)`. `RemoveArrowView` removes without animation (resume/seek). `ClearArrowAnimated` plays pull-out animation (replay viewer). `TryClearArrow` checks clearability, returns `ClearResult`, removes or flashes reject. Fires `LastArrowClearing` and `BoardCleared` events. `UpdateClearableHighlights`/`ClearAllHighlights` manage electric cyan tint for replay viewer.
+- **`BoardSetupHelper`** — static utility extracted from `GameController` for reuse in `ReplayViewController`. Creates board+view, sets up camera, restores board from snapshot with frame-budget-aware yielding.
 - **`BoardGridRenderer`** — renders background dot grid as a single tiling quad. `FadeOut` coroutine fades to transparent.
-- **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Reject flash, pull-out animation, and bump animation.
+- **`ArrowView`** — procedural mesh body + arrowhead child GameObject. Reject flash, pull-out animation, and bump animation. `SetHighlight(bool)` applies/removes electric cyan tint for clearable highlighting.
 - **`ArrowMeshBuilder`** — static builder for polyline body mesh with arc-length UV windowing.
 - **`VisualSettings`** — `ScriptableObject` with colors, widths, animation curves, and durations.
 - **`BoardCoords`** — static coordinate mapping (cell ↔ world space).
 - **`SnapSlider`** — reusable slider row: custom track+handle, value label, +/- buttons, optional lock button (snap-to-grid toggle). Used for custom board-size pickers and settings sliders.
+- **`SaveManager`** — static class (view layer). Saves/loads/deletes the in-progress game JSON at `persistentDataPath/savegame.json`. `LoadAsync` runs file I/O on a background thread (synchronous fallback on WebGL). Auto-deletes on corruption.
+- **`LeaderboardManager`** — singleton (view layer), auto-bootstraps via `RuntimeInitializeOnLoadMethod`, persists across scenes via `DontDestroyOnLoad`. Wraps `LeaderboardStore` with file I/O: index at `leaderboard.json`, replays as GZip-compressed JSON at `replays/{gameId}.json.gz`. `RecordResult`, `LoadReplay`, `IsPersonalBest`, `SetFavorite`, `RemoveEntry`.
+- **`LeaderboardScreenController`** — scene entry point for the Leaderboard scene. 5 size tabs, 3 sort modes, Local/Global toggle, scrollable entry list with context menu, favorite toggle, replay launch, auto-scroll via `GameSettings.LeaderboardFocusGameId`.
+- **`ReplayViewController`** — scene entry point for the Replay scene. Restores board from snapshot, drives frame-based playback via `ReplayPlayer`. Supports seek, speed cycling, play/pause, controls bar toggle, and clearable highlighting.
+- **`TapIndicator`** / **`TapIndicatorPool`** — expanding/fading ring indicators shown during replay playback. Pool of 10; procedural ring sprite (no asset file). White for clears, red for rejects.
 
 ## Core Types (`Assets/Scripts/Domain/Models/`)
 
@@ -42,7 +49,7 @@ View layer scripts live in `Assets/Scripts/View/`:
 - **`Arrow`** — immutable ordered list of `Cell`s. `Cells[0]` is the head; `HeadDirection` is derived from the vector `Cells[0]→Cells[1]` and points **opposite** to that first segment (e.g., if next is to the right of head, the arrow faces Left).
 - **`Board`** — mutable container. Arrows are private; mutate only via `AddArrow`/`RemoveArrow`. `Arrows` is exposed as `IReadOnlyList<Arrow>`. Owns `Arrow[,] _occupancy` and a dependency graph (`_dependsOn`, `_dependedOnBy`), both maintained atomically in `AddArrow`/`RemoveArrow`. `GetArrowAt(Cell)` returns the arrow at a cell (or null). `IsClearable(Arrow)` returns true when the arrow's dependency set is empty (O(1)). `IsInRay` is a public static helper for ray geometry. `InitializeForGeneration()` creates the candidate pool for generation (not needed for deserialized boards). `RestoreArrowsIncremental` coroutine restores a saved board from a snapshot in two phases (placement + dependency graph), yielding for progress reporting.
 
-- **`GameSettings`** — static class holding board parameters chosen in the menu (`Width`, `Height`, `MaxArrowLength`) and `PlayerPrefs` key constants for persisted settings (drag threshold, zoom speed, arrow coloring). `IsSet` flag tells `GameController` whether to use menu values or inspector defaults.
+- **`GameSettings`** — static class holding board parameters chosen in the menu (`Width`, `Height`, `MaxArrowLength`) and `PlayerPrefs` key constants for persisted settings (drag threshold, zoom speed, arrow coloring). `IsSet` flag tells `GameController` whether to use menu values or inspector defaults. Also carries resume state (`IsResuming`, `ResumeData`), replay viewer state (`IsReplaying`, `ReplaySource`, `ReturnScene`), and `LeaderboardFocusGameId` for auto-scroll after a game completes.
 
 Model classes are intentionally minimal and self-contained. Generation logic lives in `BoardGeneration`; clearability and dependency tracking are on `Board` since they're direct graph queries.
 
@@ -56,7 +63,7 @@ Static class, purely algorithmic — all persistent state lives on `Board`. Key 
 
 ## Testing
 
-Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, full solvability verification (50 seeds + counterexample), external AddArrow compatibility, and a 100-iteration timing gate. Explicit perf tests include multi-seed solvability stress tests (500×10x10, 100×20x20, 20×50x50). Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
+Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, full solvability verification (50 seeds + counterexample), external AddArrow compatibility, and a 100-iteration timing gate; leaderboard store (add/get/sort/cap/favorites/personal best/neighbor entries/serialization); replay player (advance/seek/speed/boundary conditions). Explicit perf tests include multi-seed solvability stress tests (500×10x10, 100×20x20, 20×50x50). PlayMode UI layout tests cover 21 UI states across 5 aspect ratios (105 test cases) in `Assets/Tests/PlayMode/UILayoutTests.cs`. Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
 
 ## Feature Workflow
 

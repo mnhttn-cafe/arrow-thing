@@ -52,7 +52,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 
 - Grid dimensions (`Width`, `Height`) and `List<Arrow> Arrows`.
 - Owns `Arrow[,] _occupancy` and a dependency graph (`_dependsOn`, `_dependedOnBy`), both maintained atomically in `AddArrow`/`RemoveArrow`.
-- `OccupiedCellCount` — incremental counter maintained by `AddArrow`/`RemoveArrow`. Used by the loading progress bar without per-frame iteration.
+- `OccupiedCellCount` — incremental counter maintained by `AddArrow`/`RemoveArrow`. Tracks total occupied cells; available for diagnostics and density calculations.
 - `InitialCandidateCount` / `RemainingCandidateCount` — candidate pool size at initialization and current remaining count. Useful for diagnostics and profiling.
 - `Contains(Cell)` performs bounds checking.
 - `GetArrowAt(Cell)` returns the arrow occupying a cell, or null.
@@ -288,10 +288,10 @@ Three jobs run in parallel:
 
 ### WebGL Deployment (`.github/workflows/deploy.yml`)
 
-Continuous deployment to GitHub Pages. Triggers on version tag push (`v*`) or manually via `workflow_dispatch`. The Discord announcement workflow triggers after a successful deploy (not independently).
+Continuous deployment to Cloudflare Pages. Triggers on published GitHub release or manually via `workflow_dispatch`. The Discord announcement workflow triggers after a successful deploy that was itself triggered by a release (not by `workflow_dispatch`).
 
-- **`build-webgl`**: Checks out the repo, builds WebGL via [`game-ci/unity-builder@v4`](https://github.com/game-ci/unity-builder), and uploads the build as a Pages artifact. Uses `allowDirtyBuild: true` because two pre-build steps intentionally modify the worktree: the git commit hash is written to `Assets/Resources/git-commit.txt`, and `bundleVersion` in `ProjectSettings/ProjectSettings.asset` is derived from the latest git tag via `sed`. These are build-time injections only — nothing is pushed back to the repository.
-- **`deploy`**: Deploys the artifact to GitHub Pages via `actions/deploy-pages@v4`. Runs in the `github-pages` environment.
+- **`build-webgl`**: Checks out the repo, builds WebGL via [`game-ci/unity-builder@v4`](https://github.com/game-ci/unity-builder), and uploads the build as an artifact. Uses `allowDirtyBuild: true` because two pre-build steps intentionally modify the worktree: the git commit hash is written to `Assets/Resources/git-commit.txt`, and `bundleVersion` in `ProjectSettings/ProjectSettings.asset` is derived from the latest git tag via `sed`. These are build-time injections only — nothing is pushed back to the repository.
+- **`deploy`**: Deploys the artifact to Cloudflare Pages via `cloudflare/wrangler-action@v3` (`pages deploy`).
 
 WebGL player settings: Gzip compression, JS decompression fallback enabled, hash-based filenames for cache busting. Concurrency group `pages` prevents overlapping deploys.
 
