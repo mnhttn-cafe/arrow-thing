@@ -500,14 +500,14 @@ public sealed class GameController : MonoBehaviour
                 trailOn = !trailOn;
                 _boardView.SetAllTrailsVisible(trailOn);
                 if (trailOn)
-                    _trailToggleBtn.AddToClassList("hud-btn--active");
+                    _trailToggleBtn.AddToClassList("hud-icon-btn--active");
                 else
-                    _trailToggleBtn.RemoveFromClassList("hud-btn--active");
+                    _trailToggleBtn.RemoveFromClassList("hud-icon-btn--active");
             };
             _boardView.TrailAutoOff += () =>
             {
                 trailOn = false;
-                _trailToggleBtn.RemoveFromClassList("hud-btn--active");
+                _trailToggleBtn.RemoveFromClassList("hud-icon-btn--active");
             };
         }
     }

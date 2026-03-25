@@ -1,3 +1,5 @@
+/* MainMenu-specific styles. Shared components live in Shared.uss. */
+
 /* Template instance containers */
 .screen-instance {
     flex-grow: 1;
@@ -56,6 +58,15 @@
 
 .menu-btn:active {
     background-color: rgb(100, 100, 140);
+}
+
+/* Danger variant — red text, used for destructive standalone buttons */
+.menu-btn--danger {
+    color: rgb(255, 100, 100);
+}
+
+.menu-btn--danger:hover {
+    background-color: rgba(255, 100, 100, 0.15);
 }
 
 /* Preset grid container (mode select) */
@@ -117,7 +128,6 @@
     -unity-text-align: middle-center;
 }
 
-
 /* Action row: Back + Start side by side */
 .mode-action-row {
     flex-direction: row;
@@ -178,46 +188,17 @@
     background-color: rgb(50, 160, 180);
 }
 
-
-/* Quit button (desktop only, top-left X) */
-.quit-btn {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    width: 48px;
-    height: 48px;
-    font-size: 28px;
-    color: rgb(180, 180, 180);
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    border-width: 0;
-    -unity-text-align: middle-center;
-}
-
-.quit-btn:hover {
-    color: rgb(255, 255, 255);
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-/* Info button (bottom-right) */
+/* Info button override — bold-and-italic for the "i" glyph */
 .info-btn {
-    position: absolute;
-    bottom: 16px;
-    right: 16px;
-    width: 48px;
-    height: 48px;
-    font-size: 28px;
-    color: rgb(180, 180, 180);
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    border-width: 0;
-    -unity-text-align: middle-center;
     -unity-font-style: bold-and-italic;
 }
 
-.info-btn:hover {
-    color: rgb(255, 255, 255);
-    background-color: rgba(255, 255, 255, 0.15);
+/* Trophy icon child element */
+.trophy-icon {
+    flex-grow: 1;
+    background-image: url("/Assets/Art/trophy_icon.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(255, 215, 0);
 }
 
 /* Info panel (anchored above the info button) */
@@ -251,7 +232,6 @@
     border-width: 0;
     padding: 4px 0;
     -unity-text-align: upper-right;
-
 }
 
 .info-link:hover {
@@ -267,6 +247,7 @@
     align-items: center;
 }
 
+/* Link icon buttons — flow layout (not absolute), distinct from hud-icon-btn */
 .link-icon-btn {
     width: 48px;
     height: 48px;
@@ -275,7 +256,6 @@
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 24px;
     border-width: 0;
-
 }
 
 .link-icon-btn:hover {
@@ -298,83 +278,6 @@
 
 .link-icon--discord {
     background-image: url("/Assets/Art/discord-white-icon.png");
-}
-
-/* Quit modal overlay */
-.modal-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-box {
-    background-color: rgb(40, 40, 55);
-    border-radius: 12px;
-    padding: 24px 24px;
-    align-items: center;
-    max-width: 90%;
-}
-
-.modal-label {
-    font-size: 24px;
-    color: rgb(255, 255, 255);
-    margin-bottom: 24px;
-    white-space: normal;
-    -unity-text-align: middle-center;
-}
-
-.modal-buttons {
-    flex-direction: row;
-}
-
-.modal-buttons .menu-btn {
-    width: 120px;
-    padding: 10px 0;
-    font-size: 22px;
-    margin: 0 8px;
-}
-
-.modal-sublabel {
-    font-size: 18px;
-    color: rgb(160, 160, 180);
-    margin-bottom: 24px;
-}
-
-.menu-btn--danger {
-    color: rgb(255, 100, 100);
-}
-
-.menu-btn--danger:hover {
-    background-color: rgba(255, 100, 100, 0.15);
-}
-
-/* Trophy button (mode-select, top-right corner) */
-.trophy-btn {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    width: 48px;
-    height: 48px;
-    padding: 8px;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    border-width: 0;
-}
-
-.trophy-btn:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.trophy-icon {
-    flex-grow: 1;
-    background-image: url("/Assets/Art/trophy_icon.png");
-    -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: rgb(255, 215, 0);
 }
 
 /* Section label */
@@ -501,7 +404,7 @@
     border-bottom-right-radius: 4px;
 }
 
-/* Lock icon child element (same pattern as link-icon buttons) */
+/* Lock icon child element */
 .snap-slider__lock-icon {
     flex-grow: 1;
     -unity-background-scale-mode: scale-to-fit;

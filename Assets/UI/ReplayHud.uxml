@@ -1,20 +1,21 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Shared.uss" />
     <Style src="ReplayHud.uss" />
 
-    <!-- Loading overlay (reused pattern from GameHud) -->
-    <ui:VisualElement name="loading-overlay" class="rh-loading-overlay">
-        <ui:Label name="loading-label" class="rh-loading-label" text="Loading..." />
-        <ui:VisualElement class="rh-loading-bar-track">
-            <ui:VisualElement name="loading-bar-fill" class="rh-loading-bar-fill" />
+    <!-- Loading overlay -->
+    <ui:VisualElement name="loading-overlay" class="loading-overlay">
+        <ui:Label name="loading-label" class="loading-label" text="Loading..." />
+        <ui:VisualElement class="loading-bar-track">
+            <ui:VisualElement name="loading-bar-fill" class="loading-bar-fill" />
         </ui:VisualElement>
-        <ui:Label name="loading-percent" class="rh-loading-percent" text="" />
+        <ui:Label name="loading-percent" class="loading-percent" text="" />
     </ui:VisualElement>
 
     <!-- Exit button (top-left) -->
-    <ui:Button name="exit-btn" class="rh-hud-btn rh-exit-btn" text="X" />
+    <ui:Button name="exit-btn" class="hud-icon-btn hud-icon-btn--top-left" text="X" />
 
-    <!-- Highlight toggle (top-right) -->
-    <ui:Button name="highlight-btn" class="rh-hud-btn rh-highlight-btn" text="Clearable" />
+    <!-- Highlight toggle (top-right, wider to fit text) -->
+    <ui:Button name="highlight-btn" class="hud-icon-btn rh-highlight-btn" text="Clearable" />
 
     <!-- Controls toggle button (bottom-center, above controls bar) -->
     <ui:Button name="controls-toggle-btn" class="rh-controls-toggle">

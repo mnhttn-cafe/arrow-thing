@@ -1,34 +1,34 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <Style src="MainMenu.uss" />
+    <Style src="Shared.uss" />
     <Style src="Leaderboard.uss" />
 
     <ui:Template name="ConfirmModal" src="project://database/Assets/UI/ConfirmModal.uxml" />
 
     <ui:VisualElement name="leaderboard-root" class="lb-screen">
         <!-- Header row -->
-        <ui:VisualElement class="lb-header">
-            <ui:Button name="lb-back-btn" class="lb-back-btn" text="←" />
-            <ui:Label class="lb-title" text="Leaderboards" />
-            <ui:VisualElement class="lb-scope-toggle">
-                <ui:Button name="lb-local-btn" class="lb-scope-btn lb-scope-btn--active lb-scope-btn--left" text="Local" />
-                <ui:Button name="lb-global-btn" class="lb-scope-btn lb-scope-btn--right" text="Global" />
+        <ui:VisualElement class="screen-header">
+            <ui:Button name="lb-back-btn" class="screen-header__back-btn" text="←" />
+            <ui:Label class="screen-header__title" text="Leaderboards" />
+            <ui:VisualElement class="toggle-group">
+                <ui:Button name="lb-local-btn" class="toggle-group__btn toggle-group__btn--active toggle-group__btn--first" text="Local" />
+                <ui:Button name="lb-global-btn" class="toggle-group__btn toggle-group__btn--last" text="Global" />
             </ui:VisualElement>
         </ui:VisualElement>
 
         <!-- Size tabs -->
-        <ui:VisualElement class="lb-tabs">
-            <ui:Button name="tab-small" class="lb-tab lb-tab--active" text="Small" />
-            <ui:Button name="tab-medium" class="lb-tab" text="Medium" />
-            <ui:Button name="tab-large" class="lb-tab" text="Large" />
-            <ui:Button name="tab-xlarge" class="lb-tab" text="XLarge" />
-            <ui:Button name="tab-all" class="lb-tab" text="All" />
+        <ui:VisualElement class="tab-bar">
+            <ui:Button name="tab-small" class="tab-bar__tab tab-bar__tab--active" text="Small" />
+            <ui:Button name="tab-medium" class="tab-bar__tab" text="Medium" />
+            <ui:Button name="tab-large" class="tab-bar__tab" text="Large" />
+            <ui:Button name="tab-xlarge" class="tab-bar__tab" text="XLarge" />
+            <ui:Button name="tab-all" class="tab-bar__tab" text="All" />
         </ui:VisualElement>
 
         <!-- Sort controls -->
-        <ui:VisualElement class="lb-sort-row">
-            <ui:Button name="sort-fastest" class="lb-sort-btn lb-sort-btn--active" text="Fastest" />
-            <ui:Button name="sort-biggest" class="lb-sort-btn" text="Biggest" />
-            <ui:Button name="sort-favorites" class="lb-sort-btn" text="Favorites" />
+        <ui:VisualElement class="filter-row">
+            <ui:Button name="sort-fastest" class="filter-row__btn filter-row__btn--active" text="Fastest" />
+            <ui:Button name="sort-biggest" class="filter-row__btn" text="Biggest" />
+            <ui:Button name="sort-favorites" class="filter-row__btn" text="Favorites" />
         </ui:VisualElement>
 
         <!-- Entry list -->

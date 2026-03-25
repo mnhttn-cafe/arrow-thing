@@ -1,4 +1,6 @@
-/* Root screen — fills viewport, children don't overflow */
+/* Leaderboard-specific styles. Shared components live in Shared.uss. */
+
+/* Root screen */
 .lb-screen {
     flex-grow: 1;
     background-color: rgb(24, 24, 32);
@@ -11,131 +13,41 @@
     display: none;
 }
 
-/* Header */
-.lb-header {
-    flex-direction: row;
-    align-items: center;
+/* ── Spacing overrides for shared components ──────────────────────── */
+
+.lb-screen .screen-header {
     margin-bottom: 12px;
-    flex-shrink: 0;
 }
 
-.lb-back-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 24px;
-    color: rgb(200, 200, 210);
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 20px;
-    border-width: 0;
-    -unity-text-align: middle-center;
-    margin-right: 12px;
-    flex-shrink: 0;
-}
-
-.lb-back-btn:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.lb-title {
-    font-size: 20px;
-    color: rgb(255, 255, 255);
-    -unity-font-style: bold;
-    flex-grow: 1;
-    flex-shrink: 1;
-    overflow: hidden;
-}
-
-/* Local/Global toggle */
-.lb-scope-toggle {
-    flex-direction: row;
-    flex-shrink: 0;
-}
-
-.lb-scope-btn {
-    font-size: 13px;
-    color: rgb(160, 160, 180);
-    background-color: rgb(45, 45, 60);
-    border-width: 0;
-    padding: 5px 10px;
-    margin: 0 1px;
-}
-
-.lb-scope-btn:hover {
-    background-color: rgb(60, 60, 80);
-}
-
-.lb-scope-btn--active {
-    color: rgb(255, 255, 255);
-    background-color: rgb(70, 70, 100);
-}
-
-.lb-scope-btn--left {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-}
-
-.lb-scope-btn--right {
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-}
-
-/* Size tabs */
-.lb-tabs {
-    flex-direction: row;
-    justify-content: center;
+.lb-screen .tab-bar {
     margin-bottom: 8px;
-    flex-shrink: 0;
 }
 
-.lb-tab {
-    font-size: 15px;
-    color: rgb(160, 160, 180);
-    background-color: rgb(35, 35, 48);
-    border-width: 0;
-    padding: 8px 16px;
-    margin: 0 2px;
-    border-radius: 6px;
-}
-
-.lb-tab:hover {
-    background-color: rgb(50, 50, 68);
-}
-
-.lb-tab--active {
-    color: rgb(255, 255, 255);
-    background-color: rgb(50, 70, 90);
-    border-bottom-width: 2px;
-    border-bottom-color: rgb(120, 180, 240);
-}
-
-/* Sort controls */
-.lb-sort-row {
-    flex-direction: row;
-    justify-content: center;
+.lb-screen .filter-row {
     margin-bottom: 10px;
-    flex-shrink: 0;
 }
 
-.lb-sort-btn {
-    font-size: 13px;
-    color: rgb(140, 140, 160);
-    background-color: transparent;
-    border-width: 0;
-    padding: 4px 12px;
-    margin: 0 2px;
-    border-radius: 4px;
+/* ── Compact modal overrides ──────────────────────────────────────── */
+/* The leaderboard modal is more compact than the default shared modal. */
+
+.lb-screen .modal-box {
+    padding: 28px 40px;
 }
 
-.lb-sort-btn:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+.lb-screen .modal-label {
+    font-size: 20px;
+    margin-bottom: 20px;
 }
 
-.lb-sort-btn--active {
-    color: rgb(255, 255, 255);
-    background-color: rgb(50, 55, 75);
+.lb-screen .modal-btn {
+    width: 100px;
+    font-size: 18px;
+    border-radius: 6px;
+    margin: 0 6px;
 }
 
-/* Scroll area */
+/* ── Scroll area ──────────────────────────────────────────────────── */
+
 .lb-scroll {
     flex-grow: 1;
     flex-shrink: 1;
@@ -178,7 +90,8 @@
     flex-direction: column;
 }
 
-/* Entry rows */
+/* ── Entry rows ───────────────────────────────────────────────────── */
+
 .lb-entry {
     flex-direction: row;
     align-items: center;
@@ -320,7 +233,8 @@
     -unity-background-image-tint-color: rgb(160, 160, 180);
 }
 
-/* Empty state */
+/* ── Empty state ──────────────────────────────────────────────────── */
+
 .lb-empty {
     font-size: 18px;
     color: rgb(120, 120, 140);
@@ -330,7 +244,8 @@
     white-space: normal;
 }
 
-/* Coming soon overlay — covers the list area, not the header/tabs */
+/* ── Coming soon overlay ──────────────────────────────────────────── */
+
 .lb-coming-soon {
     flex-grow: 1;
     background-color: rgba(24, 24, 32, 0.9);
@@ -344,7 +259,8 @@
     -unity-font-style: bold;
 }
 
-/* Context menu */
+/* ── Context menu ─────────────────────────────────────────────────── */
+
 .lb-context-menu {
     position: absolute;
     background-color: rgb(45, 45, 60);
