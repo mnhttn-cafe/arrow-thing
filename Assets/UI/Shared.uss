@@ -1,0 +1,351 @@
+/* ====================================================================
+   Shared.uss — Reusable UI components
+   Add <Style src="Shared.uss" /> to every UXML document that uses
+   any of these classes.
+   ==================================================================== */
+
+/* ── Loading Overlay ──────────────────────────────────────────────── */
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(26, 26, 46, 0.85);
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-label {
+    font-size: 32px;
+    color: rgb(180, 180, 200);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+}
+
+.loading-bar-track {
+    width: 300px;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    margin-top: 20px;
+    overflow: hidden;
+}
+
+.loading-bar-fill {
+    height: 100%;
+    width: 0%;
+    background-color: rgb(80, 160, 220);
+    border-radius: 4px;
+}
+
+.loading-percent {
+    font-size: 18px;
+    color: rgb(140, 140, 160);
+    margin-top: 8px;
+    -unity-text-align: middle-center;
+}
+
+/* ── HUD Icon Button ──────────────────────────────────────────────── */
+/*
+   Base: absolute-positioned circular button.
+   Combine with a position modifier:
+     .hud-icon-btn--top-left / --top-right / --bottom-left / --bottom-right
+   For image-only buttons add .hud-icon-btn--padded instead of relying on
+   font-size centering. Child images should use .hud-icon-btn__icon.
+*/
+
+.hud-icon-btn {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    color: rgb(180, 180, 180);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.hud-icon-btn:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.hud-icon-btn:active {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Position modifiers */
+.hud-icon-btn--top-left {
+    top: 16px;
+    left: 16px;
+}
+
+.hud-icon-btn--top-right {
+    top: 16px;
+    right: 16px;
+}
+
+.hud-icon-btn--bottom-left {
+    bottom: 16px;
+    left: 16px;
+}
+
+.hud-icon-btn--bottom-right {
+    bottom: 16px;
+    right: 16px;
+}
+
+/* Toggled/active state — blue tint */
+.hud-icon-btn--active {
+    color: rgb(120, 180, 240);
+    background-color: rgba(120, 180, 240, 0.15);
+}
+
+.hud-icon-btn--active:hover {
+    background-color: rgba(120, 180, 240, 0.25);
+}
+
+/* Use instead of text when the button contains a background-image child */
+.hud-icon-btn--padded {
+    padding: 8px;
+}
+
+/* Standard icon child element */
+.hud-icon-btn__icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────── */
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-box {
+    background-color: rgb(40, 40, 55);
+    border-radius: 12px;
+    padding: 32px 48px;
+    align-items: center;
+    max-width: 90%;
+}
+
+.modal-label {
+    font-size: 24px;
+    color: rgb(255, 255, 255);
+    margin-bottom: 24px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.modal-sublabel {
+    font-size: 16px;
+    color: rgb(140, 140, 160);
+    margin-bottom: 16px;
+    margin-top: -12px;
+}
+
+.modal-buttons {
+    flex-direction: row;
+}
+
+.modal-btn {
+    width: 120px;
+    padding: 10px 0;
+    font-size: 22px;
+    margin: 0 8px;
+    color: rgb(255, 255, 255);
+    background-color: rgb(60, 60, 80);
+    border-radius: 8px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.modal-btn:hover {
+    background-color: rgb(80, 80, 110);
+}
+
+.modal-btn:active {
+    background-color: rgb(100, 100, 140);
+}
+
+/* Destructive action — filled red background */
+.modal-btn--danger {
+    background-color: rgb(160, 50, 50);
+}
+
+.modal-btn--danger:hover {
+    background-color: rgb(190, 60, 60);
+}
+
+/* Small X dismiss button, absolute-positioned inside .modal-box */
+.modal-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    color: rgb(140, 140, 160);
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 16px;
+    -unity-text-align: middle-center;
+}
+
+.modal-close-btn:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Screen Header ────────────────────────────────────────────────── */
+/*
+   Horizontal header row: back button + title + optional right-side controls.
+   Screens should add their own margin-bottom.
+*/
+
+.screen-header {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.screen-header__back-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+    color: rgb(200, 200, 210);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.screen-header__back-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.screen-header__title {
+    font-size: 20px;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+/* ── Tab Bar ──────────────────────────────────────────────────────── */
+/*
+   Horizontal row of tabs with a blue underline on the active tab.
+   Screens should add their own margin-bottom.
+*/
+
+.tab-bar {
+    flex-direction: row;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tab-bar__tab {
+    font-size: 15px;
+    color: rgb(160, 160, 180);
+    background-color: rgb(35, 35, 48);
+    border-width: 0;
+    padding: 8px 16px;
+    margin: 0 2px;
+    border-radius: 6px;
+}
+
+.tab-bar__tab:hover {
+    background-color: rgb(50, 50, 68);
+}
+
+.tab-bar__tab--active {
+    color: rgb(255, 255, 255);
+    background-color: rgb(50, 70, 90);
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(120, 180, 240);
+}
+
+/* ── Toggle Group ─────────────────────────────────────────────────── */
+/*
+   Pill-shaped button pair (e.g. Local / Global).
+   First button gets --first, last button gets --last.
+*/
+
+.toggle-group {
+    flex-direction: row;
+    flex-shrink: 0;
+}
+
+.toggle-group__btn {
+    font-size: 13px;
+    color: rgb(160, 160, 180);
+    background-color: rgb(45, 45, 60);
+    border-width: 0;
+    padding: 5px 10px;
+    margin: 0 1px;
+}
+
+.toggle-group__btn:hover {
+    background-color: rgb(60, 60, 80);
+}
+
+.toggle-group__btn--active {
+    color: rgb(255, 255, 255);
+    background-color: rgb(70, 70, 100);
+}
+
+.toggle-group__btn--first {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.toggle-group__btn--last {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/* ── Filter Row ───────────────────────────────────────────────────── */
+/*
+   Row of transparent filter/sort buttons; active one gets a filled pill.
+   Screens should add their own margin-bottom.
+*/
+
+.filter-row {
+    flex-direction: row;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.filter-row__btn {
+    font-size: 13px;
+    color: rgb(140, 140, 160);
+    background-color: transparent;
+    border-width: 0;
+    padding: 4px 12px;
+    margin: 0 2px;
+    border-radius: 4px;
+}
+
+.filter-row__btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.filter-row__btn--active {
+    color: rgb(255, 255, 255);
+    background-color: rgb(50, 55, 75);
+}

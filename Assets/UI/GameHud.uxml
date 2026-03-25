@@ -1,4 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Shared.uss" />
     <Style src="GameHud.uss" />
 
     <ui:VisualElement name="loading-overlay" class="loading-overlay">
@@ -9,9 +10,9 @@
         <ui:Label name="loading-percent" class="loading-percent" text="" />
     </ui:VisualElement>
 
-    <ui:Button name="back-to-menu-btn" class="hud-btn" text="X" />
+    <ui:Button name="back-to-menu-btn" class="hud-icon-btn hud-icon-btn--top-left" text="X" />
     <ui:Label name="timer-label" class="timer-label" text="15" />
-    <ui:Button name="trail-toggle-btn" class="hud-btn hud-btn--bottom-right" text="||" />
+    <ui:Button name="trail-toggle-btn" class="hud-icon-btn hud-icon-btn--bottom-right" text="||" />
 
     <ui:VisualElement name="leave-modal" class="modal-overlay modal--hidden">
         <ui:VisualElement class="modal-box">

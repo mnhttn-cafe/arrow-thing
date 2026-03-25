@@ -183,9 +183,9 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         for (int i = 0; i < _tabButtons.Length; i++)
         {
             if (i == index)
-                _tabButtons[i].AddToClassList("lb-tab--active");
+                _tabButtons[i].AddToClassList("tab-bar__tab--active");
             else
-                _tabButtons[i].RemoveFromClassList("lb-tab--active");
+                _tabButtons[i].RemoveFromClassList("tab-bar__tab--active");
         }
 
         DismissContextMenu();
@@ -209,9 +209,9 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         for (int i = 0; i < _sortButtons.Length; i++)
         {
             if (i == idx)
-                _sortButtons[i].AddToClassList("lb-sort-btn--active");
+                _sortButtons[i].AddToClassList("filter-row__btn--active");
             else
-                _sortButtons[i].RemoveFromClassList("lb-sort-btn--active");
+                _sortButtons[i].RemoveFromClassList("filter-row__btn--active");
         }
         RefreshList();
         _scroll.verticalScroller.value = 0;
@@ -222,16 +222,16 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         _isGlobalView = isGlobal;
         if (isGlobal)
         {
-            globalBtn.AddToClassList("lb-scope-btn--active");
-            localBtn.RemoveFromClassList("lb-scope-btn--active");
+            globalBtn.AddToClassList("toggle-group__btn--active");
+            localBtn.RemoveFromClassList("toggle-group__btn--active");
             ShowElement(_comingSoon, true);
             ShowElement(_scroll, false);
             ShowElement(_emptyLabel, false);
         }
         else
         {
-            localBtn.AddToClassList("lb-scope-btn--active");
-            globalBtn.RemoveFromClassList("lb-scope-btn--active");
+            localBtn.AddToClassList("toggle-group__btn--active");
+            globalBtn.RemoveFromClassList("toggle-group__btn--active");
             ShowElement(_comingSoon, false);
             RefreshList();
         }

@@ -1,73 +1,7 @@
-/* Loading overlay */
-.rh-loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(26, 26, 46, 0.85);
-    align-items: center;
-    justify-content: center;
-}
+/* ReplayHud-specific styles. Shared components live in Shared.uss. */
 
-.rh-loading-overlay--hidden {
-    display: none;
-}
-
-.rh-loading-label {
-    font-size: 32px;
-    color: rgb(180, 180, 200);
-    -unity-font-style: bold;
-    letter-spacing: 2px;
-    margin-bottom: 24px;
-}
-
-.rh-loading-bar-track {
-    width: 300px;
-    height: 8px;
-    background-color: rgba(255, 255, 255, 0.12);
-    border-radius: 4px;
-    margin-top: 20px;
-    overflow: hidden;
-}
-
-.rh-loading-bar-fill {
-    height: 100%;
-    width: 0%;
-    background-color: rgb(80, 160, 220);
-    border-radius: 4px;
-}
-
-.rh-loading-percent {
-    font-size: 18px;
-    color: rgb(140, 140, 160);
-    margin-top: 8px;
-    -unity-text-align: middle-center;
-}
-
-/* HUD buttons */
-.rh-hud-btn {
-    position: absolute;
-    width: 48px;
-    height: 48px;
-    font-size: 28px;
-    color: rgb(180, 180, 180);
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    border-width: 0;
-    -unity-text-align: middle-center;
-}
-
-.rh-hud-btn:hover {
-    color: rgb(255, 255, 255);
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.rh-exit-btn {
-    top: 16px;
-    left: 16px;
-}
-
+/* ── Highlight button overrides ───────────────────────────────────── */
+/* Overrides the fixed 48px width so the button fits its text label. */
 .rh-highlight-btn {
     top: 16px;
     right: 16px;
@@ -85,7 +19,7 @@
     background-color: rgba(0, 223, 255, 0.22);
 }
 
-/* Controls toggle button */
+/* ── Controls toggle button ───────────────────────────────────────── */
 .rh-controls-toggle {
     position: absolute;
     bottom: 100px;
@@ -123,7 +57,7 @@
     display: none;
 }
 
-/* Bottom controls bar */
+/* ── Bottom controls bar ──────────────────────────────────────────── */
 .rh-controls-bar {
     position: absolute;
     bottom: 0;
