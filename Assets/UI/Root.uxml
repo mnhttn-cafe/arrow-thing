@@ -27,6 +27,7 @@
     </ui:VisualElement>
 
     <ui:VisualElement name="mode-select" class="screen screen--hidden">
+        <ui:Button name="mode-back-btn" class="hud-icon-btn hud-icon-btn--top-left" text="←" />
         <ui:Button name="trophy-btn" class="hud-icon-btn hud-icon-btn--top-right hud-icon-btn--padded">
             <ui:VisualElement class="trophy-icon" />
         </ui:Button>
@@ -46,13 +47,11 @@
                 <ui:Label class="preset-custom-dim-label" text="H" />
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:VisualElement class="mode-action-row">
-            <ui:Button name="mode-back-btn" class="mode-action-btn mode-back-btn" text="Back" />
-            <ui:Button name="start-btn" class="mode-action-btn start-btn" text="Start" />
-        </ui:VisualElement>
+        <ui:Button name="start-btn" class="menu-btn start-btn" text="Start" />
     </ui:VisualElement>
 
     <ui:VisualElement name="settings" class="screen screen--hidden">
+        <ui:Button name="settings-back-btn" class="hud-icon-btn hud-icon-btn--top-left" text="←" />
         <ui:Label class="section-label" text="Settings" />
 
         <ui:VisualElement name="drag-threshold-row" class="setting-row">
@@ -69,8 +68,6 @@
         </ui:VisualElement>
 
         <ui:Button name="clear-scores-btn" class="menu-btn menu-btn--danger" text="Clear All Scores" />
-
-        <ui:Button name="settings-back-btn" class="menu-btn" text="Back" />
     </ui:VisualElement>
 
     <ui:VisualElement name="clear-scores-modal" class="modal-overlay screen--hidden">
