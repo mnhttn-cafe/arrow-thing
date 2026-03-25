@@ -114,10 +114,21 @@
     padding: 8px;
 }
 
-/* Standard icon child element */
+/* Standard icon child element — default tint matches the text colour */
 .hud-icon-btn__icon {
     flex-grow: 1;
     -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(180, 180, 180);
+}
+
+.hud-icon-btn:hover .hud-icon-btn__icon {
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+}
+
+/* ── Named icons ──────────────────────────────────────────────────── */
+
+.icon--arrow-back {
+    background-image: url("/Assets/Art/arrow_back.png");
 }
 
 /* ── Modal ────────────────────────────────────────────────────────── */
@@ -224,18 +235,24 @@
 .screen-header__back-btn {
     width: 40px;
     height: 40px;
-    font-size: 24px;
-    color: rgb(200, 200, 210);
+    padding: 7px;
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 20px;
     border-width: 0;
-    -unity-text-align: middle-center;
     margin-right: 12px;
     flex-shrink: 0;
 }
 
 .screen-header__back-btn:hover {
     background-color: rgba(255, 255, 255, 0.15);
+}
+
+.screen-header__back-btn .hud-icon-btn__icon {
+    -unity-background-image-tint-color: rgb(200, 200, 210);
+}
+
+.screen-header__back-btn:hover .hud-icon-btn__icon {
+    -unity-background-image-tint-color: rgb(255, 255, 255);
 }
 
 .screen-header__title {

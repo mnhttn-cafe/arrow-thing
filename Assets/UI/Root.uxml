@@ -27,16 +27,18 @@
     </ui:VisualElement>
 
     <ui:VisualElement name="mode-select" class="screen screen--hidden">
-        <ui:Button name="mode-back-btn" class="hud-icon-btn hud-icon-btn--top-left" text="←" />
+        <ui:Button name="mode-back-btn" class="hud-icon-btn hud-icon-btn--top-left hud-icon-btn--padded">
+            <ui:VisualElement class="hud-icon-btn__icon icon--arrow-back" />
+        </ui:Button>
         <ui:Button name="trophy-btn" class="hud-icon-btn hud-icon-btn--top-right hud-icon-btn--padded">
             <ui:VisualElement class="trophy-icon" />
         </ui:Button>
         <ui:Label class="section-label" text="Select Board Size" />
         <ui:VisualElement class="preset-grid">
-            <ui:Button name="preset-small"  class="preset-btn" text="Small&#10;10 × 10" />
-            <ui:Button name="preset-medium" class="preset-btn" text="Medium&#10;20 × 20" />
-            <ui:Button name="preset-large"  class="preset-btn" text="Large&#10;40 × 40" />
-            <ui:Button name="preset-xlarge" class="preset-btn" text="XLarge&#10;100 × 100" />
+            <ui:Button name="preset-small"  class="preset-btn" text="Small&#10;10 x 10" />
+            <ui:Button name="preset-medium" class="preset-btn" text="Medium&#10;20 x 20" />
+            <ui:Button name="preset-large"  class="preset-btn" text="Large&#10;40 x 40" />
+            <ui:Button name="preset-xlarge" class="preset-btn" text="XLarge&#10;100 x 100" />
             <ui:Button name="preset-custom" class="preset-btn" text="Custom" />
         </ui:VisualElement>
         <ui:VisualElement name="custom-panel" class="custom-panel screen--hidden">
@@ -51,7 +53,9 @@
     </ui:VisualElement>
 
     <ui:VisualElement name="settings" class="screen screen--hidden">
-        <ui:Button name="settings-back-btn" class="hud-icon-btn hud-icon-btn--top-left" text="←" />
+        <ui:Button name="settings-back-btn" class="hud-icon-btn hud-icon-btn--top-left hud-icon-btn--padded">
+            <ui:VisualElement class="hud-icon-btn__icon icon--arrow-back" />
+        </ui:Button>
         <ui:Label class="section-label" text="Settings" />
 
         <ui:VisualElement name="drag-threshold-row" class="setting-row">
