@@ -128,39 +128,6 @@
     -unity-text-align: middle-center;
 }
 
-/* Action row: Back + Start side by side */
-.mode-action-row {
-    flex-direction: row;
-    justify-content: center;
-    margin-top: 16px;
-}
-
-/* Shared base for both action buttons */
-.mode-action-btn {
-    width: 145px;
-    padding: 14px 0;
-    margin: 0 5px;
-    font-size: 26px;
-    color: rgb(255, 255, 255);
-    border-radius: 8px;
-    border-width: 0;
-    -unity-text-align: middle-center;
-    flex-shrink: 1;
-}
-
-/* Back button styling */
-.mode-back-btn {
-    background-color: rgb(60, 60, 80);
-}
-
-.mode-back-btn:hover {
-    background-color: rgb(80, 80, 110);
-}
-
-.mode-back-btn:active {
-    background-color: rgb(100, 100, 140);
-}
-
 /* Start button styling */
 .start-btn {
     background-color: rgb(40, 120, 60);
