@@ -7,7 +7,9 @@
     <ui:VisualElement name="leaderboard-root" class="lb-screen">
         <!-- Header row -->
         <ui:VisualElement class="screen-header">
-            <ui:Button name="lb-back-btn" class="screen-header__back-btn" text="←" />
+            <ui:Button name="lb-back-btn" class="screen-header__back-btn">
+                <ui:VisualElement class="hud-icon-btn__icon icon--arrow-back" />
+            </ui:Button>
             <ui:Label class="screen-header__title" text="Leaderboards" />
             <ui:VisualElement class="toggle-group">
                 <ui:Button name="lb-local-btn" class="toggle-group__btn toggle-group__btn--active toggle-group__btn--first" text="Local" />

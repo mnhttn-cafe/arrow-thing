@@ -315,7 +315,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         // Size (All tab only)
         if (showSize)
         {
-            var sizeLabel = new Label($"{entry.boardWidth}×{entry.boardHeight}");
+            var sizeLabel = new Label($"{entry.boardWidth}x{entry.boardHeight}");
             sizeLabel.AddToClassList("lb-size");
             row.Add(sizeLabel);
         }
