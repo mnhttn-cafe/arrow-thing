@@ -23,8 +23,8 @@ public class JwtHelper
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim("username", user.Username),
             new Claim("display_name", user.DisplayName),
+            new Claim("security_stamp", user.SecurityStamp),
         };
 
         var credentials = new SigningCredentials(

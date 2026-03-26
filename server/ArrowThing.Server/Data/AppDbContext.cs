@@ -15,13 +15,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(u => u.Id);
-            entity.Property(u => u.Username).HasMaxLength(20).IsRequired();
+            entity.Property(u => u.Email).HasMaxLength(254).IsRequired();
             entity.Property(u => u.DisplayName).HasMaxLength(24).IsRequired();
             entity.Property(u => u.PasswordHash).IsRequired();
             entity.Property(u => u.CreatedAt).IsRequired();
 
-            // Username is stored lowercase; app layer normalizes on write.
-            entity.HasIndex(u => u.Username).IsUnique();
+            // Email is stored lowercase; app layer normalizes on write.
+            entity.HasIndex(u => u.Email).IsUnique();
         });
     }
 }

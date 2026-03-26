@@ -3,6 +3,7 @@ using System;
 using ArrowThing.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ArrowThing.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326012805_ReplaceVerificationTokenWithCode")]
+    partial class ReplaceVerificationTokenWithCode
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
@@ -52,19 +55,19 @@ namespace ArrowThing.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("PasswordResetCode")
+                    b.Property<DateTime?>("PasswordResetTokenExpiresAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("PasswordResetCodeExpiresAt")
+                    b.Property<string>("PasswordResetTokenHash")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PendingEmail")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("PendingEmailCode")
+                    b.Property<DateTime?>("PendingEmailTokenExpiresAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("PendingEmailCodeExpiresAt")
+                    b.Property<string>("PendingEmailTokenHash")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SecurityStamp")
