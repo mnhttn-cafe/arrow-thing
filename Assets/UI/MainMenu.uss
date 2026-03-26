@@ -595,6 +595,21 @@
     white-space: normal;
 }
 
+.account-success {
+    font-size: 14px;
+    color: rgb(100, 220, 120);
+    margin-bottom: 8px;
+    white-space: normal;
+}
+
+.account-info-text {
+    font-size: 14px;
+    color: rgb(160, 160, 175);
+    margin-bottom: 12px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
 .account-submit-btn {
     width: auto;
     align-self: stretch;
