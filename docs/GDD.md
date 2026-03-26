@@ -3,9 +3,9 @@
 ## Metadata
 - Working Title: Arrow Thing
 - Genre: Minimalist puzzle, speed-clearing, competitive PvP (planned)
-- Platform(s): WebGL (primary, deployed via GitHub Pages); mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
+- Platform(s): WebGL (primary, deployed via Cloudflare Pages); mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
-- Status: Active development. Playable on GitHub Pages
+- Status: Active development. Playable at https://arrow-thing.com/
 - Last Updated: 2026-03-19
 
 ## High Concept
@@ -199,7 +199,7 @@
   - Core click/tap clear loop with success/fail animations.
   - Timer UI (inspection countdown + solve timer with input-precision final time).
   - Victory screen (grid fade + victory popup with randomized messages, Play Again / Menu).
-  - WebGL deployment via GitHub Pages with CD pipeline.
+  - WebGL deployment via Cloudflare Pages with CD pipeline.
   - Map-coloring arrow tinting (graph coloring for adjacent arrow readability).
   - XLarge preset (100×100) and custom board sizes (2–400).
   - Loading progress bar with percentage for large board generation.
@@ -209,11 +209,11 @@
   - Cancel generation confirmation modal.
   - Trajectory highlight toggle for large boards.
   - Incremental board display during generation and restore.
+  - Local leaderboards and personal best tracking with replay storage.
+  - Replay viewer with seek, speed control, and clearable highlighting.
 
 ### Planned
   - Audio feedback for success/fail/clear.
-  - Local leaderboards and personal best tracking.
-  - Replay viewer for saved replays.
   - Online features (see [`docs/OnlineRoadmap.md`](OnlineRoadmap.md)): server, global leaderboards, accounts.
   - PvP: real-time garbage mechanics, matchmaking.
 
