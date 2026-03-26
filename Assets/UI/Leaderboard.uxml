@@ -1,5 +1,8 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="MainMenu.uss" />
     <Style src="Leaderboard.uss" />
+
+    <ui:Template name="ConfirmModal" src="project://database/Assets/UI/ConfirmModal.uxml" />
 
     <ui:VisualElement name="leaderboard-root" class="lb-screen">
         <!-- Header row -->
@@ -46,15 +49,8 @@
             <ui:Button name="ctx-delete-btn" class="lb-ctx-btn lb-ctx-btn--danger" text="Delete" />
         </ui:VisualElement>
 
-        <!-- Delete confirmation modal -->
-        <ui:VisualElement name="lb-delete-modal" class="lb-modal-overlay lb--hidden">
-            <ui:VisualElement class="lb-modal-box">
-                <ui:Label class="lb-modal-label" text="Delete this favorited entry?" />
-                <ui:VisualElement class="lb-modal-buttons">
-                    <ui:Button name="delete-yes-btn" class="lb-modal-btn lb-modal-btn--danger" text="Delete" />
-                    <ui:Button name="delete-no-btn" class="lb-modal-btn" text="Cancel" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-        </ui:VisualElement>
     </ui:VisualElement>
+
+    <!-- Delete confirmation modal (reusable ConfirmModal, configured in C#) -->
+    <ui:Instance template="ConfirmModal" name="delete-modal" class="modal-instance" />
 </ui:UXML>

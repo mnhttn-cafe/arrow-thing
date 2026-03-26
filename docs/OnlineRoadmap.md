@@ -16,7 +16,7 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 
 ### Server Foundation
 
-- **ASP.NET Core 8 Minimal API** — lightweight (~30-50 MB idle RAM in Docker), C#, shares domain code. Use Workstation GC in container (`<ServerGarbageCollection>false</ServerGarbageCollection>`) for lower memory on small VPS.
+- **ASP.NET Core 9 Minimal API** — lightweight (~30-50 MB idle RAM in Docker), C#, shares domain code. Use Workstation GC in container (`<ServerGarbageCollection>false</ServerGarbageCollection>`) for lower memory on small VPS.
 - **Entity Framework Core** — ORM. PostgreSQL for production, SQLite for dev/testing.
 - **BCrypt** — password hashing.
 - **JWT** — stateless auth tokens.
@@ -42,7 +42,7 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 │       └── certs/
 │           ├── origin.pem              # manual (Cloudflare origin cert)
 │           ├── origin-key.pem          # manual (origin private key)
-│           └── cloudflare-origin-pull.pem  # from repo
+│           └── cloudflare-origin-pull.pem  # downloaded by setup.sh
 ├── repo/                               # git clone of the project
 └── backups/                            # daily pg_dump output
 ```
@@ -70,7 +70,7 @@ Docker bypasses UFW for published ports — this is why only nginx has `ports:` 
 | **Authenticated Origin Pulls** | Enabled (zone-level) |
 | **Redirect Rule** | `www.arrow-thing.com*` → `https://arrow-thing.com${1}` (301) |
 | **Cache Rule** | `api.arrow-thing.com` → bypass cache |
-| **Rate Limiting Rule** | `/api/auth/login` and `/api/auth/register` → block 10s after 5 req/10s per IP |
+| **Rate Limiting Rule** | `/api/*` → block 10s after 60 req/10s per IP |
 
 **Hetzner Cloud Firewall**: inbound TCP 22, 80, 443 from any; default-allow outbound.
 
@@ -100,21 +100,31 @@ Docker bypasses UFW for published ports — this is why only nginx has `ports:` 
 
 ### Accounts
 
-Minimal. No email verification, no OAuth, no password reset. Just:
+Email-based authentication with verification, password reset, and email change flows. No OAuth, no usernames — email is the sole login identifier.
 
-- Register with username + password + display name.
-- Login → receive JWT.
+- **Register** with email + password + display name → receive JWT. Verification email sent via Resend.
+- **Login** with email + password → receive JWT. Locked accounts receive 403.
 - JWT included in `Authorization: Bearer` header for authenticated endpoints.
-- **Usernames**: unique, case-insensitive, 3-20 chars, alphanumeric + underscores. Used for login only.
+- **Email**: unique, case-insensitive, used for login. Must be verified to submit scores to leaderboards.
 - **Display names**: shown on leaderboards. 2-24 chars, allows spaces and Unicode. Changeable anytime. Not required to be unique.
-- Passwords: minimum 8 chars, BCrypt hashed.
+- **Passwords**: minimum 8 chars, BCrypt hashed.
+- **SecurityStamp**: included in JWT, validated on every authenticated request. Bumping invalidates all existing tokens.
+
+**Email flows** (via Resend HTTP API) — all flows use 6-digit codes entered in-app (no browser pages):
+- **Email verification**: 6-digit code emailed on registration. 10-minute expiry. Resend with 5-minute cooldown.
+- **Password reset**: 6-digit code emailed on forgot-password request. 10-minute expiry. 5-minute cooldown.
+- **Email change**: requires current password. 6-digit code sent to new email (10-min expiry). Notification sent to old email referencing Discord for support. Race-condition safe (checks uniqueness at confirmation time).
+
+**Admin tooling** (protected by `X-Admin-Key` header, not JWT):
+- **Lock account**: sets `LockedAt`, clears all tokens, reverts pending email changes, bumps SecurityStamp (invalidates all JWTs). Locked accounts cannot log in (403).
+- **Unlock account**: clears `LockedAt`, generates password reset code, sends reset email.
 
 **Client UI**:
 - **Account icon button** in the **top-right** of the main menu. Always visible.
-  - **Not logged in**: opens a register/login panel.
-  - **Logged in**: opens account management (display name change, logout).
-- **`AccountManager`** (new, view layer) — handles registration/login UI, stores JWT in `PlayerPrefs` (WebGL) or platform keychain.
-- **`ApiClient`** (new, view layer) — HTTP client wrapper. Attaches JWT. Handles errors.
+  - **Not logged in**: full-screen account panel with login (default), register, forgot password forms.
+  - **Logged in**: account info (masked email, verify status, display name change, change email, logout).
+- **`AccountManager`** (view layer) — manages 10 forms: login, register, verify code, forgot password, reset password, account info, change email, confirm email code, change password, change display name. Calls `GetMeAsync()` on account info show to refresh state. All forms clear fields on navigation.
+- **`ApiClient`** (view layer) — HTTP client wrapper. Attaches JWT. Handles errors. Stores token/display name/email verified in `PlayerPrefs`.
 - No separate "Online" gate — the game is always playable. Logged-in users automatically submit scores; logged-out users play offline.
 
 ### Server-Side Verification & Global Leaderboards
@@ -228,63 +238,81 @@ The first arrow clear also starts the solve timer (see `InputHandler` / `GameTim
 
 ```
 server/
-├── ArrowThing.Server/           # ASP.NET Core web API
-│   ├── Program.cs               # Minimal API endpoints
-│   ├── Auth/
-│   │   ├── AuthService.cs       # Registration, login, JWT issuance
-│   │   └── PasswordHasher.cs    # BCrypt wrapper
-│   ├── Games/
+├── ArrowThing.Server/           # ASP.NET Core web API (net9.0)
+│   ├── Program.cs               # Minimal API endpoints, DB + JWT middleware wiring
+│   ├── Auth/                    # (implemented)
+│   │   ├── AuthService.cs       # All auth operations (register, login, verify, reset, email change, lock/unlock)
+│   │   ├── AuthDtos.cs          # Request/response records
+│   │   ├── PasswordHasher.cs    # BCrypt wrapper
+│   │   ├── JwtHelper.cs         # HMAC-SHA256 token generation + validation (SecurityStamp claim)
+│   │   ├── IEmailService.cs     # Email service interface
+│   │   └── EmailService.cs      # Resend HTTP API wrapper
+│   ├── Games/                   # (planned)
 │   │   ├── GameService.cs       # Create game, verify replay, submit score
 │   │   └── GameSession.cs       # Pending game tracking
-│   ├── Leaderboards/
+│   ├── Leaderboards/            # (planned)
 │   │   └── LeaderboardService.cs
-│   ├── Data/
-│   │   ├── AppDbContext.cs      # EF Core context
-│   │   └── Migrations/
-│   └── Models/
-│       ├── User.cs              # Id, Username, PasswordHash, CreatedAt
-│       ├── Score.cs             # Id, UserId, GameId, Time, Seed, BoardConfig, Verified, CreatedAt
-│       └── BoardConfig.cs       # Width, Height (value object for partitioning)
-├── ArrowThing.Domain/           # Shared domain code (project reference or symlink)
-└── ArrowThing.Server.Tests/     # Server integration tests
+│   ├── Data/                    # (implemented)
+│   │   ├── AppDbContext.cs      # EF Core context with User DbSet (unique email index)
+│   │   └── Migrations/          # CreateUsers, AddEmailAndTokens, AddPendingEmailChange, RemoveUsername
+│   └── Models/                  # (implemented for User, planned for Score)
+│       ├── User.cs              # Id, Email, DisplayName, PasswordHash, SecurityStamp, verification/reset/email-change code fields, lock fields
+│       ├── Score.cs             # Id, UserId, GameId, Time, Seed, BoardConfig, Verified, CreatedAt (planned)
+│       └── BoardConfig.cs       # Width, Height (value object for partitioning) (planned)
+├── ArrowThing.Domain/           # Shared domain code (netstandard2.1, C# 9)
+└── ArrowThing.Server.Tests/     # xUnit integration tests (37 auth tests)
 ```
 
 ### API Endpoints
 
 ```
-POST   /api/auth/register        { username, password, displayName } → { token, displayName }
-POST   /api/auth/login           { username, password } → { token, displayName }
+GET    /health                                                       → 200 OK                                          [implemented]
 
-PATCH  /api/auth/me              [auth] { displayName } → { displayName }
+POST   /api/auth/register        { email, password, displayName }    → { message }                                     [implemented]
+POST   /api/auth/login           { email, password }                 → { token, displayName, emailVerified }           [implemented]
+GET    /api/auth/me              [auth]                              → { email, displayName, emailVerified }           [implemented]
+PATCH  /api/auth/me              [auth] { displayName }              → { displayName }                                 [implemented]
 
-POST   /api/games                [auth] { width, height } → { gameId, seed, maxArrowLength }
-POST   /api/games/{id}/submit    [auth] { events, finalTime } → { verified, rank, isPersonalBest }
+POST   /api/auth/verify-code            { email, code }              → { token, displayName, emailVerified }           [implemented]
+POST   /api/auth/resend-verification    { email }                    → { message }                                     [implemented]
+POST   /api/auth/forgot-password        { email }                    → { message }                                     [implemented]
+POST   /api/auth/reset-password         { email, code, newPassword } → { message }                                     [implemented]
+POST   /api/auth/change-password [auth] { currentPassword, newPwd }  → { message }                                     [implemented]
+POST   /api/auth/change-email    [auth] { newEmail, currentPassword }→ { message }                                     [implemented]
+POST   /api/auth/confirm-email-change [auth] { email, code }         → { message }                                     [implemented]
 
-GET    /api/leaderboards/{w}x{h}?limit=50          → { entries: [{ rank, displayName, time, gameId }] }
-GET    /api/leaderboards/{w}x{h}/me                [auth] → { rank, time, personalBest }
+POST   /api/admin/lock-account   [admin] { email }                   → { message }                                     [implemented]
+POST   /api/admin/unlock-account [admin] { email }                   → { message }                                     [implemented]
 
-GET    /api/replays/{gameId}                        → { seed, width, height, events, finalTime }
+POST   /api/games                [auth] { width, height }           → { gameId, seed, maxArrowLength }                [planned]
+POST   /api/games/{id}/submit    [auth] { events, finalTime }       → { verified, rank, isPersonalBest }              [planned]
+
+GET    /api/leaderboards/{w}x{h}?limit=50                           → { entries: [{ rank, displayName, time, gameId }] } [planned]
+GET    /api/leaderboards/{w}x{h}/me                [auth]           → { rank, time, personalBest }                    [planned]
+
+GET    /api/replays/{gameId}                                         → { seed, width, height, events, finalTime }      [planned]
 ```
 
 ### Domain Code Sharing
 
 The domain layer (`Cell`, `Arrow`, `Board`, `BoardGeneration`, `ReplayVerifier`) must compile without Unity references. Current state: already true — all domain code is pure C#.
 
-**Approach**: Monorepo with a shared `ArrowThing.Domain.csproj` that compiles the domain source files via relative paths. No symlinks, no NuGet packages, no file copies. Unity continues using the loose `.cs` files directly; the server references the shared project.
+**Approach**: Monorepo with a shared `ArrowThing.Domain.csproj` that compiles the domain source files via relative paths. No symlinks, no NuGet packages, no file copies. Unity continues using the loose `.cs` files directly; the server references the shared project. **Implemented** — domain builds clean against Unity sources, pinned to C# 9 / netstandard2.1 for Unity compatibility. Newtonsoft.Json added as NuGet dependency (Unity ships it natively).
 
 ```
 arrow-thing/                              # monorepo root
 ├── Assets/Scripts/Domain/                # source of truth (Unity uses directly)
 ├── server/
+│   ├── ArrowThing.sln                    # solution file for all server projects
 │   ├── ArrowThing.Domain/
-│   │   └── ArrowThing.Domain.csproj      # netstandard2.1, <Compile Include="../../Assets/Scripts/Domain/**/*.cs" />
-│   ├── ArrowThing.Server/                # ASP.NET Core API, <ProjectReference> to Domain
+│   │   └── ArrowThing.Domain.csproj      # netstandard2.1 C# 9, <Compile Include="../../Assets/Scripts/Domain/**/*.cs" />
+│   ├── ArrowThing.Server/                # ASP.NET Core net9.0, <ProjectReference> to Domain
 │   │   └── ArrowThing.Server.csproj
-│   └── ArrowThing.Server.Tests/
+│   └── ArrowThing.Server.Tests/          # xUnit integration tests, <ProjectReference> to Server
 │       └── ArrowThing.Server.Tests.csproj
 ```
 
-The domain `.csproj` targets `netstandard2.1` for compatibility with both Unity's C# 9 and .NET 8. No code duplication — one source of truth, two consumers.
+The domain `.csproj` targets `netstandard2.1` with `LangVersion 9` for compatibility with Unity's C# 9 compiler. The server targets `net9.0`. No code duplication — one source of truth, two consumers.
 
 ---
 
@@ -329,11 +357,23 @@ Shown inline within the victory modal.
 
 ```
 User:
-  Id            GUID
-  Username      string (unique, case-insensitive, login only)
-  DisplayName   string (shown on leaderboards, changeable)
-  PasswordHash  string (BCrypt)
-  CreatedAt     DateTime
+  Id                          GUID
+  Email                       string (unique, case-insensitive, login identifier)
+  DisplayName                 string (shown on leaderboards, changeable)
+  PasswordHash                string (BCrypt)
+  SecurityStamp               string (GUID, included in JWT, bumped to invalidate sessions)
+  CreatedAt                   DateTime
+  EmailVerifiedAt             DateTime? (null = unverified)
+  VerificationCode            string? (6-digit code)
+  VerificationCodeExpiresAt   DateTime?
+  LastVerificationEmailAt     DateTime?
+  PasswordResetCode           string? (6-digit code)
+  PasswordResetCodeExpiresAt  DateTime?
+  LastPasswordResetEmailAt    DateTime?
+  PendingEmail                string? (new email awaiting confirmation)
+  PendingEmailCode            string? (6-digit code)
+  PendingEmailCodeExpiresAt   DateTime?
+  LockedAt                    DateTime? (non-null = locked, blocks login)
 
 Score:
   Id          GUID
@@ -366,16 +406,18 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 | `TapIndicator` | View | Done | Expanding/fading ring at tap position during replay |
 | `TapIndicatorPool` | View | Done | Object pool for tap indicators with procedural ring sprite |
 | `ReplayVerifier` | Domain | Planned | Simulates replay for server-side verification |
-| `ApiClient` | View | Planned | HTTP client, JWT, error handling, offline detection |
-| `AccountManager` | View | Planned | Account icon UI (login/register/display name/logout), token storage |
+| `ApiClient` | View | Done | HTTP client, JWT attachment, all auth endpoints (register/login/me/display name/forgot password/resend verification/change email), token storage in PlayerPrefs |
+| `AccountManager` | View | Done | Full-screen account panel with 6 forms (login/register/verify/forgot password/account info/change email), masked email display |
+| `ConfirmModal` | View | Done | Reusable confirm modal wrapper (configures ConfirmModal.uxml template) |
 | `OnlineController` | View | Planned | Coordinates online flow (request game → play → submit) |
+| `ServerHealthCheck` | Editor | Done | Editor menu item (Tools > Arrow Thing) to test server connectivity |
 
 ## Modified Scripts
 
 | Script | Changes |
 |--------|---------|
 | `InputHandler` | ~~Record events to `ReplayRecorder` on each tap~~ (done) |
-| `MainMenuController` | Trophy button on mode select (done). Account icon button (planned) |
+| `MainMenuController` | Trophy button on mode select (done). Account icon button (done). Reusable ConfirmModal for quit/clear-scores (done) |
 | `VictoryController` | Personal best gold highlight, "New Best!" indicator, "View Leaderboard" button (done). Inline top-10 leaderboard (planned) |
 | `GameController` | Refactored to use `BoardSetupHelper` (done). Wire `OnlineController` (planned) |
 | `GameSettings` | `StartReplay`/`ClearReplay` for replay scene transition, `LeaderboardFocusGameId` for auto-scroll (done). Server `Seed` field (planned) |
@@ -389,17 +431,22 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 ### Automated (NUnit EditMode)
 - `ReplayVerifier`: valid replays pass, invalid replays (wrong cell, skipped arrow, bad order) fail
 
-### Automated (Server Integration)
-- Auth: register, login, duplicate username rejection, bad password rejection
-- Auth: display name change (`PATCH /api/auth/me`)
-- Game sessions: create, submit valid replay (with `isPersonalBest` check), reject invalid replay
-- Leaderboards: ranking correctness, partitioning by board size, personal best query
-- Replays: fetch stored replay by gameId
+### Automated (Server Integration — 32 tests)
+- Auth: register, login (email-based), duplicate email rejection, validation errors
+- Auth: display name change (`PATCH /api/auth/me`), `GET /api/auth/me`
+- Email verification: verify token, resend with rate limiting
+- Password reset: forgot password, reset with token, expired token
+- Email change: request, confirm, wrong password, same email, invalid token, race condition (email taken)
+- Account lock/unlock: lock invalidates sessions + blocks login, unlock sends reset email + allows recovery
+- Admin: valid/invalid/missing X-Admin-Key
+- Game sessions: create, submit valid replay (with `isPersonalBest` check), reject invalid replay (planned)
+- Leaderboards: ranking correctness, partitioning by board size, personal best query (planned)
+- Replays: fetch stored replay by gameId (planned)
 
 ### Manual
 - **Full online flow**: register → play → submit → see score on leaderboard → play replay
 - **Offline play**: server unreachable → game works normally → score appears on local leaderboard only → no errors
-- **Account UI**: account icon (top-right) → register/login panel → display name change → logout
+- **Account UI**: account icon (top-right) → full-screen login/register → email verification → display name change → email change → logout
 - **Victory personal best**: gold timer during board-clear, gold highlight in inline leaderboard, "New Best!" text
 - **Leaderboard scene**: tabs, local/global toggle, top 50, replay playback
 - **Error handling**: server down mid-game, network timeout, expired token

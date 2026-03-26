@@ -84,3 +84,8 @@ Assets/Resources.meta
 # Server project files (override Unity *.csproj ignore)
 !server/**/*.csproj
 !server/**/*.sln
+
+# SQLite dev database
+server/ArrowThing.Server/arrowthing.db
+server/ArrowThing.Server/arrowthing.db-shm
+server/ArrowThing.Server/arrowthing.db-wal

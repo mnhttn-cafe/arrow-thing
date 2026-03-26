@@ -29,7 +29,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private Label _emptyLabel;
     private VisualElement _comingSoon;
     private VisualElement _contextMenu;
-    private VisualElement _deleteModal;
+    private ConfirmModal _deleteModal;
 
     private Button[] _tabButtons;
     private Button[] _sortButtons;
@@ -59,7 +59,6 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         _emptyLabel = _root.Q<Label>("lb-empty");
         _comingSoon = _root.Q("lb-coming-soon");
         _contextMenu = _root.Q("lb-context-menu");
-        _deleteModal = _root.Q("lb-delete-modal");
 
         // Back button
         _root.Q<Button>("lb-back-btn").clicked += OnBack;
@@ -91,9 +90,16 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         // Context menu buttons (delete only — favorite is a direct icon toggle)
         _root.Q<Button>("ctx-delete-btn").clicked += OnContextDelete;
 
-        // Delete modal buttons
-        _root.Q<Button>("delete-yes-btn").clicked += OnDeleteConfirm;
-        _root.Q<Button>("delete-no-btn").clicked += OnDeleteCancel;
+        // Delete confirmation modal (reusable ConfirmModal template)
+        _deleteModal = new ConfirmModal(
+            _root.Q("delete-modal"),
+            "Delete this favorited entry?",
+            "Delete",
+            "Cancel",
+            isDanger: true
+        );
+        _deleteModal.Confirmed += OnDeleteConfirm;
+        _deleteModal.Cancelled += OnDeleteCancel;
 
         // Dismiss context menu on click outside or scroll
         _root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
@@ -459,12 +465,17 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         if (_contextGameId == null)
             return;
 
+        // Re-check favorite status in case it was toggled while the context menu was open
+        var manager = LeaderboardManager.Instance;
+        if (manager != null)
+            _contextIsFavorite = manager.IsFavorite(_contextGameId);
+
         // If favorited, show confirmation modal
         if (_contextIsFavorite)
         {
             _pendingDeleteGameId = _contextGameId;
             DismissContextMenu();
-            ShowElement(_deleteModal, true);
+            _deleteModal.Show();
         }
         else
         {
@@ -474,7 +485,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
     private void OnDeleteConfirm()
     {
-        ShowElement(_deleteModal, false);
+        _deleteModal.Hide();
         if (_pendingDeleteGameId != null)
         {
             var manager = LeaderboardManager.Instance;
@@ -487,7 +498,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
     private void OnDeleteCancel()
     {
-        ShowElement(_deleteModal, false);
+        _deleteModal.Hide();
         _pendingDeleteGameId = null;
     }
 
