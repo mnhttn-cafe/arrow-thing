@@ -110,6 +110,11 @@
                 <ui:VisualElement name="section-gameplay" class="settings-section settings-section--divider">
                     <ui:Label class="settings-section-header" text="Gameplay" />
 
+                    <ui:VisualElement class="setting-row setting-row--toggle">
+                        <ui:Label class="setting-label" text="Theme" />
+                        <ui:DropdownField name="theme-dropdown" class="setting-dropdown" />
+                    </ui:VisualElement>
+
                     <ui:VisualElement name="drag-threshold-row" class="setting-row">
                         <ui:Label class="setting-label" text="Drag Threshold" />
                     </ui:VisualElement>

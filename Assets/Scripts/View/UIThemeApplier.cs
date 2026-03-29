@@ -2,25 +2,37 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Injects the theme stylesheet from VisualSettings into the UIDocument's
-/// root VisualElement so all USS var(--...) references resolve correctly.
-/// Attach to the same GameObject as the UIDocument.
+/// Keeps the UIDocument's root stylesheet in sync with the active theme from
+/// <see cref="ThemeManager"/>. Attach to every UIDocument GameObject; no
+/// per-component configuration is needed — all appliers update automatically
+/// when <see cref="ThemeManager.Apply"/> is called.
 /// </summary>
 [RequireComponent(typeof(UIDocument))]
 public sealed class UIThemeApplier : MonoBehaviour
 {
-    [SerializeField]
-    private VisualSettings visualSettings;
+    private StyleSheet _appliedSheet;
 
     private void OnEnable()
     {
-        if (visualSettings == null || visualSettings.themeUIStyleSheet == null)
-            return;
+        ThemeManager.ThemeChanged += ApplyTheme;
+        ApplyTheme(ThemeManager.Current);
+    }
 
+    private void OnDisable()
+    {
+        ThemeManager.ThemeChanged -= ApplyTheme;
+    }
+
+    private void ApplyTheme(VisualSettings settings)
+    {
         var root = GetComponent<UIDocument>().rootVisualElement;
-        var sheet = visualSettings.themeUIStyleSheet;
 
-        if (!root.styleSheets.Contains(sheet))
-            root.styleSheets.Add(sheet);
+        if (_appliedSheet != null && root.styleSheets.Contains(_appliedSheet))
+            root.styleSheets.Remove(_appliedSheet);
+
+        _appliedSheet = settings?.themeUIStyleSheet;
+
+        if (_appliedSheet != null && !root.styleSheets.Contains(_appliedSheet))
+            root.styleSheets.Add(_appliedSheet);
     }
 }

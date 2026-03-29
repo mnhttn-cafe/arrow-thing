@@ -469,6 +469,31 @@
     display: none;
 }
 
+/* Theme dropdown */
+.setting-dropdown {
+    width: 160px;
+    background-color: var(--bg-input);
+    border-color: var(--border-input);
+    border-width: 1px;
+    border-radius: 6px;
+    color: var(--text-primary);
+}
+
+.setting-dropdown .unity-base-popup-field__input {
+    background-color: transparent;
+    border-width: 0;
+    padding: 6px 10px;
+    color: var(--text-primary);
+}
+
+.setting-dropdown .unity-base-popup-field__arrow {
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+.setting-dropdown:hover .unity-base-popup-field__input {
+    background-color: var(--bg-item-hover);
+}
+
 /* SnapSlider component ---------------------------------------------------- */
 
 /* Root container: horizontal row */
