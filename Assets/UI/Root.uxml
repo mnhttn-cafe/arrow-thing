@@ -6,15 +6,17 @@
     <ui:Template name="ModeSelectScreen" src="project://database/Assets/UI/ModeSelectScreen.uxml" />
     <ui:Template name="SettingsScreen" src="project://database/Assets/UI/SettingsScreen.uxml" />
     <ui:Template name="ConfirmModal" src="project://database/Assets/UI/ConfirmModal.uxml" />
-    <ui:Template name="AccountPanel" src="project://database/Assets/UI/AccountPanel.uxml" />
 
     <!-- Screens -->
     <ui:Instance template="MainMenuScreen" name="main-menu" class="screen-instance" />
     <ui:Instance template="ModeSelectScreen" name="mode-select" class="screen-instance screen--hidden" />
-    <ui:Instance template="SettingsScreen" name="settings" class="screen-instance screen--hidden" />
-    <ui:Instance template="AccountPanel" name="account" class="screen-instance screen--hidden" />
+
+    <!-- Settings overlay (absolute, over all screens, Ctrl+O to open/close) -->
+    <ui:Instance template="SettingsScreen" name="settings" class="overlay-instance screen--hidden" />
 
     <!-- Modals (configured by ConfirmModal.cs at runtime) -->
     <ui:Instance template="ConfirmModal" name="quit-modal" class="modal-instance" />
     <ui:Instance template="ConfirmModal" name="clear-scores-modal" class="modal-instance" />
+    <ui:Instance template="ConfirmModal" name="external-link-modal" class="modal-instance" />
+    <ui:Instance template="ConfirmModal" name="logout-modal" class="modal-instance" />
 </ui:UXML>

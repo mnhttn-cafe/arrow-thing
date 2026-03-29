@@ -39,7 +39,7 @@
         </ui:ScrollView>
 
         <!-- Empty state -->
-        <ui:Label name="lb-empty" class="lb-empty lb--hidden" text="No scores yet. Play a game to see your times here!" />
+        <ui:Label name="lb-empty" class="empty-state lb--hidden" text="No scores yet. Play a game to see your times here!" />
 
         <!-- Coming Soon overlay (global) -->
         <ui:VisualElement name="lb-coming-soon" class="lb-coming-soon lb--hidden">
@@ -47,8 +47,8 @@
         </ui:VisualElement>
 
         <!-- Context menu (floating) -->
-        <ui:VisualElement name="lb-context-menu" class="lb-context-menu lb--hidden">
-            <ui:Button name="ctx-delete-btn" class="lb-ctx-btn lb-ctx-btn--danger" text="Delete" />
+        <ui:VisualElement name="lb-context-menu" class="context-menu lb--hidden">
+            <ui:Button name="ctx-delete-btn" class="context-menu__btn context-menu__btn--danger" text="Delete" />
         </ui:VisualElement>
 
     </ui:VisualElement>

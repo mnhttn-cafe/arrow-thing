@@ -1,22 +1,166 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <ui:VisualElement class="screen">
-        <ui:Label class="section-label" text="Settings" />
+    <ui:VisualElement class="screen settings-screen">
 
-        <ui:VisualElement name="drag-threshold-row" class="setting-row">
-            <ui:Label class="setting-label" text="Drag Threshold" />
+        <!-- Panel: the actual settings content -->
+        <ui:VisualElement class="settings-panel">
+
+        <!-- Nav + content row (fills panel) -->
+        <ui:VisualElement class="settings-layout">
+
+            <!-- Left nav sidebar -->
+            <ui:VisualElement class="settings-nav">
+                <ui:Button name="nav-account" class="settings-nav-btn settings-nav-btn--active" text="Account" />
+                <ui:Button name="nav-gameplay" class="settings-nav-btn" text="Gameplay" />
+                <ui:Button name="nav-data" class="settings-nav-btn" text="Data" />
+                <ui:Button name="nav-about" class="settings-nav-btn" text="About" />
+            </ui:VisualElement>
+
+            <!-- Scrollable content -->
+            <ui:ScrollView name="settings-scroll" class="settings-scroll" mode="Vertical">
+
+                <!-- Account section (first) -->
+                <ui:VisualElement name="section-account" class="settings-section">
+                    <ui:Label class="settings-section-header" text="Account" />
+                    <ui:Label name="account-status-label" class="settings-account-status" text="Playing offline as:" />
+
+                    <!-- Display name — always visible, works offline -->
+                    <ui:VisualElement name="display-name-slot" class="settings-display-name-slot" />
+                    <ui:Label name="display-name-error" class="account-error screen--hidden" />
+
+                    <!-- Auth form: login + register combined -->
+                    <ui:VisualElement name="login-form" class="account-form">
+                        <ui:VisualElement name="login-fields" />
+                        <ui:Label name="login-error" class="account-error screen--hidden" />
+                        <ui:VisualElement class="auth-btn-row">
+                            <ui:Button name="login-submit-btn" class="menu-btn account-submit-btn auth-btn auth-btn--primary" text="Log In" />
+                            <ui:Button name="register-submit-btn" class="menu-btn account-submit-btn auth-btn" text="Register" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <!-- Verification code entry -->
+                    <ui:VisualElement name="verify-form" class="account-form screen--hidden">
+                        <ui:Label class="account-form-title" text="Verify your email" />
+                        <ui:Label name="verify-message" class="account-info-text" text="We sent a 6-digit code to your email." />
+                        <ui:VisualElement name="verify-fields" />
+                        <ui:Label name="verify-error" class="account-error screen--hidden" />
+                        <ui:Label name="verify-success" class="account-success screen--hidden" />
+                        <ui:Button name="verify-submit-btn" class="menu-btn account-submit-btn" text="Verify" />
+                        <ui:Button name="resend-verify-btn" class="account-switch-btn" text="Resend code" />
+                        <ui:Button name="verify-back-btn" class="account-switch-btn" text="Back to login" />
+                    </ui:VisualElement>
+
+                    <!-- Forgot password -->
+                    <ui:VisualElement name="forgot-form" class="account-form screen--hidden">
+                        <ui:Label class="account-form-title" text="Reset Password" />
+                        <ui:VisualElement name="forgot-fields" />
+                        <ui:Label name="forgot-error" class="account-error screen--hidden" />
+                        <ui:Label name="forgot-success" class="account-success screen--hidden" />
+                        <ui:Button name="forgot-submit-btn" class="menu-btn account-submit-btn" text="Send Reset Code" />
+                        <ui:Button name="forgot-back-btn" class="account-switch-btn" text="Back to login" />
+                    </ui:VisualElement>
+
+                    <!-- Reset password with code -->
+                    <ui:VisualElement name="reset-form" class="account-form screen--hidden">
+                        <ui:Label class="account-form-title" text="Reset Password" />
+                        <ui:Label name="reset-message" class="account-info-text" />
+                        <ui:VisualElement name="reset-fields" />
+                        <ui:Label name="reset-error" class="account-error screen--hidden" />
+                        <ui:Label name="reset-success" class="account-success screen--hidden" />
+                        <ui:Button name="reset-submit-btn" class="menu-btn account-submit-btn" text="Reset Password" />
+                        <ui:Button name="reset-back-btn" class="account-switch-btn" text="Back to login" />
+                    </ui:VisualElement>
+
+                    <!-- Logged in: Account info -->
+                    <ui:VisualElement name="account-info" class="account-form screen--hidden">
+                        <ui:Label name="account-email" class="account-info-text" />
+                        <ui:Label name="account-error" class="account-error screen--hidden" />
+                        <ui:Button name="change-email-btn" class="account-switch-btn" text="Change email" />
+                        <ui:Button name="change-password-btn" class="account-switch-btn" text="Change password" />
+                        <ui:Button name="logout-btn" class="settings-danger-btn" text="Log out..." />
+                    </ui:VisualElement>
+
+                    <!-- Logged in: Change email -->
+                    <ui:VisualElement name="change-email-form" class="account-form screen--hidden">
+                        <ui:Label class="account-form-title" text="Change Email" />
+                        <ui:VisualElement name="change-email-fields" />
+                        <ui:Label name="change-email-error" class="account-error screen--hidden" />
+                        <ui:Button name="change-email-submit-btn" class="menu-btn account-submit-btn" text="Send Code" />
+                    </ui:VisualElement>
+
+                    <!-- Logged in: Confirm email change code -->
+                    <ui:VisualElement name="confirm-email-form" class="account-form screen--hidden">
+                        <ui:Label class="account-form-title" text="Confirm New Email" />
+                        <ui:Label name="confirm-email-message" class="account-info-text" />
+                        <ui:VisualElement name="confirm-email-fields" />
+                        <ui:Label name="confirm-email-error" class="account-error screen--hidden" />
+                        <ui:Button name="confirm-email-submit-btn" class="menu-btn account-submit-btn" text="Confirm" />
+                    </ui:VisualElement>
+
+                    <!-- Logged in: Change password -->
+                    <ui:VisualElement name="change-password-form" class="account-form screen--hidden">
+                        <ui:Label class="account-form-title" text="Change Password" />
+                        <ui:VisualElement name="change-password-fields" />
+                        <ui:Label name="change-password-error" class="account-error screen--hidden" />
+                        <ui:Label name="change-password-success" class="account-success screen--hidden" />
+                        <ui:Button name="change-password-submit-btn" class="menu-btn account-submit-btn" text="Change Password" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Gameplay section -->
+                <ui:VisualElement name="section-gameplay" class="settings-section settings-section--divider">
+                    <ui:Label class="settings-section-header" text="Gameplay" />
+
+                    <ui:VisualElement name="drag-threshold-row" class="setting-row">
+                        <ui:Label class="setting-label" text="Drag Threshold" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="zoom-speed-row" class="setting-row">
+                        <ui:Label class="setting-label" text="Zoom Speed" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="setting-row setting-row--toggle">
+                        <ui:Label class="setting-label" text="Arrow Coloring" />
+                        <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Data section -->
+                <ui:VisualElement name="section-data" class="settings-section settings-section--divider">
+                    <ui:Label class="settings-section-header" text="Data" />
+                    <ui:Label class="settings-section-desc" text="Local scores are stored on this device only." />
+                    <ui:Button name="clear-scores-btn" class="settings-danger-btn" text="Clear local scores..." />
+                </ui:VisualElement>
+
+                <!-- About section -->
+                <ui:VisualElement name="section-about" class="settings-section settings-section--divider">
+                    <ui:Label class="settings-section-header" text="About" />
+                    <ui:Label name="about-version" class="settings-section-desc" />
+                    <ui:Label class="settings-section-desc" text="Thanks to Yuki (mnhttn-cafe)" />
+                    <ui:Label class="settings-section-desc" text="Made with &lt;3 by vicplusplus" />
+                    <ui:VisualElement class="about-links">
+                        <ui:Button name="about-github-btn" class="icon-btn about-link-icon-btn">
+                            <ui:VisualElement class="icon-btn__icon icon--github" />
+                        </ui:Button>
+                        <ui:Button name="about-discord-btn" class="icon-btn about-link-icon-btn">
+                            <ui:VisualElement class="icon-btn__icon icon--discord" />
+                        </ui:Button>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+            </ui:ScrollView>
         </ui:VisualElement>
 
-        <ui:VisualElement name="zoom-speed-row" class="setting-row">
-            <ui:Label class="setting-label" text="Zoom Speed" />
+        <!-- Close button last in DOM so it renders on top and captures pointer events -->
+        <ui:VisualElement class="icon-row icon-row--top-right">
+            <ui:Button name="settings-close-btn" class="icon-btn">
+                <ui:VisualElement class="icon-btn__icon icon--close" />
+            </ui:Button>
         </ui:VisualElement>
 
-        <ui:VisualElement class="setting-row">
-            <ui:Label class="setting-label" text="Arrow Coloring" />
-            <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
-        </ui:VisualElement>
+        </ui:VisualElement> <!-- end settings-panel -->
 
-        <ui:Button name="clear-scores-btn" class="menu-btn menu-btn--danger" text="Clear All Scores" />
+        <!-- Backdrop: transparent, fills the right side, click to dismiss -->
+        <ui:VisualElement name="settings-backdrop" class="settings-backdrop" />
 
-        <ui:Button name="settings-back-btn" class="menu-btn" text="Back" />
     </ui:VisualElement>
 </ui:UXML>

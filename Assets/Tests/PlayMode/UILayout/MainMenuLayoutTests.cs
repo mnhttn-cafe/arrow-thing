@@ -29,8 +29,6 @@ public class MainMenuLayoutTests : UILayoutTestBase
             mainMenu.Q<Button>("play-btn"),
             mainMenu.Q<Button>("settings-btn"),
             mainMenu.Q<Button>("quit-btn"),
-            mainMenu.Q<Button>("account-btn"),
-            mainMenu.Q<Button>("info-btn"),
             mainMenu.Q<Button>("link-github-btn"),
             mainMenu.Q<Button>("link-discord-btn")
         );
@@ -127,7 +125,7 @@ public class MainMenuLayoutTests : UILayoutTestBase
     {
         var root = SetUpDocument(MainMenuUxmlPath, ratio);
 
-        root.Q("main-menu").AddToClassList("screen--hidden");
+        // Settings is an overlay — show it over the main menu
         root.Q("settings").RemoveFromClassList("screen--hidden");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
@@ -142,12 +140,15 @@ public class MainMenuLayoutTests : UILayoutTestBase
             panelBounds,
             ctx,
             warn,
-            settings.Q<Label>(className: "section-label"),
+            settings.Q<Button>("nav-account"),
+            settings.Q<Button>("nav-gameplay"),
+            settings.Q<Button>("nav-data"),
+            settings.Q<Button>("nav-about"),
             settings.Q("drag-threshold-row"),
             settings.Q("zoom-speed-row"),
             settings.Q<Toggle>("arrow-coloring-toggle"),
             settings.Q<Button>("clear-scores-btn"),
-            settings.Q<Button>("settings-back-btn")
+            settings.Q<Button>("settings-close-btn")
         );
     }
 
@@ -225,41 +226,37 @@ public class MainMenuLayoutTests : UILayoutTestBase
     }
 
     [UnityTest]
-    public IEnumerator AccountScreen_LoginForm_AllElementsVisible(
+    public IEnumerator Settings_LoginForm_AllElementsVisible(
         [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
             UILayoutTestHelper.AspectRatio ratio
     )
     {
         var root = SetUpDocument(MainMenuUxmlPath, ratio);
 
-        // Show account screen, hide main menu
         root.Q("main-menu").AddToClassList("screen--hidden");
-        root.Q("account").RemoveFromClassList("screen--hidden");
+        root.Q("settings").RemoveFromClassList("screen--hidden");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var account = root.Q("account");
+        var settings = root.Q("settings");
         var panelBounds = root.worldBound;
-        string ctx = $"AccountScreen_Login @ {ratio.Name}";
+        string ctx = $"Settings_Login @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
-        var loginForm = account.Q("login-form");
+        var loginForm = settings.Q("login-form");
         AssertElements(
             loginForm,
             panelBounds,
             ctx,
             warn,
-            loginForm.Q<TextField>("login-email"),
-            loginForm.Q<TextField>("login-password"),
+            loginForm.Q("login-fields"),
             loginForm.Q<Button>("login-submit-btn"),
-            loginForm.Q<Button>("forgot-password-btn"),
-            loginForm.Q<Button>("switch-to-register-btn"),
-            account.Q<Button>("account-back-btn")
+            loginForm.Q<Button>("register-submit-btn")
         );
     }
 
     [UnityTest]
-    public IEnumerator AccountScreen_RegisterForm_AllElementsVisible(
+    public IEnumerator Settings_ResetForm_AllElementsVisible(
         [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
             UILayoutTestHelper.AspectRatio ratio
     )
@@ -267,75 +264,33 @@ public class MainMenuLayoutTests : UILayoutTestBase
         var root = SetUpDocument(MainMenuUxmlPath, ratio);
 
         root.Q("main-menu").AddToClassList("screen--hidden");
-        root.Q("account").RemoveFromClassList("screen--hidden");
+        root.Q("settings").RemoveFromClassList("screen--hidden");
 
-        // Show register form, hide login form
-        var account = root.Q("account");
-        account.Q("login-form").AddToClassList("screen--hidden");
-        account.Q("register-form").RemoveFromClassList("screen--hidden");
-
-        yield return UILayoutTestHelper.WaitForLayoutResolve();
-
-        var panelBounds = root.worldBound;
-        string ctx = $"AccountScreen_Register @ {ratio.Name}";
-        bool warn = IsKnownIssueRatio(ratio);
-
-        var registerForm = account.Q("register-form");
-        AssertElements(
-            registerForm,
-            panelBounds,
-            ctx,
-            warn,
-            registerForm.Q<TextField>("register-email"),
-            registerForm.Q<TextField>("register-display-name"),
-            registerForm.Q<TextField>("register-password"),
-            registerForm.Q<TextField>("register-confirm-password"),
-            registerForm.Q<Button>("register-submit-btn"),
-            registerForm.Q<Button>("switch-to-login-btn"),
-            account.Q<Button>("account-back-btn")
-        );
-    }
-
-    [UnityTest]
-    public IEnumerator AccountScreen_ResetForm_AllElementsVisible(
-        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
-            UILayoutTestHelper.AspectRatio ratio
-    )
-    {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
-
-        root.Q("main-menu").AddToClassList("screen--hidden");
-        root.Q("account").RemoveFromClassList("screen--hidden");
-
-        // Show reset form, hide login form
-        var account = root.Q("account");
-        account.Q("login-form").AddToClassList("screen--hidden");
-        account.Q("reset-form").RemoveFromClassList("screen--hidden");
+        var settings = root.Q("settings");
+        settings.Q("login-form").AddToClassList("screen--hidden");
+        settings.Q("reset-form").RemoveFromClassList("screen--hidden");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
         var panelBounds = root.worldBound;
-        string ctx = $"AccountScreen_Reset @ {ratio.Name}";
+        string ctx = $"Settings_Reset @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
-        var resetForm = account.Q("reset-form");
+        var resetForm = settings.Q("reset-form");
         AssertElements(
             resetForm,
             panelBounds,
             ctx,
             warn,
             resetForm.Q<Label>("reset-message"),
-            resetForm.Q<TextField>("reset-code"),
-            resetForm.Q<TextField>("reset-new-password"),
-            resetForm.Q<TextField>("reset-confirm-password"),
+            resetForm.Q("reset-fields"),
             resetForm.Q<Button>("reset-submit-btn"),
-            resetForm.Q<Button>("reset-back-btn"),
-            account.Q<Button>("account-back-btn")
+            resetForm.Q<Button>("reset-back-btn")
         );
     }
 
     [UnityTest]
-    public IEnumerator AccountScreen_ConfirmEmailForm_AllElementsVisible(
+    public IEnumerator Settings_ConfirmEmailForm_AllElementsVisible(
         [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
             UILayoutTestHelper.AspectRatio ratio
     )
@@ -343,30 +298,27 @@ public class MainMenuLayoutTests : UILayoutTestBase
         var root = SetUpDocument(MainMenuUxmlPath, ratio);
 
         root.Q("main-menu").AddToClassList("screen--hidden");
-        root.Q("account").RemoveFromClassList("screen--hidden");
+        root.Q("settings").RemoveFromClassList("screen--hidden");
 
-        // Show confirm email form, hide login form
-        var account = root.Q("account");
-        account.Q("login-form").AddToClassList("screen--hidden");
-        account.Q("confirm-email-form").RemoveFromClassList("screen--hidden");
+        var settings = root.Q("settings");
+        settings.Q("login-form").AddToClassList("screen--hidden");
+        settings.Q("confirm-email-form").RemoveFromClassList("screen--hidden");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
         var panelBounds = root.worldBound;
-        string ctx = $"AccountScreen_ConfirmEmail @ {ratio.Name}";
+        string ctx = $"Settings_ConfirmEmail @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
-        var confirmForm = account.Q("confirm-email-form");
+        var confirmForm = settings.Q("confirm-email-form");
         AssertElements(
             confirmForm,
             panelBounds,
             ctx,
             warn,
             confirmForm.Q<Label>("confirm-email-message"),
-            confirmForm.Q<TextField>("confirm-email-code"),
-            confirmForm.Q<Button>("confirm-email-submit-btn"),
-            confirmForm.Q<Button>("confirm-email-back-btn"),
-            account.Q<Button>("account-back-btn")
+            confirmForm.Q("confirm-email-fields"),
+            confirmForm.Q<Button>("confirm-email-submit-btn")
         );
     }
 }

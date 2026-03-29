@@ -196,12 +196,16 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
         DismissContextMenu();
 
-        // "Biggest" sort is only useful on the All tab
         bool isAllTab = Tabs[index].w == 0 && Tabs[index].h == 0;
-        ShowElement(_sortButtons[1], isAllTab);
 
-        // If Biggest was active and we switched to a size tab, fall back to Fastest
-        if (!isAllTab && _activeSortCriterion == SortCriterion.Biggest)
+        // Fastest is useless on All (small boards always win); Biggest is useless on size tabs
+        ShowElement(_sortButtons[0], !isAllTab); // Fastest
+        ShowElement(_sortButtons[1], isAllTab); // Biggest
+
+        // Fall back when the active sort is hidden on this tab
+        if (isAllTab && _activeSortCriterion == SortCriterion.Fastest)
+            SelectSort(SortCriterion.Biggest);
+        else if (!isAllTab && _activeSortCriterion == SortCriterion.Biggest)
             SelectSort(SortCriterion.Fastest);
         else
             RefreshList();
@@ -276,12 +280,24 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
         ShowEmpty(false);
 
-        var best = isAllTab ? null : manager.Store.GetPersonalBest(w, h);
+        // Medal highlights for top 3 in current sort (skip in Favorites sort)
+        HashSet<string> gold = null,
+            silver = null,
+            bronze = null;
+        if (_activeSortCriterion != SortCriterion.Favorites)
+        {
+            if (entries.Count > 0)
+                gold = new HashSet<string> { entries[0].gameId };
+            if (entries.Count > 1)
+                silver = new HashSet<string> { entries[1].gameId };
+            if (entries.Count > 2)
+                bronze = new HashSet<string> { entries[2].gameId };
+        }
 
         for (int i = 0; i < entries.Count; i++)
         {
             var entry = entries[i];
-            var row = CreateEntryRow(i + 1, entry, isAllTab, best);
+            var row = CreateEntryRow(i + 1, entry, isAllTab, gold, silver, bronze);
             _list.Add(row);
         }
     }
@@ -290,26 +306,49 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         int rank,
         LeaderboardEntry entry,
         bool showSize,
-        LeaderboardEntry best
+        HashSet<string> gold,
+        HashSet<string> silver,
+        HashSet<string> bronze
     )
     {
         var row = new VisualElement();
         row.AddToClassList("lb-entry");
         row.userData = entry.gameId;
 
-        bool isBest = best != null && entry.gameId == best.gameId;
         bool isFocused = _focusGameId != null && entry.gameId == _focusGameId;
 
-        if (isBest)
-            row.AddToClassList("lb-entry--best");
+        // Medal highlights (non-Favorites sort)
+        string medalRow = null;
+        string medalRank = null;
+        if (gold != null && gold.Contains(entry.gameId))
+        {
+            medalRow = "lb-entry--gold";
+            medalRank = "lb-rank--gold";
+        }
+        else if (silver != null && silver.Contains(entry.gameId))
+        {
+            medalRow = "lb-entry--silver";
+            medalRank = "lb-rank--silver";
+        }
+        else if (bronze != null && bronze.Contains(entry.gameId))
+        {
+            medalRow = "lb-entry--bronze";
+            medalRank = "lb-rank--bronze";
+        }
+
+        // Favorite tint (Favorites sort only — medals are null)
+        if (medalRow == null && _activeSortCriterion == SortCriterion.Favorites && entry.isFavorite)
+            row.AddToClassList("lb-entry--favorite");
+        if (medalRow != null)
+            row.AddToClassList(medalRow);
         if (isFocused)
             row.AddToClassList("lb-entry--focused");
 
         // Rank
         var rankLabel = new Label($"#{rank}");
         rankLabel.AddToClassList("lb-rank");
-        if (isBest)
-            rankLabel.AddToClassList("lb-rank--best");
+        if (medalRank != null)
+            rankLabel.AddToClassList(medalRank);
         row.Add(rankLabel);
 
         // Size (All tab only)
@@ -324,6 +363,11 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         var timeLabel = new Label(FormatTime(entry.solveTime));
         timeLabel.AddToClassList("lb-time");
         row.Add(timeLabel);
+
+        // Display name (always present for flex-grow spacing even when empty)
+        var nameLabel = new Label(entry.displayName ?? "");
+        nameLabel.AddToClassList("lb-name");
+        row.Add(nameLabel);
 
         // Date (relative text, tooltip shows exact date+time)
         var dateLabel = new Label(FormatRelativeDate(entry.completedAt));

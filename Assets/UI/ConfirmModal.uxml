@@ -4,8 +4,8 @@
             <ui:Label name="modal-title" class="modal-label" />
             <ui:Label name="modal-subtitle" class="modal-sublabel screen--hidden" />
             <ui:VisualElement class="modal-buttons">
-                <ui:Button name="modal-confirm-btn" class="menu-btn" />
-                <ui:Button name="modal-cancel-btn" class="menu-btn" />
+                <ui:Button name="modal-confirm-btn" class="modal-btn" />
+                <ui:Button name="modal-cancel-btn" class="modal-btn" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

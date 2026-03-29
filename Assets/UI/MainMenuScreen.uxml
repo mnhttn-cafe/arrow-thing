@@ -1,28 +1,24 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement class="screen">
-        <ui:Button name="quit-btn" class="quit-btn" text="X" />
-        <ui:Button name="account-btn" class="account-btn">
-            <ui:VisualElement class="account-icon" />
-        </ui:Button>
-        <ui:Button name="info-btn" class="info-btn" text="i" />
+        <ui:VisualElement class="icon-row icon-row--top-left">
+            <ui:Button name="quit-btn" class="icon-btn">
+                <ui:VisualElement class="icon-btn__icon icon--close" />
+            </ui:Button>
+        </ui:VisualElement>
+
         <ui:VisualElement class="title" />
         <ui:Button name="play-btn" class="menu-btn" text="Play" />
         <ui:Button name="continue-btn" class="menu-btn continue-btn screen--hidden" text="Continue" />
         <ui:Button name="settings-btn" class="menu-btn" text="Settings" />
 
-        <ui:VisualElement name="info-panel" class="info-panel screen--hidden">
-            <ui:Label name="info-version" class="info-text" />
-            <ui:Label class="info-text" text="Thanks to Yuki (mnhttn-cafe)" />
-            <ui:Label class="info-text info-credit" text="Made with &lt;3 by vicplusplus" />
+        <ui:VisualElement class="icon-row icon-row--bottom-left">
+            <ui:Button name="link-github-btn" class="icon-btn">
+                <ui:VisualElement class="icon-btn__icon icon--github" />
+            </ui:Button>
+            <ui:Button name="link-discord-btn" class="icon-btn">
+                <ui:VisualElement class="icon-btn__icon icon--discord" />
+            </ui:Button>
         </ui:VisualElement>
 
-        <ui:VisualElement name="link-row" class="link-row">
-            <ui:Button name="link-github-btn" class="link-icon-btn">
-                <ui:VisualElement class="link-icon link-icon--github" />
-            </ui:Button>
-            <ui:Button name="link-discord-btn" class="link-icon-btn">
-                <ui:VisualElement class="link-icon link-icon--discord" />
-            </ui:Button>
-        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
