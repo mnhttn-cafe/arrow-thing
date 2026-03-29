@@ -167,6 +167,12 @@ public sealed class LeaderboardStore
                         int favCmp = b.isFavorite.CompareTo(a.isFavorite);
                         if (favCmp != 0)
                             return favCmp;
+                        // Size descending (no-op on size-filtered tabs)
+                        int areaA = a.boardWidth * a.boardHeight;
+                        int areaB = b.boardWidth * b.boardHeight;
+                        int sizeCmp = areaB.CompareTo(areaA);
+                        if (sizeCmp != 0)
+                            return sizeCmp;
                         int timeCmp = a.solveTime.CompareTo(b.solveTime);
                         return timeCmp != 0 ? timeCmp : DateTiebreak(a, b);
                     }

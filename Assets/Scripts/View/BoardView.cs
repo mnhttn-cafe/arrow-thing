@@ -109,42 +109,7 @@ public sealed class BoardView : MonoBehaviour
 
         if (!_board.IsClearable(arrow))
         {
-            // Blocked: slide toward blocker, bump, flash, return
-            Arrow blocker = _board.GetFirstInRay(arrow);
-            if (blocker != null)
-            {
-                // Contact distance: cells between arrow head and blocker's first ray cell
-                (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
-                Cell cursor = new(arrow.HeadCell.X + dx, arrow.HeadCell.Y + dy);
-                int cellDistance = 1;
-                while (_board.Contains(cursor))
-                {
-                    if (_board.GetArrowAt(cursor) == blocker)
-                        break;
-                    cursor = new(cursor.X + dx, cursor.Y + dy);
-                    cellDistance++;
-                }
-                // Each cell is 1 world unit; contact at midpoint of the hit cell
-                float contactArcLength = cellDistance - 0.5f;
-
-                // Persistent tint on source and blocker (clears on next selection)
-                view.SetBlockedTint(_settings.blockedTintIntensity, _settings.rejectFlashColor);
-                _tintedSource = view;
-                if (_arrowViews.TryGetValue(blocker, out ArrowView blockerView))
-                {
-                    blockerView.SetBlockedTint(
-                        _settings.blockedTintIntensity,
-                        _settings.rejectFlashColor
-                    );
-                    _tintedBlocker = blockerView;
-                }
-
-                view.PlayBump(contactArcLength);
-            }
-            else
-            {
-                view.PlayRejectFlash();
-            }
+            PlayBlockedFeedback(arrow, view);
             return ClearResult.Blocked;
         }
 
@@ -180,6 +145,45 @@ public sealed class BoardView : MonoBehaviour
     /// Call after recording the final clear event to fire <see cref="LastArrowClearing"/>.
     /// </summary>
     public void NotifyLastArrowClearing() => LastArrowClearing?.Invoke();
+
+    private void PlayBlockedFeedback(Arrow arrow, ArrowView view)
+    {
+        Arrow blocker = _board.GetFirstInRay(arrow);
+        if (blocker != null)
+        {
+            // Contact distance: cells between arrow head and blocker's first ray cell
+            (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+            Cell cursor = new(arrow.HeadCell.X + dx, arrow.HeadCell.Y + dy);
+            int cellDistance = 1;
+            while (_board.Contains(cursor))
+            {
+                if (_board.GetArrowAt(cursor) == blocker)
+                    break;
+                cursor = new(cursor.X + dx, cursor.Y + dy);
+                cellDistance++;
+            }
+            // Each cell is 1 world unit; contact at midpoint of the hit cell
+            float contactArcLength = cellDistance - 0.5f;
+
+            // Persistent tint on source and blocker (clears on next selection)
+            view.SetBlockedTint(_settings.blockedTintIntensity, _settings.rejectFlashColor);
+            _tintedSource = view;
+            if (_arrowViews.TryGetValue(blocker, out ArrowView blockerView))
+            {
+                blockerView.SetBlockedTint(
+                    _settings.blockedTintIntensity,
+                    _settings.rejectFlashColor
+                );
+                _tintedBlocker = blockerView;
+            }
+
+            view.PlayBump(contactArcLength);
+        }
+        else
+        {
+            view.PlayRejectFlash();
+        }
+    }
 
     private void ClearPreviousTints()
     {

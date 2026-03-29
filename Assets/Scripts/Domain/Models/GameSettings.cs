@@ -29,6 +29,14 @@ public static class GameSettings
     public const float MinZoomSpeed = 0.2f;
     public const float MaxZoomSpeed = 5f;
 
+    public const string DisplayNamePrefKey = "DisplayName";
+
+    /// <summary>
+    /// Local display name. Loaded from PlayerPrefs by the View layer on startup;
+    /// updated in memory here. Works fully offline.
+    /// </summary>
+    public static string DisplayName { get; set; } = "";
+
     public static void Apply(int width, int height)
     {
         Width = width;

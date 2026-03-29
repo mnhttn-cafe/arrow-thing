@@ -562,7 +562,8 @@ public sealed class GameController : MonoBehaviour
             if (_backBtn != null)
                 _backBtn.style.display = DisplayStyle.None;
             _recorder?.RecordEndSolve();
-            SaveManager.Delete();
+            if (_autosaveEnabled)
+                SaveManager.Delete();
             victory.OnLastArrowClearing();
         };
         _boardView.BoardCleared += victory.OnBoardCleared;

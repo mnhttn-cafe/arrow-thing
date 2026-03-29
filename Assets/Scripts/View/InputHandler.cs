@@ -120,53 +120,55 @@ public sealed class InputHandler : MonoBehaviour
             _isPressed = false;
 
             if (!_isDragging)
+                HandleTap(_pressStartScreen);
+        }
+    }
+
+    private void HandleTap(Vector2 screenPos)
+    {
+        Vector3 worldPos = _camCtrl.Cam.ScreenToWorldPoint(screenPos);
+        Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
+
+        if (!_board.Contains(cell))
+            return;
+
+        Arrow arrow = _board.GetArrowAt(cell);
+        if (arrow == null)
+            return;
+
+        double wallTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+
+        // Any arrow tap starts the solve timer (ends inspection)
+        bool wasInspecting = _timer != null && !_timer.IsSolving;
+        if (wasInspecting)
+        {
+            _timer.StartSolve(wallTime);
+            if (_recorder != null)
+                _recorder.RecordStartSolve();
+        }
+
+        ClearResult result = _boardView.TryClearArrow(arrow);
+
+        if (result != ClearResult.Blocked)
+        {
+            if (_recorder != null)
+                _recorder.RecordClear(worldPos.x, worldPos.y);
+
+            if (result == ClearResult.ClearedLast)
             {
-                // It was a tap — attempt to select/clear an arrow
-                Vector3 worldPos = _camCtrl.Cam.ScreenToWorldPoint(_pressStartScreen);
-                Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
-
-                if (_board.Contains(cell))
-                {
-                    Arrow arrow = _board.GetArrowAt(cell);
-                    if (arrow != null)
-                    {
-                        double wallTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
-
-                        // Any arrow tap starts the solve timer (ends inspection)
-                        bool wasInspecting = _timer != null && !_timer.IsSolving;
-                        if (wasInspecting)
-                        {
-                            _timer.StartSolve(wallTime);
-                            if (_recorder != null)
-                                _recorder.RecordStartSolve();
-                        }
-
-                        ClearResult result = _boardView.TryClearArrow(arrow);
-
-                        if (result != ClearResult.Blocked)
-                        {
-                            if (_recorder != null)
-                                _recorder.RecordClear(worldPos.x, worldPos.y);
-
-                            if (result == ClearResult.ClearedLast)
-                            {
-                                if (_timer != null)
-                                    _timer.Finish(wallTime);
-                                _boardView.NotifyLastArrowClearing();
-                            }
-                            else
-                            {
-                                _onArrowCleared?.Invoke();
-                            }
-                        }
-                        else
-                        {
-                            if (_recorder != null)
-                                _recorder.RecordReject(worldPos.x, worldPos.y);
-                        }
-                    }
-                }
+                if (_timer != null)
+                    _timer.Finish(wallTime);
+                _boardView.NotifyLastArrowClearing();
             }
+            else
+            {
+                _onArrowCleared?.Invoke();
+            }
+        }
+        else
+        {
+            if (_recorder != null)
+                _recorder.RecordReject(worldPos.x, worldPos.y);
         }
     }
 

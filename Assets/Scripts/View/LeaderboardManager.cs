@@ -38,6 +38,9 @@ public sealed class LeaderboardManager : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void AutoCreate()
     {
+        if (string.IsNullOrEmpty(GameSettings.DisplayName))
+            GameSettings.DisplayName = PlayerPrefs.GetString(GameSettings.DisplayNamePrefKey, "");
+
         if (_instance != null)
             return;
         var go = new GameObject("LeaderboardManager");
@@ -65,6 +68,7 @@ public sealed class LeaderboardManager : MonoBehaviour
     public LeaderboardEntry RecordResult(ReplayData replayData)
     {
         var entry = new LeaderboardEntry(replayData, replayData.gameVersion ?? Application.version);
+        entry.displayName = GameSettings.DisplayName;
         string pruned = _store.AddEntry(entry);
 
         SaveIndex();
