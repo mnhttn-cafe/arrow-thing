@@ -190,22 +190,24 @@ public sealed class MainMenuController : MonoBehaviour
             PlayerPrefs.SetInt(GameSettings.ArrowColoringPrefKey, evt.newValue ? 1 : 0)
         );
 
-        var themeDropdown = _settings.Q<DropdownField>("theme-dropdown");
         var themeChoices = new System.Collections.Generic.List<string>();
         foreach (var t in ThemeManager.Available)
             if (t != null)
                 themeChoices.Add(t.name);
-        themeDropdown.choices = themeChoices;
-        themeDropdown.value = ThemeManager.Current?.name ?? "";
-        themeDropdown.RegisterValueChangedCallback(evt =>
+        var themeDropdown = new CustomDropdown(
+            themeChoices,
+            ThemeManager.Current != null ? ThemeManager.Current.name : ""
+        );
+        themeDropdown.ValueChanged += name =>
         {
             foreach (var t in ThemeManager.Available)
-                if (t != null && t.name == evt.newValue)
+                if (t != null && t.name == name)
                 {
                     ThemeManager.Apply(t);
                     break;
                 }
-        });
+        };
+        _settings.Q("theme-dropdown-slot").Add(themeDropdown.Root);
     }
 
     private void WireSettingsNav()

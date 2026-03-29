@@ -112,7 +112,7 @@
 
                     <ui:VisualElement class="setting-row">
                         <ui:Label class="setting-label" text="Theme" />
-                        <ui:DropdownField name="theme-dropdown" class="setting-dropdown" />
+                        <ui:VisualElement name="theme-dropdown-slot" />
                     </ui:VisualElement>
 
                     <ui:VisualElement name="drag-threshold-row" class="setting-row">

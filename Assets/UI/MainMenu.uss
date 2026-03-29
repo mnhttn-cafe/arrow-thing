@@ -469,36 +469,81 @@
     display: none;
 }
 
-/* Theme dropdown */
-.setting-dropdown {
+/* Custom dropdown trigger */
+.custom-dropdown {
     align-self: stretch;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     background-color: var(--bg-input);
     border-color: var(--border-normal);
     border-width: 1px;
     border-radius: 6px;
-    color: var(--text-primary);
-    font-size: 15px;
-}
-
-.setting-dropdown .unity-base-popup-field__input {
-    background-color: transparent;
-    border-width: 0;
     padding: 8px 12px;
-    color: var(--text-primary);
-    font-size: 15px;
+    cursor: hand;
 }
 
-.setting-dropdown .unity-base-popup-field__arrow {
-    -unity-background-image-tint-color: var(--text-secondary);
-    margin-right: 8px;
+.custom-dropdown:hover {
+    border-color: var(--border-emphasis);
+    background-color: var(--bg-item-hover);
 }
 
-.setting-dropdown:hover {
+.custom-dropdown--open {
     border-color: var(--border-emphasis);
 }
 
-.setting-dropdown:hover .unity-base-popup-field__input {
+.custom-dropdown__value {
+    font-size: 15px;
+    color: var(--text-primary);
+    flex-grow: 1;
+}
+
+.custom-dropdown__arrow {
+    width: 12px;
+    height: 12px;
+    background-image: url("/Assets/Art/arrow_down.png");
+    -unity-background-image-tint-color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.custom-dropdown--open .custom-dropdown__arrow {
+    background-image: url("/Assets/Art/arrow_up.png");
+}
+
+/* Popup overlay — injected into panel root */
+.custom-dropdown__backdrop {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.custom-dropdown__popup {
+    background-color: var(--bg-panel);
+    border-color: var(--border-emphasis);
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 4px 0;
+    max-height: 320px;
+}
+
+.custom-dropdown__item {
     background-color: transparent;
+    border-width: 0;
+    border-radius: 0;
+    padding: 10px 14px;
+    font-size: 15px;
+    color: var(--text-primary);
+    -unity-text-align: middle-left;
+}
+
+.custom-dropdown__item:hover {
+    background-color: var(--bg-item-hover);
+}
+
+.custom-dropdown__item--selected {
+    color: var(--accent-blue);
 }
 
 /* SnapSlider component ---------------------------------------------------- */
