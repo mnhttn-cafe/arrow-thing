@@ -222,12 +222,12 @@
 }
 
 .lb-fav-icon--on {
-    background-image: url("/Assets/Art/favorite_on.png");
+    background-image: url("/Assets/Art/Icons/favorite_on.png");
     -unity-background-image-tint-color: var(--accent-favorite);
 }
 
 .lb-fav-icon--off {
-    background-image: url("/Assets/Art/favorite_off.png");
+    background-image: url("/Assets/Art/Icons/favorite_off.png");
     -unity-background-image-tint-color: var(--text-secondary);
 }
 
@@ -248,7 +248,7 @@
 
 .lb-play-icon {
     flex-grow: 1;
-    background-image: url("/Assets/Art/play_icon.png");
+    background-image: url("/Assets/Art/Icons/play_icon.png");
     -unity-background-scale-mode: scale-to-fit;
     -unity-background-image-tint-color: var(--text-secondary);
 }
@@ -269,7 +269,7 @@
 
 .lb-ctx-trigger-icon {
     flex-grow: 1;
-    background-image: url("/Assets/Art/context_menu_icon.png");
+    background-image: url("/Assets/Art/Icons/context_menu_icon.png");
     -unity-background-scale-mode: scale-to-fit;
     -unity-background-image-tint-color: var(--text-secondary);
 }

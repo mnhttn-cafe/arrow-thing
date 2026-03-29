@@ -46,11 +46,11 @@
 }
 
 .rh-controls-toggle-icon--down {
-    background-image: url("/Assets/Art/arrow_down.png");
+    background-image: url("/Assets/Art/Icons/arrow_down.png");
 }
 
 .rh-controls-toggle-icon--up {
-    background-image: url("/Assets/Art/arrow_up.png");
+    background-image: url("/Assets/Art/Icons/arrow_up.png");
 }
 
 .rh-controls-bar--hidden {
@@ -146,11 +146,11 @@
 }
 
 .rh-play-icon--play {
-    background-image: url("/Assets/Art/play_icon.png");
+    background-image: url("/Assets/Art/Icons/play_icon.png");
 }
 
 .rh-play-icon--pause {
-    background-image: url("/Assets/Art/pause_icon.png");
+    background-image: url("/Assets/Art/Icons/pause_icon.png");
 }
 
 .rh-speed-btn {

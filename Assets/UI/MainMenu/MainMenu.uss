@@ -34,7 +34,7 @@
     height: 100px;
     margin-bottom: 60px;
     flex-shrink: 1;
-    background-image: url("/Assets/Art/title.png");
+    background-image: url("/Assets/Art/Sprites/title.png");
     -unity-background-scale-mode: scale-to-fit;
 }
 
@@ -501,13 +501,13 @@
 .custom-dropdown__arrow {
     width: 12px;
     height: 12px;
-    background-image: url("/Assets/Art/arrow_down.png");
+    background-image: url("/Assets/Art/Icons/arrow_down.png");
     -unity-background-image-tint-color: var(--text-secondary);
     flex-shrink: 0;
 }
 
 .custom-dropdown--open .custom-dropdown__arrow {
-    background-image: url("/Assets/Art/arrow_up.png");
+    background-image: url("/Assets/Art/Icons/arrow_up.png");
 }
 
 /* Popup overlay — injected into panel root */
@@ -648,12 +648,12 @@
 }
 
 .snap-slider__lock-icon--locked {
-    background-image: url("/Assets/Art/lock_closed.png");
+    background-image: url("/Assets/Art/Icons/lock_closed.png");
     -unity-background-image-tint-color: var(--toggle-knob-active);
 }
 
 .snap-slider__lock-icon--unlocked {
-    background-image: url("/Assets/Art/lock_open.png");
+    background-image: url("/Assets/Art/Icons/lock_open.png");
     -unity-background-image-tint-color: var(--toggle-knob);
 }
 

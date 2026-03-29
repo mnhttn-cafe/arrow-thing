@@ -135,40 +135,40 @@
 /* ── Named Icons ─────────────────────────────────────────────────── */
 
 .icon--close {
-    background-image: url("/Assets/Art/close.png");
+    background-image: url("/Assets/Art/Icons/close.png");
 }
 
 .icon--info {
-    background-image: url("/Assets/Art/info.png");
+    background-image: url("/Assets/Art/Icons/info.png");
 }
 
 .icon--account {
-    background-image: url("/Assets/Art/account_icon.png");
+    background-image: url("/Assets/Art/Icons/account_icon.png");
 }
 
 .icon--github {
-    background-image: url("/Assets/Art/Octicons-mark-github.svg.png");
+    background-image: url("/Assets/Art/Icons/Octicons-mark-github.svg.png");
 }
 
 .icon--discord {
-    background-image: url("/Assets/Art/discord-white-icon.png");
+    background-image: url("/Assets/Art/Icons/discord-white-icon.png");
 }
 
 .icon--arrow-back {
-    background-image: url("/Assets/Art/arrow_back.png");
+    background-image: url("/Assets/Art/Icons/arrow_back.png");
 }
 
 .icon--logout {
-    background-image: url("/Assets/Art/logout.png");
+    background-image: url("/Assets/Art/Icons/logout.png");
 }
 
 .icon--trophy {
-    background-image: url("/Assets/Art/trophy_icon.png");
+    background-image: url("/Assets/Art/Icons/trophy_icon.png");
     -unity-background-image-tint-color: var(--text-gold);
 }
 
 .icon--arrow-lane-preview {
-    background-image: url("/Assets/Art/arrow_lane_preview_icon.png");
+    background-image: url("/Assets/Art/Icons/arrow_lane_preview_icon.png");
 }
 
 /* ── HUD Icon Button ──────────────────────────────────────────────── */

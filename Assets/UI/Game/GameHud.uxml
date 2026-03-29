@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <Style src="Shared.uss" />
+    <Style src="../Shared/Shared.uss" />
     <Style src="GameHud.uss" />
 
     <ui:VisualElement name="loading-overlay" class="loading-overlay">
