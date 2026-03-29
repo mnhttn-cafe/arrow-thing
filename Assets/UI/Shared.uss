@@ -1,7 +1,15 @@
 /* ====================================================================
    Shared.uss — Reusable UI components
    Add <Style src="Shared.uss" /> to every UXML document that uses
-   any of these classes.
+   any of these classes. ThemeColors.uss must also be applied to the
+   panel root (via UIThemeApplier) for the var() references to resolve.
+
+   ── Text scale ────────────────────────────────────────────────────────
+   Display  28px+  --text-white      Timer, victory msg, hero overlays
+   Title    20px   --text-primary    Screen headers, modal titles
+   Body     16px   --text-primary    Panel content, buttons, entry values
+   Secondary 14px  --text-secondary  Descriptions, labels, muted helpers
+   Small    13px   --text-dim        Tabs, filter/nav btns, dates
    ==================================================================== */
 
 /* ── Loading Overlay ──────────────────────────────────────────────── */
@@ -12,14 +20,14 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(26, 26, 46, 0.85);
+    background-color: var(--bg-loading-overlay);
     align-items: center;
     justify-content: center;
 }
 
 .loading-label {
     font-size: 32px;
-    color: rgb(180, 180, 200);
+    color: var(--text-primary);
     -unity-font-style: bold;
     letter-spacing: 2px;
     margin-bottom: 24px;
@@ -28,7 +36,7 @@
 .loading-bar-track {
     width: 300px;
     height: 8px;
-    background-color: rgba(255, 255, 255, 0.12);
+    background-color: var(--bg-track);
     border-radius: 4px;
     margin-top: 20px;
     overflow: hidden;
@@ -37,15 +45,126 @@
 .loading-bar-fill {
     height: 100%;
     width: 0%;
-    background-color: rgb(80, 160, 220);
+    background-color: var(--accent-progress);
     border-radius: 4px;
 }
 
 .loading-percent {
     font-size: 18px;
-    color: rgb(140, 140, 160);
+    color: var(--text-dim);
     margin-top: 8px;
     -unity-text-align: middle-center;
+}
+
+/* ── Icon Button ─────────────────────────────────────────────────── */
+/*
+   Circular 48×48 icon button. Add an .icon-btn__icon child carrying a
+   named icon class (e.g. .icon--close).
+   For groups, wrap buttons in an .icon-row container with a corner
+   modifier.
+*/
+
+.icon-btn {
+    width: 48px;
+    height: 48px;
+    padding: 8px;
+    background-color: var(--bg-btn-ghost);
+    border-radius: 24px;
+    border-width: 0;
+}
+
+.icon-btn:hover {
+    background-color: var(--bg-btn-ghost-hover);
+}
+
+.icon-btn__icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+.icon-btn:hover .icon-btn__icon {
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+/* ── Icon Row ────────────────────────────────────────────────────── */
+/*
+   Absolutely-positioned row of icon buttons. Combine with a corner
+   modifier: --top-left / --top-right / --bottom-left / --bottom-right.
+*/
+
+.icon-row {
+    position: absolute;
+    flex-direction: row;
+    align-items: center;
+}
+
+.icon-row .icon-btn {
+    margin-left: 8px;
+}
+
+.icon-row--top-left {
+    top: 16px;
+    left: 16px;
+}
+
+.icon-row--top-right {
+    top: 16px;
+    right: 16px;
+}
+
+.icon-row--bottom-left {
+    bottom: 16px;
+    left: 16px;
+}
+
+.icon-row--bottom-right {
+    bottom: 16px;
+    right: 16px;
+}
+
+/* ── Breadcrumb Label ────────────────────────────────────────────── */
+
+.breadcrumb-label {
+    font-size: 16px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-left;
+    margin-left: 4px;
+}
+
+/* ── Named Icons ─────────────────────────────────────────────────── */
+
+.icon--close {
+    background-image: url("/Assets/Art/close.png");
+}
+
+.icon--info {
+    background-image: url("/Assets/Art/info.png");
+}
+
+.icon--account {
+    background-image: url("/Assets/Art/account_icon.png");
+}
+
+.icon--github {
+    background-image: url("/Assets/Art/Octicons-mark-github.svg.png");
+}
+
+.icon--discord {
+    background-image: url("/Assets/Art/discord-white-icon.png");
+}
+
+.icon--arrow-back {
+    background-image: url("/Assets/Art/arrow_back.png");
+}
+
+.icon--logout {
+    background-image: url("/Assets/Art/logout.png");
+}
+
+.icon--trophy {
+    background-image: url("/Assets/Art/trophy_icon.png");
+    -unity-background-image-tint-color: var(--text-gold);
 }
 
 /* ── HUD Icon Button ──────────────────────────────────────────────── */
@@ -62,20 +181,20 @@
     width: 48px;
     height: 48px;
     font-size: 28px;
-    color: rgb(180, 180, 180);
-    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    background-color: var(--bg-btn-ghost);
     border-radius: 24px;
     border-width: 0;
     -unity-text-align: middle-center;
 }
 
 .hud-icon-btn:hover {
-    color: rgb(255, 255, 255);
-    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--text-white);
+    background-color: var(--bg-btn-ghost-hover);
 }
 
 .hud-icon-btn:active {
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: var(--bg-btn-ghost-active);
 }
 
 /* Position modifiers */
@@ -101,12 +220,12 @@
 
 /* Toggled/active state — blue tint */
 .hud-icon-btn--active {
-    color: rgb(120, 180, 240);
-    background-color: rgba(120, 180, 240, 0.15);
+    color: var(--accent-blue);
+    background-color: var(--accent-blue-bg-mid);
 }
 
 .hud-icon-btn--active:hover {
-    background-color: rgba(120, 180, 240, 0.25);
+    background-color: var(--accent-blue-bg-strong);
 }
 
 /* Use instead of text when the button contains a background-image child */
@@ -118,17 +237,71 @@
 .hud-icon-btn__icon {
     flex-grow: 1;
     -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: rgb(180, 180, 180);
+    -unity-background-image-tint-color: var(--text-secondary);
 }
 
 .hud-icon-btn:hover .hud-icon-btn__icon {
-    -unity-background-image-tint-color: rgb(255, 255, 255);
+    -unity-background-image-tint-color: var(--text-white);
 }
 
-/* ── Named icons ──────────────────────────────────────────────────── */
+/* ── Empty State ─────────────────────────────────────────────────── */
+/*
+   Muted centered placeholder used when a list or panel has no content.
+*/
 
-.icon--arrow-back {
-    background-image: url("/Assets/Art/arrow_back.png");
+.empty-state {
+    font-size: 16px;
+    color: var(--text-dim);
+    -unity-text-align: middle-center;
+    flex-grow: 1;
+    padding: 40px;
+    white-space: normal;
+}
+
+/* ── Context Menu ────────────────────────────────────────────────── */
+/*
+   Floating popup positioned in C# via style.top/bottom/left/right.
+   Add .context-menu__btn children for each action.
+*/
+
+.context-menu {
+    position: absolute;
+    background-color: var(--bg-panel-dark);
+    border-radius: 8px;
+    padding: 4px 0;
+    min-width: 140px;
+}
+
+.context-menu__btn {
+    font-size: 16px;
+    color: var(--text-primary);
+    background-color: transparent;
+    border-width: 0;
+    padding: 8px 16px;
+    -unity-text-align: middle-left;
+}
+
+.context-menu__btn:hover {
+    background-color: var(--bg-item-hover);
+}
+
+.context-menu__btn--danger {
+    color: var(--text-danger);
+}
+
+/* ── Modal Instance ──────────────────────────────────────────────── */
+/*
+   Wrapper element for ConfirmModal template instances.
+   Hidden by default; shown/hidden from C# via ConfirmModal.Show/Hide.
+*/
+
+.modal-instance {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
 }
 
 /* ── Modal ────────────────────────────────────────────────────────── */
@@ -139,13 +312,13 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: var(--bg-overlay);
     align-items: center;
     justify-content: center;
 }
 
 .modal-box {
-    background-color: rgb(40, 40, 55);
+    background-color: var(--bg-panel);
     border-radius: 12px;
     padding: 32px 48px;
     align-items: center;
@@ -153,8 +326,8 @@
 }
 
 .modal-label {
-    font-size: 24px;
-    color: rgb(255, 255, 255);
+    font-size: 20px;
+    color: var(--text-white);
     margin-bottom: 24px;
     white-space: normal;
     -unity-text-align: middle-center;
@@ -162,7 +335,7 @@
 
 .modal-sublabel {
     font-size: 16px;
-    color: rgb(140, 140, 160);
+    color: var(--text-secondary);
     margin-bottom: 16px;
     margin-top: -12px;
 }
@@ -174,30 +347,30 @@
 .modal-btn {
     width: 120px;
     padding: 10px 0;
-    font-size: 22px;
+    font-size: 16px;
     margin: 0 8px;
-    color: rgb(255, 255, 255);
-    background-color: rgb(60, 60, 80);
+    color: var(--text-white);
+    background-color: var(--bg-btn);
     border-radius: 8px;
     border-width: 0;
     -unity-text-align: middle-center;
 }
 
 .modal-btn:hover {
-    background-color: rgb(80, 80, 110);
+    background-color: var(--bg-btn-hover);
 }
 
 .modal-btn:active {
-    background-color: rgb(100, 100, 140);
+    background-color: var(--bg-btn-active);
 }
 
 /* Destructive action — filled red background */
 .modal-btn--danger {
-    background-color: rgb(160, 50, 50);
+    background-color: var(--accent-danger-btn);
 }
 
 .modal-btn--danger:hover {
-    background-color: rgb(190, 60, 60);
+    background-color: var(--accent-danger-btn-hover);
 }
 
 /* Small X dismiss button, absolute-positioned inside .modal-box */
@@ -208,7 +381,7 @@
     width: 32px;
     height: 32px;
     font-size: 18px;
-    color: rgb(140, 140, 160);
+    color: var(--text-dim);
     background-color: transparent;
     border-width: 0;
     border-radius: 16px;
@@ -216,8 +389,8 @@
 }
 
 .modal-close-btn:hover {
-    color: rgb(255, 255, 255);
-    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-white);
+    background-color: var(--border-normal);
 }
 
 /* ── Screen Header ────────────────────────────────────────────────── */
@@ -236,7 +409,7 @@
     width: 40px;
     height: 40px;
     padding: 7px;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--bg-btn-ghost);
     border-radius: 20px;
     border-width: 0;
     margin-right: 12px;
@@ -244,20 +417,20 @@
 }
 
 .screen-header__back-btn:hover {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: var(--bg-btn-ghost-hover);
 }
 
 .screen-header__back-btn .hud-icon-btn__icon {
-    -unity-background-image-tint-color: rgb(200, 200, 210);
+    -unity-background-image-tint-color: var(--text-primary);
 }
 
 .screen-header__back-btn:hover .hud-icon-btn__icon {
-    -unity-background-image-tint-color: rgb(255, 255, 255);
+    -unity-background-image-tint-color: var(--text-white);
 }
 
 .screen-header__title {
     font-size: 20px;
-    color: rgb(255, 255, 255);
+    color: var(--text-white);
     -unity-font-style: bold;
     flex-grow: 1;
     flex-shrink: 1;
@@ -278,8 +451,8 @@
 
 .tab-bar__tab {
     font-size: 15px;
-    color: rgb(160, 160, 180);
-    background-color: rgb(35, 35, 48);
+    color: var(--text-secondary);
+    background-color: var(--bg-tab);
     border-width: 0;
     padding: 8px 16px;
     margin: 0 2px;
@@ -287,14 +460,14 @@
 }
 
 .tab-bar__tab:hover {
-    background-color: rgb(50, 50, 68);
+    background-color: var(--bg-tab-hover);
 }
 
 .tab-bar__tab--active {
-    color: rgb(255, 255, 255);
-    background-color: rgb(50, 70, 90);
+    color: var(--text-white);
+    background-color: var(--bg-tab-active);
     border-bottom-width: 2px;
-    border-bottom-color: rgb(120, 180, 240);
+    border-bottom-color: var(--accent-blue);
 }
 
 /* ── Toggle Group ─────────────────────────────────────────────────── */
@@ -310,20 +483,20 @@
 
 .toggle-group__btn {
     font-size: 13px;
-    color: rgb(160, 160, 180);
-    background-color: rgb(45, 45, 60);
+    color: var(--text-secondary);
+    background-color: var(--bg-toggle);
     border-width: 0;
     padding: 5px 10px;
     margin: 0 1px;
 }
 
 .toggle-group__btn:hover {
-    background-color: rgb(60, 60, 80);
+    background-color: var(--bg-toggle-hover);
 }
 
 .toggle-group__btn--active {
-    color: rgb(255, 255, 255);
-    background-color: rgb(70, 70, 100);
+    color: var(--text-white);
+    background-color: var(--bg-toggle-active);
 }
 
 .toggle-group__btn--first {
@@ -350,7 +523,7 @@
 
 .filter-row__btn {
     font-size: 13px;
-    color: rgb(140, 140, 160);
+    color: var(--text-dim);
     background-color: transparent;
     border-width: 0;
     padding: 4px 12px;
@@ -359,10 +532,10 @@
 }
 
 .filter-row__btn:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--bg-btn-ghost);
 }
 
 .filter-row__btn--active {
-    color: rgb(255, 255, 255);
-    background-color: rgb(50, 55, 75);
+    color: var(--text-white);
+    background-color: var(--bg-filter-active);
 }

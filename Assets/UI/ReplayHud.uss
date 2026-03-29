@@ -11,12 +11,12 @@
 }
 
 .rh-highlight-btn--active {
-    color: rgb(0, 223, 255);
-    background-color: rgba(0, 223, 255, 0.12);
+    color: var(--highlight-cyan);
+    background-color: var(--highlight-cyan-bg);
 }
 
 .rh-highlight-btn--active:hover {
-    background-color: rgba(0, 223, 255, 0.22);
+    background-color: var(--highlight-cyan-bg-hover);
 }
 
 /* ── Controls toggle button ───────────────────────────────────────── */
@@ -26,7 +26,7 @@
     right: 16px;
     width: 40px;
     height: 28px;
-    background-color: rgba(26, 26, 46, 0.7);
+    background-color: var(--bg-hud-panel);
     border-radius: 8px;
     border-width: 0;
     padding: 4px;
@@ -35,14 +35,14 @@
 }
 
 .rh-controls-toggle:hover {
-    background-color: rgba(26, 26, 46, 0.9);
+    background-color: var(--bg-loading-overlay);
 }
 
 .rh-controls-toggle-icon {
     width: 16px;
     height: 16px;
     -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: rgb(160, 160, 180);
+    -unity-background-image-tint-color: var(--text-secondary);
 }
 
 .rh-controls-toggle-icon--down {
@@ -64,7 +64,7 @@
     left: 0;
     right: 0;
     padding: 12px 16px 16px 16px;
-    background-color: rgba(26, 26, 46, 0.7);
+    background-color: var(--bg-hud-panel);
 }
 
 /* Seek row */
@@ -76,7 +76,7 @@
 
 .rh-time-label {
     font-size: 14px;
-    color: rgb(160, 160, 180);
+    color: var(--text-secondary);
     width: 50px;
     -unity-text-align: middle-center;
     flex-shrink: 0;
@@ -85,7 +85,7 @@
 .rh-seek-track {
     flex-grow: 1;
     height: 8px;
-    background-color: rgba(255, 255, 255, 0.12);
+    background-color: var(--bg-track);
     border-radius: 4px;
     margin: 0 8px;
     overflow: visible;
@@ -97,7 +97,7 @@
     left: 0;
     bottom: 0;
     width: 0%;
-    background-color: rgb(80, 160, 220);
+    background-color: var(--accent-progress);
     border-radius: 4px;
 }
 
@@ -106,14 +106,14 @@
     top: -6px;
     width: 20px;
     height: 20px;
-    background-color: rgb(220, 220, 235);
+    background-color: var(--text-primary);
     border-radius: 10px;
     margin-left: -10px;
     left: 0%;
 }
 
 .rh-seek-handle:hover {
-    background-color: rgb(255, 255, 255);
+    background-color: var(--text-white);
 }
 
 /* Playback controls row */
@@ -126,7 +126,7 @@
 .rh-play-btn {
     width: 56px;
     height: 40px;
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: var(--bg-item-hover);
     border-radius: 20px;
     border-width: 0;
     margin-right: 12px;
@@ -135,14 +135,14 @@
 }
 
 .rh-play-btn:hover {
-    background-color: rgba(255, 255, 255, 0.18);
+    background-color: var(--bg-btn-ghost-hover-strong);
 }
 
 .rh-play-icon {
     width: 20px;
     height: 20px;
     -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: rgb(220, 220, 235);
+    -unity-background-image-tint-color: var(--text-primary);
 }
 
 .rh-play-icon--play {
@@ -157,14 +157,14 @@
     width: 48px;
     height: 36px;
     font-size: 16px;
-    color: rgb(160, 160, 180);
-    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    background-color: var(--bg-btn-ghost);
     border-radius: 18px;
     border-width: 0;
     -unity-text-align: middle-center;
 }
 
 .rh-speed-btn:hover {
-    color: rgb(220, 220, 235);
-    background-color: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    background-color: var(--bg-track);
 }

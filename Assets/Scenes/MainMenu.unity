@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 1520836570}
   - component: {fileID: 1520836569}
   - component: {fileID: 1520836568}
+  - component: {fileID: 1520836571}
   m_Layer: 0
   m_Name: MainMenuController
   m_TagString: Untagged
@@ -173,6 +174,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ArrowThing::MainMenuController
   uiDocument: {fileID: 1520836568}
+  inputActions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
 --- !u!4 &1520836570
 Transform:
   m_ObjectHideFlags: 0
@@ -188,6 +190,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1520836571
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1520836567}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b356203ee21fba428ac4e24d888c2ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ArrowThing::UIThemeApplier
+  visualSettings: {fileID: 11400000, guid: f7b34a78b24c8fb408fadddec598eca5, type: 2}
 --- !u!1 &1955145144
 GameObject:
   m_ObjectHideFlags: 0

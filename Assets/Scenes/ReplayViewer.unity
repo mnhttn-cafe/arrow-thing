@@ -222,6 +222,7 @@ GameObject:
   - component: {fileID: 334940401}
   - component: {fileID: 334940400}
   - component: {fileID: 334940402}
+  - component: {fileID: 334940403}
   m_Layer: 0
   m_Name: ReplayViewer
   m_TagString: Untagged
@@ -286,6 +287,19 @@ MonoBehaviour:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_WorldSpaceCollider: {fileID: 0}
+--- !u!114 &334940403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 334940399}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b356203ee21fba428ac4e24d888c2ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ArrowThing::UIThemeApplier
+  visualSettings: {fileID: 11400000, guid: f7b34a78b24c8fb408fadddec598eca5, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

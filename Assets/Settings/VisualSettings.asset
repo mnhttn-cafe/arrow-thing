@@ -12,23 +12,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6bfc8e9f9d54aa447b7d4e8b9e74b30b, type: 3}
   m_Name: VisualSettings
   m_EditorClassIdentifier: Assembly-CSharp::VisualSettings
+  themeUIStyleSheet: {fileID: 7433441132597879392, guid: a9a6be8b4dabb9945ba372d2b92985d2, type: 3}
   backgroundColor: {r: 0.102, g: 0.102, b: 0.18, a: 1}
   gridDotColor: {r: 0.18, g: 0.227, b: 0.349, a: 1}
+  gridDotScale: 1
+  boardDotSprite: {fileID: 21300000, guid: 8121e4e108c755342acdfcd64a7be331, type: 3}
   arrowBodyColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
+  arrowHeadColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
   arrowPalette:
   - {r: 0.396, g: 0.573, b: 0.816, a: 1}
   - {r: 0.753, g: 0.576, b: 0.824, a: 1}
   - {r: 0.467, g: 0.757, b: 0.537, a: 1}
   - {r: 0.878, g: 0.718, b: 0.38, a: 1}
-  boardDotSprite: {fileID: -4815089856549589728, guid: 8121e4e108c755342acdfcd64a7be331, type: 3}
   arrowBodyWidth: 0.1
   arrowHeadLength: 0.35
   arrowHeadWidthMultiplier: 2
-  gridDotScale: 1
   arrowBodyMaterial: {fileID: 2100000, guid: aa9f78cb7cbca1d4ca79624a882a1211, type: 2}
   arrowHeadMaterial: {fileID: 2100000, guid: b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7, type: 2}
   arrowTrailMaterial: {fileID: 2100000, guid: a1b2c3d4e5f6789012345678abcdef01, type: 2}
-  arrowHeadColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
+  trailColor: {r: 0.18039216, g: 0.22745098, b: 0.34901962, a: 1}
+  blockedTintIntensity: 1
   rejectFlashColor: {r: 1, g: 0.267, b: 0.267, a: 1}
   rejectFlashDuration: 0.35
   rejectFlashCurve:
@@ -81,8 +84,6 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   pathExtensionMultiplier: 1.5
-  trailColor: {r: 0.18039216, g: 0.22745098, b: 0.34901962, a: 1}
-  blockedTintIntensity: 1
   bumpSlideDuration: 0.15
   bumpSlideCurve:
     serializedVersion: 2

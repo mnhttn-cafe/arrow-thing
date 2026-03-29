@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 356411432}
   - component: {fileID: 356411431}
   - component: {fileID: 356411433}
+  - component: {fileID: 356411434}
   m_Layer: 5
   m_Name: Leaderboard
   m_TagString: Untagged
@@ -188,6 +189,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ArrowThing::LeaderboardScreenController
   uiDocument: {fileID: 356411431}
+--- !u!114 &356411434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 356411430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b356203ee21fba428ac4e24d888c2ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ArrowThing::UIThemeApplier
+  visualSettings: {fileID: 11400000, guid: f7b34a78b24c8fb408fadddec598eca5, type: 2}
 --- !u!1 &389207111
 GameObject:
   m_ObjectHideFlags: 0
