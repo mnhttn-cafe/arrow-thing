@@ -10,13 +10,19 @@
         <ui:Label name="loading-percent" class="loading-percent" text="" />
     </ui:VisualElement>
 
-    <ui:Button name="back-to-menu-btn" class="hud-icon-btn hud-icon-btn--top-left" text="X" />
+    <ui:Button name="back-to-menu-btn" class="hud-icon-btn hud-icon-btn--top-left">
+        <ui:VisualElement class="hud-icon-btn__icon icon--close" />
+    </ui:Button>
     <ui:Label name="timer-label" class="timer-label" text="15" />
-    <ui:Button name="trail-toggle-btn" class="hud-icon-btn hud-icon-btn--bottom-right" text="||" />
+    <ui:Button name="trail-toggle-btn" class="hud-icon-btn hud-icon-btn--bottom-right">
+        <ui:VisualElement class="hud-icon-btn__icon icon--arrow-lane-preview" />
+    </ui:Button>
 
     <ui:VisualElement name="leave-modal" class="modal-overlay modal--hidden">
         <ui:VisualElement class="modal-box">
-            <ui:Button name="leave-close-btn" class="modal-close-btn" text="X" />
+            <ui:Button name="leave-close-btn" class="modal-close-btn">
+                <ui:VisualElement class="modal-close-btn__icon icon--close" />
+            </ui:Button>
             <ui:Label name="leave-title" class="modal-label" text="Save game?" />
             <ui:Label name="leave-sublabel" class="modal-sublabel modal--hidden" text="This will replace your current save." />
             <ui:VisualElement class="modal-buttons">

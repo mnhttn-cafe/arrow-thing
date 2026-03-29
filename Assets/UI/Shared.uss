@@ -167,6 +167,10 @@
     -unity-background-image-tint-color: var(--text-gold);
 }
 
+.icon--arrow-lane-preview {
+    background-image: url("/Assets/Art/arrow_lane_preview_icon.png");
+}
+
 /* ── HUD Icon Button ──────────────────────────────────────────────── */
 /*
    Base: absolute-positioned circular button.
@@ -373,24 +377,32 @@
     background-color: var(--accent-danger-btn-hover);
 }
 
-/* Small X dismiss button, absolute-positioned inside .modal-box */
+/* Small dismiss button, absolute-positioned inside .modal-box */
 .modal-close-btn {
     position: absolute;
     top: 8px;
     right: 8px;
     width: 32px;
     height: 32px;
-    font-size: 18px;
-    color: var(--text-dim);
     background-color: transparent;
     border-width: 0;
     border-radius: 16px;
-    -unity-text-align: middle-center;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-close-btn:hover {
-    color: var(--text-white);
     background-color: var(--border-normal);
+}
+
+.modal-close-btn__icon {
+    width: 18px;
+    height: 18px;
+    -unity-background-image-tint-color: var(--text-dim);
+}
+
+.modal-close-btn:hover .modal-close-btn__icon {
+    -unity-background-image-tint-color: var(--text-white);
 }
 
 /* ── Screen Header ────────────────────────────────────────────────── */
