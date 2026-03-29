@@ -471,27 +471,34 @@
 
 /* Theme dropdown */
 .setting-dropdown {
-    width: 160px;
+    align-self: stretch;
     background-color: var(--bg-input);
-    border-color: var(--border-input);
+    border-color: var(--border-normal);
     border-width: 1px;
     border-radius: 6px;
     color: var(--text-primary);
+    font-size: 15px;
 }
 
 .setting-dropdown .unity-base-popup-field__input {
     background-color: transparent;
     border-width: 0;
-    padding: 6px 10px;
+    padding: 8px 12px;
     color: var(--text-primary);
+    font-size: 15px;
 }
 
 .setting-dropdown .unity-base-popup-field__arrow {
     -unity-background-image-tint-color: var(--text-secondary);
+    margin-right: 8px;
+}
+
+.setting-dropdown:hover {
+    border-color: var(--border-emphasis);
 }
 
 .setting-dropdown:hover .unity-base-popup-field__input {
-    background-color: var(--bg-item-hover);
+    background-color: transparent;
 }
 
 /* SnapSlider component ---------------------------------------------------- */
