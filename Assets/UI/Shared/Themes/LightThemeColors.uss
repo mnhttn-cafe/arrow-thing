@@ -1,0 +1,153 @@
+/* ====================================================================
+   LightThemeColors.uss — Light theme
+   Swap this file (via VisualSettings.themeUIStyleSheet) to change the
+   entire UI colour scheme at runtime without touching any other file.
+
+   Variables are organised into semantic groups; the same variable name
+   must appear in every theme file, even if the value is unchanged.
+   ==================================================================== */
+
+:root {
+
+    /* ── Text ─────────────────────────────────────────────────────────── */
+    --text-white:                  rgb(255, 255, 255);
+    --text-primary:                rgb(30, 30, 45);
+    --text-secondary:              rgb(90, 90, 110);
+    --text-heading:                rgb(55, 55, 75);
+    --text-dim:                    rgb(145, 145, 165);
+    --text-danger:                 rgb(190, 40, 40);
+    --text-success:                rgb(30, 140, 60);
+    --text-gold:                   rgb(180, 140, 0);
+    --text-link:                   rgb(40, 110, 200);
+    --text-link-hover:             rgb(20, 80, 170);
+
+    /* ── Surfaces ─────────────────────────────────────────────────────── */
+    --bg-screen:                   rgb(235, 235, 245);
+    --bg-screen-dim:               rgba(235, 235, 245, 0.9);
+    --bg-overlay:                  rgba(0, 0, 0, 0.35);
+    --bg-backdrop:                 rgba(0, 0, 0, 0.25);
+    --bg-loading-overlay:          rgba(220, 220, 235, 0.9);
+    --bg-hud-panel:                rgba(240, 240, 252, 0.8);
+    --bg-panel:                    rgb(255, 255, 255);
+    --bg-panel-dark:               rgb(245, 245, 252);
+    --bg-settings:                 rgb(248, 248, 255);
+    --bg-settings-nav:             rgb(235, 235, 248);
+    --bg-entry:                    rgb(252, 252, 255);
+    --bg-entry-hover:              rgb(240, 240, 252);
+    --bg-track:                    rgba(0, 0, 0, 0.08);
+    --bg-item-hover:               rgba(0, 0, 0, 0.05);
+
+    /* ── Buttons ──────────────────────────────────────────────────────── */
+    --bg-btn:                      rgb(215, 215, 230);
+    --bg-btn-hover:                rgb(195, 195, 215);
+    --bg-btn-active:               rgb(175, 175, 200);
+    --bg-btn-ghost:                rgba(0, 0, 0, 0.04);
+    --bg-btn-ghost-hover:          rgba(0, 0, 0, 0.09);
+    --bg-btn-ghost-hover-strong:   rgba(0, 0, 0, 0.12);
+    --bg-btn-ghost-active:         rgba(0, 0, 0, 0.18);
+
+    /* ── Inputs / raised surfaces ─────────────────────────────────────── */
+    --bg-surface:                  rgb(220, 222, 235);
+    --bg-surface-hover:            rgb(200, 202, 220);
+    --bg-surface-active:           rgb(180, 185, 210);
+    --bg-input:                    rgb(248, 248, 255);
+
+    /* ── Navigation: tabs, toggles, filters ──────────────────────────── */
+    --bg-tab:                      rgb(225, 225, 238);
+    --bg-tab-hover:                rgb(210, 210, 228);
+    --bg-tab-active:               rgb(190, 215, 240);
+    --bg-toggle:                   rgb(218, 218, 232);
+    --bg-toggle-hover:             rgb(200, 200, 218);
+    --bg-toggle-active:            rgb(185, 195, 220);
+    --bg-filter-active:            rgb(210, 215, 235);
+
+    /* ── Preset / mode select ─────────────────────────────────────────── */
+    --bg-preset:                   rgb(195, 215, 235);
+    --bg-preset-hover:             rgb(170, 200, 230);
+    --bg-preset-active:            rgb(140, 185, 225);
+
+    /* ── Accent: blue (active / focus / link) ─────────────────────────── */
+    --accent-blue:                 rgb(40, 110, 200);
+    --accent-blue-hover:           rgb(20, 80, 170);
+    --accent-blue-bg:              rgba(40, 110, 200, 0.06);
+    --accent-blue-bg-mid:          rgba(40, 110, 200, 0.12);
+    --accent-blue-bg-strong:       rgba(40, 110, 200, 0.2);
+
+    /* ── Accent: green (start / primary action) ───────────────────────── */
+    --accent-green:                rgb(30, 130, 60);
+    --accent-green-hover:          rgb(25, 155, 75);
+    --accent-green-active:         rgb(20, 180, 90);
+
+    /* ── Accent: teal (continue / resume) ────────────────────────────── */
+    --accent-teal:                 rgb(20, 120, 130);
+    --accent-teal-hover:           rgb(15, 145, 160);
+    --accent-teal-active:          rgb(10, 170, 190);
+
+    /* ── Accent: danger ───────────────────────────────────────────────── */
+    --accent-danger:               rgb(190, 40, 40);
+    --accent-danger-bg:            rgba(190, 40, 40, 0.08);
+    --accent-danger-bg-hover:      rgba(190, 40, 40, 0.13);
+    --accent-danger-border:        rgba(190, 40, 40, 0.3);
+    --accent-danger-border-hover:  rgba(190, 40, 40, 0.55);
+    --accent-danger-btn:           rgb(175, 40, 40);
+    --accent-danger-btn-hover:     rgb(200, 50, 50);
+
+    /* ── Accent: info (leaderboard / secondary action) ────────────────── */
+    --accent-info-btn:             rgb(60, 110, 180);
+    --accent-info-btn-hover:       rgb(45, 90, 155);
+    --accent-info-btn-active:      rgb(30, 75, 140);
+
+    /* ── Accent: misc ─────────────────────────────────────────────────── */
+    --accent-favorite:             rgb(210, 60, 85);
+    --accent-warning:              rgb(180, 50, 50);
+    --accent-progress:             rgb(40, 120, 200);
+
+    /* ── Toggle / slider controls ─────────────────────────────────────── */
+    --toggle-knob:                 rgb(120, 120, 145);
+    --toggle-knob-active:          rgb(30, 110, 210);
+    --slider-handle:               rgb(40, 110, 200);
+
+    /* ── Borders / dividers ───────────────────────────────────────────── */
+    --border-subtle:               rgba(0, 0, 0, 0.05);
+    --border-normal:               rgba(0, 0, 0, 0.1);
+    --border-emphasis:             rgba(0, 0, 0, 0.16);
+    --border-strong:               rgba(0, 0, 0, 0.28);
+
+    /* ── Scrollbar: settings panel ────────────────────────────────────── */
+    --scrollbar-track:             rgba(0, 0, 0, 0);
+    --scrollbar-thumb:             rgba(0, 0, 0, 0.18);
+    --scrollbar-thumb-panel-hover: rgba(0, 0, 0, 0.28);
+    --scrollbar-thumb-hover:       rgba(0, 0, 0, 0.4);
+
+    /* ── Scrollbar: leaderboard ───────────────────────────────────────── */
+    --lb-scrollbar-track:          rgb(235, 235, 245);
+    --lb-scrollbar-thumb:          rgb(185, 185, 205);
+    --lb-scrollbar-thumb-hover:    rgb(155, 155, 180);
+
+    /* ── Leaderboard rank tints ───────────────────────────────────────── */
+    --lb-gold-bg:                  rgba(180, 140, 0, 0.08);
+    --lb-gold-bg-hover:            rgba(180, 140, 0, 0.14);
+    --lb-silver-bg:                rgba(130, 130, 160, 0.08);
+    --lb-silver-bg-hover:          rgba(130, 130, 160, 0.14);
+    --lb-bronze-bg:                rgba(160, 100, 30, 0.08);
+    --lb-bronze-bg-hover:          rgba(160, 100, 30, 0.14);
+    --lb-favorite-bg:              rgba(210, 60, 85, 0.07);
+    --lb-favorite-bg-hover:        rgba(210, 60, 85, 0.13);
+    --lb-focused-bg:               rgb(215, 225, 245);
+    --lb-focused-border:           rgb(80, 130, 210);
+    --lb-gold-focused-bg:          rgba(180, 140, 0, 0.11);
+    --lb-gold-focused-border:      rgb(160, 130, 30);
+
+    /* ── Leaderboard rank text ────────────────────────────────────────── */
+    --lb-rank-gold:                rgb(160, 120, 0);
+    --lb-rank-silver:              rgb(100, 100, 130);
+    --lb-rank-bronze:              rgb(140, 85, 20);
+
+    /* ── Replay highlight ─────────────────────────────────────────────── */
+    --highlight-cyan:              rgb(0, 160, 190);
+    --highlight-cyan-bg:           rgba(0, 160, 190, 0.1);
+    --highlight-cyan-bg-hover:     rgba(0, 160, 190, 0.2);
+
+    /* ── Misc ─────────────────────────────────────────────────────────── */
+    --title-tint:                  rgb(30, 30, 45);
+}

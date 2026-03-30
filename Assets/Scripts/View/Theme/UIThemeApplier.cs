@@ -26,13 +26,26 @@ public sealed class UIThemeApplier : MonoBehaviour
     private void ApplyTheme(VisualSettings settings)
     {
         var root = GetComponent<UIDocument>().rootVisualElement;
+        // Also apply to panel.visualTree so elements injected above the UIDocument
+        // root (e.g. CustomDropdown popup) inherit the theme's CSS custom properties.
+        var panelRoot = root.panel?.visualTree;
 
-        if (_appliedSheet != null && root.styleSheets.Contains(_appliedSheet))
-            root.styleSheets.Remove(_appliedSheet);
+        if (_appliedSheet != null)
+        {
+            if (root.styleSheets.Contains(_appliedSheet))
+                root.styleSheets.Remove(_appliedSheet);
+            if (panelRoot != null && panelRoot.styleSheets.Contains(_appliedSheet))
+                panelRoot.styleSheets.Remove(_appliedSheet);
+        }
 
         _appliedSheet = settings?.themeUIStyleSheet;
 
-        if (_appliedSheet != null && !root.styleSheets.Contains(_appliedSheet))
-            root.styleSheets.Add(_appliedSheet);
+        if (_appliedSheet != null)
+        {
+            if (!root.styleSheets.Contains(_appliedSheet))
+                root.styleSheets.Add(_appliedSheet);
+            if (panelRoot != null && !panelRoot.styleSheets.Contains(_appliedSheet))
+                panelRoot.styleSheets.Add(_appliedSheet);
+        }
     }
 }

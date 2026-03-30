@@ -134,7 +134,7 @@ public sealed class GameController : MonoBehaviour
         if (mainCamera == null)
             mainCamera = Camera.main;
         if (mainCamera != null)
-            mainCamera.backgroundColor = visualSettings.backgroundColor;
+            mainCamera.backgroundColor = (ThemeManager.Current ?? visualSettings).backgroundColor;
 
         StartCoroutine(GenerateAndSetup());
     }

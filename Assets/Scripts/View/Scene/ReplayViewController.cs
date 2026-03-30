@@ -103,7 +103,7 @@ public sealed class ReplayViewController : MonoBehaviour
         if (mainCamera == null)
             mainCamera = Camera.main;
         if (mainCamera != null)
-            mainCamera.backgroundColor = visualSettings.backgroundColor;
+            mainCamera.backgroundColor = (ThemeManager.Current ?? visualSettings).backgroundColor;
 
         StartCoroutine(LoadAndPlay());
     }

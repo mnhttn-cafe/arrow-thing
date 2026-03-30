@@ -36,6 +36,7 @@
     flex-shrink: 1;
     background-image: url("/Assets/Art/Sprites/title.png");
     -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--title-tint);
 }
 
 /* Standard menu button */
@@ -44,7 +45,7 @@
     padding: 14px 0;
     margin: 6px 0;
     font-size: 28px;
-    color: var(--text-white);
+    color: var(--text-primary);
     background-color: var(--bg-btn);
     border-radius: 8px;
     border-width: 0;
@@ -85,7 +86,7 @@
     padding: 8px 4px;
     margin: 6px;
     font-size: 16px;
-    color: var(--text-white);
+    color: var(--text-primary);
     background-color: var(--bg-preset);
     border-radius: 8px;
     border-width: 2px;
@@ -122,7 +123,7 @@
 
 .preset-custom-dim-label {
     font-size: 14px;
-    color: var(--text-white);
+    color: var(--text-primary);
     width: 20px;
     margin-right: 4px;
     -unity-text-align: middle-center;
@@ -131,6 +132,7 @@
 
 /* Start button — green accent */
 .start-btn {
+    color: var(--text-white);
     background-color: var(--accent-green);
 }
 
@@ -144,6 +146,7 @@
 
 /* Continue button — teal accent to distinguish from "Play" / "New Board" */
 .continue-btn {
+    color: var(--text-white);
     background-color: var(--accent-teal);
 }
 
@@ -198,7 +201,7 @@
 /* Section label */
 .section-label {
     font-size: 28px;
-    color: var(--text-white);
+    color: var(--text-primary);
     margin-bottom: 16px;
     flex-shrink: 1;
 }
@@ -367,13 +370,12 @@
     -unity-text-align: upper-left;
 }
 
-/* Small inline danger text button (less visual weight than menu-btn--danger) */
+/* Filled danger button — used for destructive actions */
 .settings-danger-btn {
     font-size: 14px;
-    color: var(--text-danger);
-    background-color: transparent;
-    border-width: 1px;
-    border-color: var(--accent-danger-border);
+    color: var(--text-white);
+    background-color: var(--accent-danger-btn);
+    border-width: 0;
     border-radius: 6px;
     padding: 6px 14px;
     align-self: flex-start;
@@ -382,8 +384,7 @@
 }
 
 .settings-danger-btn:hover {
-    background-color: var(--accent-danger-bg);
-    border-color: var(--accent-danger-border-hover);
+    background-color: var(--accent-danger-btn-hover);
 }
 
 /* About section link row */
@@ -574,7 +575,7 @@
 /* Value display */
 .snap-slider__value {
     font-size: 13px;
-    color: var(--text-white);
+    color: var(--text-primary);
     width: 34px;
     -unity-text-align: middle-center;
     margin: 0;
@@ -595,7 +596,7 @@
     padding: 0;
     margin: 0;
     font-size: 12px;
-    color: var(--text-white);
+    color: var(--text-primary);
     background-color: var(--bg-surface);
     border-radius: 0;
     border-width: 0;
@@ -728,7 +729,7 @@
 /* Display mode — looks like a plain label */
 .editable-label__input .unity-text-field__input {
     font-size: 24px;
-    color: var(--text-white);
+    color: var(--text-primary);
     background-color: rgba(0, 0, 0, 0);
     border-color: rgba(255, 255, 255, 0);
     border-width: 1px;
@@ -799,7 +800,7 @@
 
 .labeled-field__input .unity-text-field__input {
     font-size: 16px;
-    color: var(--text-white);
+    color: var(--text-primary);
     background-color: var(--bg-input);
     border-color: var(--border-normal);
     border-width: 1px;

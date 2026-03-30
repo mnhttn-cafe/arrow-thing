@@ -39,6 +39,12 @@ public sealed class CustomDropdown
         Root.Add(arrow);
 
         Root.RegisterCallback<ClickEvent>(_ => Toggle());
+        // Close popup when the trigger moves (e.g. parent ScrollView scrolls)
+        Root.RegisterCallback<GeometryChangedEvent>(_ =>
+        {
+            if (_backdrop != null)
+                Close();
+        });
     }
 
     public void SetChoices(IReadOnlyList<string> choices)
