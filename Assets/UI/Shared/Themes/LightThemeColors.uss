@@ -41,10 +41,10 @@
     --bg-btn:                      rgb(215, 215, 230);
     --bg-btn-hover:                rgb(195, 195, 215);
     --bg-btn-active:               rgb(175, 175, 200);
-    --bg-btn-ghost:                rgba(0, 0, 0, 0.04);
-    --bg-btn-ghost-hover:          rgba(0, 0, 0, 0.09);
-    --bg-btn-ghost-hover-strong:   rgba(0, 0, 0, 0.12);
-    --bg-btn-ghost-active:         rgba(0, 0, 0, 0.18);
+    --bg-btn-ghost:                rgba(0, 0, 0, 0.08);
+    --bg-btn-ghost-hover:          rgba(0, 0, 0, 0.14);
+    --bg-btn-ghost-hover-strong:   rgba(0, 0, 0, 0.18);
+    --bg-btn-ghost-active:         rgba(0, 0, 0, 0.25);
 
     /* ── Inputs / raised surfaces ─────────────────────────────────────── */
     --bg-surface:                  rgb(220, 222, 235);

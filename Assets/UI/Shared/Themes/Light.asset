@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisualSettings
   themeUIStyleSheet: {fileID: 7433441132597879392, guid: 1861f405e9d44748904c27a943cb8c7c, type: 3}
   backgroundColor: {r: 0.878, g: 0.898, b: 0.949, a: 1}
-  gridDotColor: {r: 0.596, g: 0.639, b: 0.737, a: 1}
+  gridDotColor: {r: 0.775, g: 0.790, b: 0.830, a: 1}
   gridDotScale: 1
   boardDotSprite: {fileID: 21300000, guid: 8121e4e108c755342acdfcd64a7be331, type: 3}
   arrowBodyColor: {r: 0.22, g: 0.251, b: 0.38, a: 1}

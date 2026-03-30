@@ -370,12 +370,13 @@
     -unity-text-align: upper-left;
 }
 
-/* Filled danger button — used for destructive actions */
+/* Danger button — used for destructive actions */
 .settings-danger-btn {
     font-size: 14px;
-    color: var(--text-white);
-    background-color: var(--accent-danger-btn);
-    border-width: 0;
+    color: var(--text-danger);
+    background-color: var(--accent-danger-bg);
+    border-width: 1px;
+    border-color: var(--accent-danger-border);
     border-radius: 6px;
     padding: 6px 14px;
     align-self: flex-start;
@@ -384,7 +385,8 @@
 }
 
 .settings-danger-btn:hover {
-    background-color: var(--accent-danger-btn-hover);
+    background-color: var(--accent-danger-bg-hover);
+    border-color: var(--accent-danger-border-hover);
 }
 
 /* About section link row */
@@ -692,15 +694,16 @@
 }
 
 .auth-btn--primary {
-    background-color: var(--bg-preset);
+    color: var(--text-white);
+    background-color: var(--accent-info-btn);
 }
 
 .auth-btn--primary:hover {
-    background-color: var(--bg-preset-hover);
+    background-color: var(--accent-info-btn-hover);
 }
 
 .auth-btn--primary:active {
-    background-color: var(--bg-preset-active);
+    background-color: var(--accent-info-btn-active);
 }
 
 .account-form-title {
