@@ -36,7 +36,7 @@
     flex-shrink: 1;
     background-image: url("/Assets/Art/Sprites/title.png");
     -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: var(--title-tint);
+    -unity-background-image-tint-color: var(--text-primary);
 }
 
 /* Standard menu button */
@@ -263,7 +263,7 @@
     padding-top: 16px;
     background-color: var(--bg-sidebar-nav);
     border-right-width: 1px;
-    border-right-color: var(--border-subtle);
+    border-right-color: var(--border-normal);
 }
 
 .settings-nav-btn {
@@ -349,7 +349,7 @@
 
 .settings-section--divider {
     border-top-width: 1px;
-    border-top-color: var(--border-subtle);
+    border-top-color: var(--border-normal);
 }
 
 /* Section header inside scroll body */
@@ -488,7 +488,7 @@
 
 .custom-dropdown:hover {
     border-color: var(--border-emphasis);
-    background-color: var(--bg-item-hover);
+    background-color: var(--bg-btn-ghost);
 }
 
 .custom-dropdown--open {
@@ -542,7 +542,7 @@
 }
 
 .custom-dropdown__item:hover {
-    background-color: var(--bg-item-hover);
+    background-color: var(--bg-btn-ghost);
 }
 
 .custom-dropdown__item--selected {

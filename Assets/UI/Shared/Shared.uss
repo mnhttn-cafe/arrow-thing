@@ -270,7 +270,7 @@
 
 .context-menu {
     position: absolute;
-    background-color: var(--bg-popup);
+    background-color: var(--bg-panel);
     border-radius: 8px;
     padding: 4px 0;
     min-width: 140px;
@@ -286,7 +286,7 @@
 }
 
 .context-menu__btn:hover {
-    background-color: var(--bg-item-hover);
+    background-color: var(--bg-btn-ghost);
 }
 
 .context-menu__btn--danger {
@@ -392,7 +392,7 @@
 }
 
 .modal-close-btn:hover {
-    background-color: var(--border-normal);
+    background-color: var(--bg-btn-ghost-hover);
 }
 
 .modal-close-btn__icon {

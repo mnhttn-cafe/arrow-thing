@@ -25,12 +25,10 @@
     --bg-loading-overlay:           rgba(26, 26, 46, 0.85);
     --bg-hud-panel:                 rgba(26, 26, 46, 0.7);
     --bg-panel:                     rgb(40, 40, 55);
-    --bg-popup:                     rgb(45, 45, 60);
     --bg-sidebar:                   rgb(22, 22, 30);
     --bg-sidebar-nav:               rgb(18, 18, 26);
 
     /* ── Interactive ──────────────────────────────────────────────────── */
-    --bg-item-hover:                rgba(255, 255, 255, 0.08);
     --bg-track:                     rgba(255, 255, 255, 0.12);
     --bg-input:                     rgb(30, 30, 42);
 
@@ -88,7 +86,6 @@
     --accent-favorite:              rgb(255, 100, 120);
 
     /* ── Borders / dividers ───────────────────────────────────────────── */
-    --border-subtle:                rgba(255, 255, 255, 0.06);
     --border-normal:                rgba(255, 255, 255, 0.1);
     --border-emphasis:              rgba(255, 255, 255, 0.15);
     --border-strong:                rgba(255, 255, 255, 0.3);
@@ -122,6 +119,4 @@
     --highlight-clearable-bg:       rgba(0, 223, 255, 0.12);
     --highlight-clearable-bg-hover: rgba(0, 223, 255, 0.22);
 
-    /* ── Misc ─────────────────────────────────────────────────────────── */
-    --title-tint:                   rgb(255, 255, 255);
 }

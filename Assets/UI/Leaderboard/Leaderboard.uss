@@ -212,7 +212,7 @@
 }
 
 .lb-fav-btn:hover {
-    background-color: var(--bg-item-hover);
+    background-color: var(--bg-btn-ghost);
     border-radius: 14px;
 }
 

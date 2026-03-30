@@ -126,7 +126,7 @@
 .rh-play-btn {
     width: 56px;
     height: 40px;
-    background-color: var(--bg-item-hover);
+    background-color: var(--bg-btn-ghost);
     border-radius: 20px;
     border-width: 0;
     margin-right: 12px;
