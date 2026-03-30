@@ -67,6 +67,16 @@ public sealed class SettingsController : MonoBehaviour
         var root = GetComponent<UIDocument>().rootVisualElement;
         _settings = root.Q("settings");
 
+        if (_settings == null)
+        {
+            Debug.LogError(
+                "[SettingsController] Could not find 'settings' element in UIDocument root. "
+                    + "Ensure the UIDocument's Source Asset on the SettingsController prefab "
+                    + "is set to SettingsDocument.uxml."
+            );
+            return;
+        }
+
         WireSettingsControls();
         WireSettingsNav();
         WireModals(root);
