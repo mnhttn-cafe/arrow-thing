@@ -77,23 +77,23 @@
 }
 
 .victory-btn--primary {
-    color: var(--text-white);
-    background-color: var(--accent-green);
+    color: var(--text-on-accent);
+    background-color: var(--accent-approval);
 }
 
 .victory-btn--primary:hover {
-    background-color: var(--accent-green-hover);
+    background-color: var(--accent-approval-hover);
 }
 
 .victory-btn--primary:active {
-    background-color: var(--accent-green-active);
+    background-color: var(--accent-approval-active);
 }
 
 .victory-btn--leaderboard {
     font-size: 22px;
     padding: 11px 0;
     margin-top: 8px;
-    color: var(--text-white);
+    color: var(--text-on-accent);
     background-color: var(--accent-info-btn);
 }
 

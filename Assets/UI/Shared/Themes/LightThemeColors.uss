@@ -10,7 +10,7 @@
 :root {
 
     /* ── Text ─────────────────────────────────────────────────────────── */
-    --text-white:                  rgb(255, 255, 255);
+    --text-on-accent:               rgb(255, 255, 255);
     --text-primary:                rgb(30, 30, 45);
     --text-secondary:              rgb(90, 90, 110);
     --text-heading:                rgb(55, 55, 75);
@@ -29,7 +29,7 @@
     --bg-loading-overlay:          rgba(220, 220, 235, 0.9);
     --bg-hud-panel:                rgba(240, 240, 252, 0.8);
     --bg-panel:                    rgb(255, 255, 255);
-    --bg-panel-dark:               rgb(245, 245, 252);
+    --bg-popup:                    rgb(245, 245, 252);
     --bg-settings:                 rgb(248, 248, 255);
     --bg-settings-nav:             rgb(235, 235, 248);
     --bg-entry:                    rgb(252, 252, 255);
@@ -66,21 +66,21 @@
     --bg-preset-hover:             rgb(170, 200, 230);
     --bg-preset-active:            rgb(140, 185, 225);
 
-    /* ── Accent: blue (active / focus / link) ─────────────────────────── */
-    --accent-blue:                 rgb(40, 110, 200);
-    --accent-blue-bg:              rgba(40, 110, 200, 0.06);
-    --accent-blue-bg-mid:          rgba(40, 110, 200, 0.12);
-    --accent-blue-bg-strong:       rgba(40, 110, 200, 0.2);
+    /* ── Accent: info (active / focus / link / account actions) ─────────── */
+    --accent-info:                 rgb(40, 110, 200);
+    --accent-info-bg:              rgba(40, 110, 200, 0.06);
+    --accent-info-bg-mid:          rgba(40, 110, 200, 0.12);
+    --accent-info-bg-strong:       rgba(40, 110, 200, 0.2);
 
-    /* ── Accent: green (start / primary action) ───────────────────────── */
-    --accent-green:                rgb(30, 130, 60);
-    --accent-green-hover:          rgb(25, 155, 75);
-    --accent-green-active:         rgb(20, 180, 90);
+    /* ── Accent: approval (start / affirmative action) ───────────────────── */
+    --accent-approval:             rgb(30, 130, 60);
+    --accent-approval-hover:       rgb(25, 155, 75);
+    --accent-approval-active:      rgb(20, 180, 90);
 
-    /* ── Accent: teal (continue / resume) ────────────────────────────── */
-    --accent-teal:                 rgb(45, 95, 160);
-    --accent-teal-hover:           rgb(35, 80, 145);
-    --accent-teal-active:          rgb(25, 65, 130);
+    /* ── Accent: confirm (continue / resume) ─────────────────────────────── */
+    --accent-confirm:              rgb(45, 95, 160);
+    --accent-confirm-hover:        rgb(35, 80, 145);
+    --accent-confirm-active:       rgb(25, 65, 130);
 
     /* ── Accent: danger ───────────────────────────────────────────────── */
     --accent-danger-bg:            rgba(190, 40, 40, 0.08);
@@ -142,9 +142,9 @@
     --lb-rank-bronze:              rgb(140, 85, 20);
 
     /* ── Replay highlight ─────────────────────────────────────────────── */
-    --highlight-cyan:              rgb(0, 160, 190);
-    --highlight-cyan-bg:           rgba(0, 160, 190, 0.1);
-    --highlight-cyan-bg-hover:     rgba(0, 160, 190, 0.2);
+    --highlight-clearable:              rgb(0, 160, 190);
+    --highlight-clearable-bg:           rgba(0, 160, 190, 0.1);
+    --highlight-clearable-bg-hover:     rgba(0, 160, 190, 0.2);
 
     /* ── Misc ─────────────────────────────────────────────────────────── */
     --title-tint:                  rgb(30, 30, 45);

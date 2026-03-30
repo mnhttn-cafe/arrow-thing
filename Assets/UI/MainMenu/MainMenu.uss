@@ -102,7 +102,7 @@
 
 .preset-btn--selected {
     background-color: var(--bg-preset-active);
-    border-color: var(--accent-blue);
+    border-color: var(--accent-info);
 }
 
 /* Custom slider panel — appears below preset grid when Custom is selected */
@@ -132,30 +132,30 @@
 
 /* Start button — green accent */
 .start-btn {
-    color: var(--text-white);
-    background-color: var(--accent-green);
+    color: var(--text-on-accent);
+    background-color: var(--accent-approval);
 }
 
 .start-btn:hover {
-    background-color: var(--accent-green-hover);
+    background-color: var(--accent-approval-hover);
 }
 
 .start-btn:active {
-    background-color: var(--accent-green-active);
+    background-color: var(--accent-approval-active);
 }
 
 /* Continue button — teal accent to distinguish from "Play" / "New Board" */
 .continue-btn {
-    color: var(--text-white);
-    background-color: var(--accent-teal);
+    color: var(--text-on-accent);
+    background-color: var(--accent-confirm);
 }
 
 .continue-btn:hover {
-    background-color: var(--accent-teal-hover);
+    background-color: var(--accent-confirm-hover);
 }
 
 .continue-btn:active {
-    background-color: var(--accent-teal-active);
+    background-color: var(--accent-confirm-active);
 }
 
 
@@ -218,7 +218,7 @@
 /*   16px  --text-primary    : setting labels, form titles, inputs, buttons  */
 /*   14px  --text-secondary  : descriptions, field labels, status, links     */
 /*   13px  --text-dim        : nav buttons, value readouts, fine print       */
-/*   24px  --text-white      : display name only (intentionally prominent)   */
+/*   24px  --text-on-accent   : display name only (intentionally prominent)   */
 
 /* ── Settings overlay ─────────────────────────────────────────────── */
 
@@ -283,10 +283,10 @@
 }
 
 .settings-nav-btn--active {
-    color: var(--accent-blue);
+    color: var(--accent-info);
     border-left-width: 2px;
-    border-left-color: var(--accent-blue);
-    background-color: var(--accent-blue-bg);
+    border-left-color: var(--accent-info);
+    background-color: var(--accent-info-bg);
 }
 
 /* Scrollable content area */
@@ -546,7 +546,7 @@
 }
 
 .custom-dropdown__item--selected {
-    color: var(--accent-blue);
+    color: var(--accent-info);
 }
 
 /* SnapSlider component ---------------------------------------------------- */
@@ -695,18 +695,18 @@
 
 .auth-btn--primary {
     color: var(--accent-info-btn);
-    background-color: var(--accent-blue-bg);
+    background-color: var(--accent-info-bg);
     border-width: 1px;
     border-color: var(--accent-info-btn);
 }
 
 .auth-btn--primary:hover {
-    background-color: var(--accent-blue-bg-mid);
+    background-color: var(--accent-info-bg-mid);
     border-color: var(--accent-info-btn-hover);
 }
 
 .auth-btn--primary:active {
-    background-color: var(--accent-blue-bg-strong);
+    background-color: var(--accent-info-bg-strong);
 }
 
 .account-form-title {
@@ -756,7 +756,7 @@
 }
 
 .editable-label--editing .editable-label__input .unity-text-field__input:focus {
-    border-color: var(--accent-blue);
+    border-color: var(--accent-info);
 }
 
 /* LabeledField component -------------------------------------------------- */
@@ -815,7 +815,7 @@
 }
 
 .labeled-field__input .unity-text-field__input:focus {
-    border-color: var(--accent-blue);
+    border-color: var(--accent-info);
 }
 
 .account-error {

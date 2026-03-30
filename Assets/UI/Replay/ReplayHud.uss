@@ -11,12 +11,12 @@
 }
 
 .rh-highlight-btn--active {
-    color: var(--highlight-cyan);
-    background-color: var(--highlight-cyan-bg);
+    color: var(--highlight-clearable);
+    background-color: var(--highlight-clearable-bg);
 }
 
 .rh-highlight-btn--active:hover {
-    background-color: var(--highlight-cyan-bg-hover);
+    background-color: var(--highlight-clearable-bg-hover);
 }
 
 /* ── Controls toggle button ───────────────────────────────────────── */
@@ -113,7 +113,7 @@
 }
 
 .rh-seek-handle:hover {
-    background-color: var(--text-white);
+    background-color: var(--text-on-accent);
 }
 
 /* Playback controls row */

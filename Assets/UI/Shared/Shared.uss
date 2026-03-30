@@ -5,7 +5,7 @@
    panel root (via UIThemeApplier) for the var() references to resolve.
 
    ── Text scale ────────────────────────────────────────────────────────
-   Display  28px+  --text-white      Timer, victory msg, hero overlays
+   Display  28px+  --text-on-accent      Timer, victory msg, hero overlays
    Title    20px   --text-primary    Screen headers, modal titles
    Body     16px   --text-primary    Panel content, buttons, entry values
    Secondary 14px  --text-secondary  Descriptions, labels, muted helpers
@@ -224,12 +224,12 @@
 
 /* Toggled/active state — blue tint */
 .hud-icon-btn--active {
-    color: var(--accent-blue);
-    background-color: var(--accent-blue-bg-mid);
+    color: var(--accent-info);
+    background-color: var(--accent-info-bg-mid);
 }
 
 .hud-icon-btn--active:hover {
-    background-color: var(--accent-blue-bg-strong);
+    background-color: var(--accent-info-bg-strong);
 }
 
 /* Use instead of text when the button contains a background-image child */
@@ -270,7 +270,7 @@
 
 .context-menu {
     position: absolute;
-    background-color: var(--bg-panel-dark);
+    background-color: var(--bg-popup);
     border-radius: 8px;
     padding: 4px 0;
     min-width: 140px;
@@ -479,7 +479,7 @@
     color: var(--text-primary);
     background-color: var(--bg-tab-active);
     border-bottom-width: 2px;
-    border-bottom-color: var(--accent-blue);
+    border-bottom-color: var(--accent-info);
 }
 
 /* ── Toggle Group ─────────────────────────────────────────────────── */
