@@ -4,16 +4,16 @@ using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Manages the settings panel: open/close, sidebar nav, gameplay controls, account
-/// forms, and modals (clear scores, external links, logout). Attach to the same
-/// GameObject as the UIDocument that contains a "settings" element, a
-/// "clear-scores-modal", "external-link-modal", and "logout-modal".
-/// Works in any scene — add a SettingsController alongside each scene's UIDocument.
+/// Singleton settings panel that persists across all scenes. Bootstrapped automatically
+/// from Assets/Resources/SettingsController.prefab before the first scene loads.
+/// Call SettingsController.Instance.Open() / .Close() / .Toggle() from any scene.
+/// The prefab must have a UIDocument (pointing to SettingsDocument.uxml) with a
+/// PanelSettings sort order higher than the game UI, a UIThemeApplier, and this
+/// component with InputActionAsset assigned.
 /// </summary>
 public sealed class SettingsController : MonoBehaviour
 {
-    [SerializeField]
-    private UIDocument uiDocument;
+    public static SettingsController Instance { get; private set; }
 
     [SerializeField]
     private InputActionAsset inputActions;
@@ -30,11 +30,33 @@ public sealed class SettingsController : MonoBehaviour
 
     public bool IsOpen { get; private set; }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void Bootstrap()
+    {
+        var prefab = Resources.Load<GameObject>("SettingsController");
+        if (prefab == null)
+        {
+            Debug.LogError(
+                "[SettingsController] Prefab not found at Resources/SettingsController. "
+                    + "Create a prefab there with UIDocument, UIThemeApplier, and SettingsController."
+            );
+            return;
+        }
+        var go = Instantiate(prefab);
+        go.name = "SettingsController";
+        DontDestroyOnLoad(go);
+    }
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
     private void OnEnable()
     {
         ExternalLinks.LinkRequested += OnExternalLinkRequested;
 
-        var root = uiDocument.rootVisualElement;
+        var root = GetComponent<UIDocument>().rootVisualElement;
         _settings = root.Q("settings");
 
         WireSettingsControls();

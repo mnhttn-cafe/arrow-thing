@@ -11,9 +11,6 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField]
     private UIDocument uiDocument;
 
-    [SerializeField]
-    private SettingsController settingsController;
-
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
     private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
 
@@ -64,7 +61,7 @@ public sealed class MainMenuController : MonoBehaviour
 
         _mainMenu.Q<Button>("play-btn").clicked += () => ShowScreen(Screen.ModeSelect);
         continueBtn.clicked += OnContinue;
-        _mainMenu.Q<Button>("settings-btn").clicked += settingsController.Open;
+        _mainMenu.Q<Button>("settings-btn").clicked += SettingsController.Instance.Open;
         _mainMenu.Q<Button>("link-github-btn").clicked += () => ExternalLinks.Open(GitHubUrl);
         _mainMenu.Q<Button>("link-discord-btn").clicked += () => ExternalLinks.Open(DiscordUrl);
 
