@@ -694,16 +694,19 @@
 }
 
 .auth-btn--primary {
-    color: var(--text-white);
-    background-color: var(--accent-info-btn);
+    color: var(--accent-info-btn);
+    background-color: var(--accent-blue-bg);
+    border-width: 1px;
+    border-color: var(--accent-info-btn);
 }
 
 .auth-btn--primary:hover {
-    background-color: var(--accent-info-btn-hover);
+    background-color: var(--accent-blue-bg-mid);
+    border-color: var(--accent-info-btn-hover);
 }
 
 .auth-btn--primary:active {
-    background-color: var(--accent-info-btn-active);
+    background-color: var(--accent-blue-bg-strong);
 }
 
 .account-form-title {

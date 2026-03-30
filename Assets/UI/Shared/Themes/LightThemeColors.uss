@@ -17,7 +17,7 @@
     --text-dim:                    rgb(145, 145, 165);
     --text-danger:                 rgb(190, 40, 40);
     --text-success:                rgb(30, 140, 60);
-    --text-gold:                   rgb(180, 140, 0);
+    --text-gold:                   rgb(210, 165, 0);
     --text-link:                   rgb(40, 110, 200);
     --text-link-hover:             rgb(20, 80, 170);
 
@@ -78,9 +78,9 @@
     --accent-green-active:         rgb(20, 180, 90);
 
     /* ── Accent: teal (continue / resume) ────────────────────────────── */
-    --accent-teal:                 rgb(20, 120, 130);
-    --accent-teal-hover:           rgb(15, 145, 160);
-    --accent-teal-active:          rgb(10, 170, 190);
+    --accent-teal:                 rgb(45, 95, 160);
+    --accent-teal-hover:           rgb(35, 80, 145);
+    --accent-teal-active:          rgb(25, 65, 130);
 
     /* ── Accent: danger ───────────────────────────────────────────────── */
     --accent-danger-bg:            rgba(190, 40, 40, 0.08);
@@ -137,7 +137,7 @@
     --lb-gold-focused-border:      rgb(160, 130, 30);
 
     /* ── Leaderboard rank text ────────────────────────────────────────── */
-    --lb-rank-gold:                rgb(160, 120, 0);
+    --lb-rank-gold:                rgb(185, 140, 0);
     --lb-rank-silver:              rgb(100, 100, 130);
     --lb-rank-bronze:              rgb(140, 85, 20);
 

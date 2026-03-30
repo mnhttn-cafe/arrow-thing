@@ -2,7 +2,7 @@
     <Style src="../Shared/Shared.uss" />
     <Style src="Leaderboard.uss" />
 
-    <ui:Template name="ConfirmModal" src="project://database/Assets/UI/ConfirmModal.uxml" />
+    <ui:Template name="ConfirmModal" src="project://database/Assets/UI/Shared/ConfirmModal.uxml" />
 
     <ui:VisualElement name="leaderboard-root" class="lb-screen">
         <!-- Header row -->
