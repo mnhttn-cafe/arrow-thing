@@ -68,7 +68,6 @@
 
     /* ── Accent: blue (active / focus / link) ─────────────────────────── */
     --accent-blue:                 rgb(120, 180, 240);
-    --accent-blue-hover:           rgb(160, 210, 255);
     --accent-blue-bg:              rgba(120, 180, 240, 0.06);
     --accent-blue-bg-mid:          rgba(120, 180, 240, 0.15);
     --accent-blue-bg-strong:       rgba(120, 180, 240, 0.25);
@@ -84,7 +83,6 @@
     --accent-teal-active:          rgb(50, 160, 180);
 
     /* ── Accent: danger ───────────────────────────────────────────────── */
-    --accent-danger:               rgb(220, 80, 80);
     --accent-danger-bg:            rgba(220, 80, 80, 0.1);
     --accent-danger-bg-hover:      rgba(220, 80, 80, 0.15);
     --accent-danger-border:        rgba(220, 80, 80, 0.35);
