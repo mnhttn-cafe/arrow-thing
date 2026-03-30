@@ -30,7 +30,7 @@ public sealed class SettingsController : MonoBehaviour
 
     public bool IsOpen { get; private set; }
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
         var prefab = Resources.Load<GameObject>("SettingsController");
@@ -55,7 +55,15 @@ public sealed class SettingsController : MonoBehaviour
     private void OnEnable()
     {
         ExternalLinks.LinkRequested += OnExternalLinkRequested;
+    }
 
+    private void OnDisable()
+    {
+        ExternalLinks.LinkRequested -= OnExternalLinkRequested;
+    }
+
+    private void Start()
+    {
         var root = GetComponent<UIDocument>().rootVisualElement;
         _settings = root.Q("settings");
 
@@ -71,11 +79,6 @@ public sealed class SettingsController : MonoBehaviour
             menuMap.FindAction("ToggleSettings", true).performed += _ => Toggle();
             menuMap.Enable();
         }
-    }
-
-    private void OnDisable()
-    {
-        ExternalLinks.LinkRequested -= OnExternalLinkRequested;
     }
 
     public void Open()
