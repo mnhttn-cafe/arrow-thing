@@ -32,6 +32,7 @@ public sealed class MainMenuController : MonoBehaviour
     private Label _externalLinkLabel;
 
     private AccountManager _accountManager;
+    private bool _navScrollPending;
 
     // Preset buttons for selection highlight
     private Button _presetSmall;
@@ -227,21 +228,25 @@ public sealed class MainMenuController : MonoBehaviour
 
         navAccount.clicked += () =>
         {
+            _navScrollPending = true;
             ScrollToSection(settingsScroll, sectionAccount);
             SetNavActive(navBtns, 0);
         };
         navGameplay.clicked += () =>
         {
+            _navScrollPending = true;
             ScrollToSection(settingsScroll, sectionGameplay);
             SetNavActive(navBtns, 1);
         };
         navData.clicked += () =>
         {
+            _navScrollPending = true;
             ScrollToSection(settingsScroll, sectionData);
             SetNavActive(navBtns, 2);
         };
         navAbout.clicked += () =>
         {
+            _navScrollPending = true;
             ScrollToSection(settingsScroll, sectionAbout);
             SetNavActive(navBtns, 3);
         };
@@ -254,6 +259,13 @@ public sealed class MainMenuController : MonoBehaviour
         // "at bottom" triggers when all sections fit in the viewport).
         settingsScroll.verticalScroller.valueChanged += _ =>
         {
+            // Suppress the single valueChanged fired by our own ScrollToSection call;
+            // the nav button handler already set the correct active state.
+            if (_navScrollPending)
+            {
+                _navScrollPending = false;
+                return;
+            }
             if (settingsScroll.verticalScroller.highValue > 8)
                 UpdateSettingsNavActive(settingsScroll, sections, navBtns);
         };
