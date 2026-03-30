@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
@@ -13,7 +12,7 @@ public sealed class MainMenuController : MonoBehaviour
     private UIDocument uiDocument;
 
     [SerializeField]
-    private InputActionAsset inputActions;
+    private SettingsController settingsController;
 
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
     private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
@@ -23,16 +22,8 @@ public sealed class MainMenuController : MonoBehaviour
 
     private VisualElement _mainMenu;
     private VisualElement _modeSelect;
-    private VisualElement _settings;
-    private bool _settingsOpen;
 
     private ConfirmModal _quitModal;
-    private ConfirmModal _clearScoresModal;
-    private ConfirmModal _externalLinkModal;
-    private Label _externalLinkLabel;
-
-    private AccountManager _accountManager;
-    private bool _navScrollPending;
 
     // Preset buttons for selection highlight
     private Button _presetSmall;
@@ -51,24 +42,15 @@ public sealed class MainMenuController : MonoBehaviour
     private int _selectedWidth = 10;
     private int _selectedHeight = 10;
 
-    private void OnDisable() => ExternalLinks.LinkRequested -= OnExternalLinkRequested;
-
     private void OnEnable()
     {
-        ExternalLinks.LinkRequested += OnExternalLinkRequested;
-
         var root = uiDocument.rootVisualElement;
         _mainMenu = root.Q("main-menu");
         _modeSelect = root.Q("mode-select");
-        _settings = root.Q("settings");
 
         WireMainMenuButtons();
         WireModeSelect();
-        WireSettingsControls();
-        WireSettingsNav();
         WireModals(root);
-
-        _accountManager = new AccountManager(_settings, root.Q("logout-modal"));
 
         ShowScreen(Screen.MainMenu);
         RestoreSelection();
@@ -82,14 +64,9 @@ public sealed class MainMenuController : MonoBehaviour
 
         _mainMenu.Q<Button>("play-btn").clicked += () => ShowScreen(Screen.ModeSelect);
         continueBtn.clicked += OnContinue;
-        _mainMenu.Q<Button>("settings-btn").clicked += () => OpenSettings();
+        _mainMenu.Q<Button>("settings-btn").clicked += settingsController.Open;
         _mainMenu.Q<Button>("link-github-btn").clicked += () => ExternalLinks.Open(GitHubUrl);
         _mainMenu.Q<Button>("link-discord-btn").clicked += () => ExternalLinks.Open(DiscordUrl);
-
-        // Ctrl+O — open/close settings from anywhere in this scene (Input System)
-        var menuMap = inputActions.FindActionMap("Menu", true);
-        menuMap.FindAction("ToggleSettings", true).performed += _ => ToggleSettings();
-        menuMap.Enable();
 
         // Quit button — desktop only (no quit action on mobile or web)
         var quitBtn = _mainMenu.Q<Button>("quit-btn");
@@ -147,159 +124,11 @@ public sealed class MainMenuController : MonoBehaviour
             trophyBtn.clicked += OnTrophy;
     }
 
-    private void WireSettingsControls()
-    {
-        float savedThreshold = PlayerPrefs.GetFloat(
-            GameSettings.DragThresholdPrefKey,
-            GameSettings.DefaultDragThreshold
-        );
-        var dragSnap = new SnapSlider(
-            GameSettings.MinDragThreshold,
-            GameSettings.MaxDragThreshold,
-            savedThreshold,
-            smallStep: 1f,
-            snapStep: 0f,
-            format: "0",
-            showLock: false
-        );
-        dragSnap.OnValueChanged += val =>
-            PlayerPrefs.SetFloat(GameSettings.DragThresholdPrefKey, val);
-        dragSnap.Root.AddToClassList("setting-snap-slider");
-        _settings.Q("drag-threshold-row").Add(dragSnap.Root);
-
-        float savedZoom = PlayerPrefs.GetFloat(
-            GameSettings.ZoomSpeedPrefKey,
-            GameSettings.DefaultZoomSpeed
-        );
-        var zoomSnap = new SnapSlider(
-            GameSettings.MinZoomSpeed,
-            GameSettings.MaxZoomSpeed,
-            savedZoom,
-            smallStep: 0.1f,
-            snapStep: 0f,
-            format: "F1",
-            showLock: false
-        );
-        zoomSnap.OnValueChanged += val => PlayerPrefs.SetFloat(GameSettings.ZoomSpeedPrefKey, val);
-        zoomSnap.Root.AddToClassList("setting-snap-slider");
-        _settings.Q("zoom-speed-row").Add(zoomSnap.Root);
-
-        bool savedColoring = PlayerPrefs.GetInt(GameSettings.ArrowColoringPrefKey, 0) == 1;
-        var coloringToggle = _settings.Q<Toggle>("arrow-coloring-toggle");
-        coloringToggle.value = savedColoring;
-        coloringToggle.RegisterValueChangedCallback(evt =>
-            PlayerPrefs.SetInt(GameSettings.ArrowColoringPrefKey, evt.newValue ? 1 : 0)
-        );
-
-        var themeChoices = new System.Collections.Generic.List<string>();
-        foreach (var t in ThemeManager.Available)
-            if (t != null)
-                themeChoices.Add(t.name);
-        var themeDropdown = new CustomDropdown(
-            themeChoices,
-            ThemeManager.Current != null ? ThemeManager.Current.name : ""
-        );
-        themeDropdown.ValueChanged += name =>
-        {
-            foreach (var t in ThemeManager.Available)
-                if (t != null && t.name == name)
-                {
-                    ThemeManager.Apply(t);
-                    break;
-                }
-        };
-        _settings.Q("theme-dropdown-slot").Add(themeDropdown.Root);
-    }
-
-    private void WireSettingsNav()
-    {
-        var settingsScroll = _settings.Q<ScrollView>("settings-scroll");
-        var sectionAccount = _settings.Q("section-account");
-        var sectionGameplay = _settings.Q("section-gameplay");
-        var sectionData = _settings.Q("section-data");
-        var sectionAbout = _settings.Q("section-about");
-
-        var navAccount = _settings.Q<Button>("nav-account");
-        var navGameplay = _settings.Q<Button>("nav-gameplay");
-        var navData = _settings.Q<Button>("nav-data");
-        var navAbout = _settings.Q<Button>("nav-about");
-        Button[] navBtns = { navAccount, navGameplay, navData, navAbout };
-        VisualElement[] sections = { sectionAccount, sectionGameplay, sectionData, sectionAbout };
-
-        navAccount.clicked += () =>
-        {
-            _navScrollPending = true;
-            ScrollToSection(settingsScroll, sectionAccount);
-            SetNavActive(navBtns, 0);
-        };
-        navGameplay.clicked += () =>
-        {
-            _navScrollPending = true;
-            ScrollToSection(settingsScroll, sectionGameplay);
-            SetNavActive(navBtns, 1);
-        };
-        navData.clicked += () =>
-        {
-            _navScrollPending = true;
-            ScrollToSection(settingsScroll, sectionData);
-            SetNavActive(navBtns, 2);
-        };
-        navAbout.clicked += () =>
-        {
-            _navScrollPending = true;
-            ScrollToSection(settingsScroll, sectionAbout);
-            SetNavActive(navBtns, 3);
-        };
-
-        _settings.Q<Label>("about-version").text = $"v{Application.version} ({GitCommitHash()})";
-        _settings.Q<Button>("about-github-btn").clicked += () => ExternalLinks.Open(GitHubUrl);
-        _settings.Q<Button>("about-discord-btn").clicked += () => ExternalLinks.Open(DiscordUrl);
-
-        // Only update via scroll position when content is actually scrollable (avoids false
-        // "at bottom" triggers when all sections fit in the viewport).
-        settingsScroll.verticalScroller.valueChanged += _ =>
-        {
-            // Suppress the single valueChanged fired by our own ScrollToSection call;
-            // the nav button handler already set the correct active state.
-            if (_navScrollPending)
-            {
-                _navScrollPending = false;
-                return;
-            }
-            if (settingsScroll.verticalScroller.highValue > 8)
-                UpdateSettingsNavActive(settingsScroll, sections, navBtns);
-        };
-
-        _settings.Q<Button>("settings-close-btn").clicked += CloseSettings;
-        _settings.Q("settings-backdrop").RegisterCallback<PointerDownEvent>(_ => CloseSettings());
-        _settings.Q<Button>("clear-scores-btn").clicked += OnClearScores;
-    }
-
     private void WireModals(VisualElement root)
     {
         _quitModal = new ConfirmModal(root.Q("quit-modal"), "Quit game?", "Yes", "No");
         _quitModal.Confirmed += OnQuitConfirm;
         _quitModal.Cancelled += () => _quitModal.Hide();
-
-        _clearScoresModal = new ConfirmModal(
-            root.Q("clear-scores-modal"),
-            "Delete all non-favorited local scores?",
-            "Delete",
-            "Cancel",
-            subtitle: "Favorited entries will be kept.",
-            isDanger: true
-        );
-        _clearScoresModal.Confirmed += OnClearScoresConfirm;
-        _clearScoresModal.Cancelled += () => _clearScoresModal.Hide();
-
-        _externalLinkModal = new ConfirmModal(
-            root.Q("external-link-modal"),
-            "Open external link?",
-            "Open",
-            "Cancel",
-            subtitle: ""
-        );
-        _externalLinkLabel = root.Q("external-link-modal").Q<Label>("modal-subtitle");
     }
 
     private void RestoreSelection()
@@ -340,27 +169,6 @@ public sealed class MainMenuController : MonoBehaviour
         SetVisible(_modeSelect, screen == Screen.ModeSelect);
     }
 
-    private void OpenSettings()
-    {
-        _settingsOpen = true;
-        SetVisible(_settings, true);
-    }
-
-    private void CloseSettings()
-    {
-        _settingsOpen = false;
-        _accountManager.CancelEditing();
-        SetVisible(_settings, false);
-    }
-
-    private void ToggleSettings()
-    {
-        if (_settingsOpen)
-            CloseSettings();
-        else
-            OpenSettings();
-    }
-
     private static void SetVisible(VisualElement el, bool visible)
     {
         if (visible)
@@ -378,56 +186,6 @@ public sealed class MainMenuController : MonoBehaviour
     }
 
     private void OnModeBack() => ShowScreen(Screen.MainMenu);
-
-    private static void ScrollToSection(ScrollView scroll, VisualElement section)
-    {
-        // layout.y is valid once the element has been laid out
-        scroll.schedule.Execute(() =>
-        {
-            scroll.verticalScroller.value = section.layout.y;
-        });
-    }
-
-    private static void UpdateSettingsNavActive(
-        ScrollView scroll,
-        VisualElement[] sections,
-        Button[] navBtns
-    )
-    {
-        float scrollY = scroll.verticalScroller.value;
-
-        // At the bottom of a scrollable view → last section is active.
-        int active = 0;
-        if (scrollY >= scroll.verticalScroller.highValue - 8)
-        {
-            active = sections.Length - 1;
-        }
-        else
-        {
-            // Walk backwards: the last section whose top edge is at or above the scroll position
-            for (int i = sections.Length - 1; i >= 0; i--)
-            {
-                if (scrollY >= sections[i].layout.y - 8)
-                {
-                    active = i;
-                    break;
-                }
-            }
-        }
-
-        SetNavActive(navBtns, active);
-    }
-
-    private static void SetNavActive(Button[] navBtns, int active)
-    {
-        for (int i = 0; i < navBtns.Length; i++)
-        {
-            if (i == active)
-                navBtns[i].AddToClassList("settings-nav-btn--active");
-            else
-                navBtns[i].RemoveFromClassList("settings-nav-btn--active");
-        }
-    }
 
     private void SelectPreset(int width, int height)
     {
@@ -490,52 +248,5 @@ public sealed class MainMenuController : MonoBehaviour
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #endif
-    }
-
-    private void OnClearScores()
-    {
-        _clearScoresModal.Show();
-    }
-
-    private void OnClearScoresConfirm()
-    {
-        _clearScoresModal.Hide();
-        var manager = LeaderboardManager.Instance;
-        if (manager != null)
-            manager.RemoveAllNonFavorited();
-    }
-
-    private void OnExternalLinkRequested(string url, System.Action confirm)
-    {
-        _externalLinkLabel.text = url;
-        _externalLinkModal.Show();
-        _externalLinkModal.Confirmed += OnConfirm;
-        _externalLinkModal.Cancelled += OnCancel;
-
-        void Cleanup()
-        {
-            _externalLinkModal.Confirmed -= OnConfirm;
-            _externalLinkModal.Cancelled -= OnCancel;
-        }
-
-        void OnConfirm()
-        {
-            Cleanup();
-            _externalLinkModal.Hide();
-            confirm();
-        }
-        void OnCancel()
-        {
-            Cleanup();
-            _externalLinkModal.Hide();
-        }
-    }
-
-    private static string GitCommitHash()
-    {
-        var asset = Resources.Load<TextAsset>("git-commit");
-        if (asset != null)
-            return asset.text.Trim();
-        return "dev";
     }
 }
