@@ -20,5 +20,5 @@
 }
 
 .timer-label--warning {
-    color: var(--accent-warning);
+    color: var(--text-danger);
 }

@@ -97,7 +97,7 @@
     left: 0;
     bottom: 0;
     width: 0%;
-    background-color: var(--accent-progress);
+    background-color: var(--accent-info);
     border-radius: 4px;
 }
 

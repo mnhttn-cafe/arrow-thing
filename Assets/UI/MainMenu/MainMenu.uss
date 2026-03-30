@@ -87,7 +87,7 @@
     margin: 6px;
     font-size: 16px;
     color: var(--text-primary);
-    background-color: var(--bg-preset);
+    background-color: var(--bg-surface);
     border-radius: 8px;
     border-width: 2px;
     border-color: var(--border-normal);
@@ -96,12 +96,12 @@
 }
 
 .preset-btn:hover {
-    background-color: var(--bg-preset-hover);
+    background-color: var(--bg-surface-hover);
     border-color: var(--border-strong);
 }
 
 .preset-btn--selected {
-    background-color: var(--bg-preset-active);
+    background-color: var(--bg-surface-active);
     border-color: var(--accent-info);
 }
 
@@ -111,7 +111,7 @@
     max-width: 500px;
     margin-bottom: 12px;
     padding: 8px 12px;
-    background-color: var(--bg-preset);
+    background-color: var(--bg-surface);
     border-radius: 8px;
 }
 
@@ -185,7 +185,7 @@
 
 .info-link {
     font-size: 16px;
-    color: var(--text-link);
+    color: var(--accent-info);
     background-color: rgba(0, 0, 0, 0);
     border-width: 0;
     padding: 4px 0;
@@ -193,7 +193,7 @@
 }
 
 .info-link:hover {
-    color: var(--text-link-hover);
+    color: var(--accent-info);
 }
 
 /* (Link icon buttons and link-row moved to Shared.uss icon-btn / icon-row) */
@@ -241,7 +241,7 @@
 .settings-panel {
     width: 50%;
     max-width: 520px;
-    background-color: var(--bg-settings);
+    background-color: var(--bg-sidebar);
     align-items: stretch;
     flex-direction: column;
     flex-shrink: 0;
@@ -261,7 +261,7 @@
     flex-shrink: 0;
     flex-direction: column;
     padding-top: 16px;
-    background-color: var(--bg-settings-nav);
+    background-color: var(--bg-sidebar-nav);
     border-right-width: 1px;
     border-right-color: var(--border-subtle);
 }
@@ -327,7 +327,7 @@
 }
 
 .settings-scroll:hover .unity-scroller--vertical .unity-base-slider__dragger {
-    background-color: var(--scrollbar-thumb-panel-hover);
+    background-color: var(--scrollbar-thumb-hover);
 }
 
 .settings-scroll .unity-scroller--vertical .unity-base-slider__dragger:hover {
@@ -355,7 +355,7 @@
 /* Section header inside scroll body */
 .settings-section-header {
     font-size: 16px;
-    color: var(--text-heading);
+    color: var(--text-secondary);
     margin-bottom: 16px;
     -unity-text-align: upper-left;
     -unity-font-style: bold;
@@ -454,7 +454,7 @@
     width: 22px;
     height: 22px;
     border-radius: 11px;
-    background-color: var(--toggle-knob);
+    background-color: var(--text-dim);
     border-width: 0;
     background-image: none;
     -unity-background-image-tint-color: rgba(0, 0, 0, 0);
@@ -464,7 +464,7 @@
 }
 
 .setting-toggle:checked .unity-toggle__checkmark {
-    background-color: var(--toggle-knob-active);
+    background-color: var(--accent-info);
     translate: 24px 0;
 }
 
@@ -571,7 +571,7 @@
     position: absolute;
     width: 22px;
     height: 22px;
-    background-color: var(--slider-handle);
+    background-color: var(--accent-info);
 }
 
 /* Value display */
@@ -619,14 +619,14 @@
     height: 22px;
     padding: 4px;
     margin: 0;
-    background-color: var(--bg-toggle);
+    background-color: var(--bg-nav);
     border-radius: 0;
     border-width: 0;
     flex-shrink: 0;
 }
 
 .snap-slider__lock-btn:hover {
-    background-color: var(--bg-toggle-hover);
+    background-color: var(--bg-nav-hover);
 }
 
 /* Pill corners: first = left rounded, last = right rounded, middle = flat */
@@ -652,12 +652,12 @@
 
 .snap-slider__lock-icon--locked {
     background-image: url("/Assets/Art/Icons/lock_closed.png");
-    -unity-background-image-tint-color: var(--toggle-knob-active);
+    -unity-background-image-tint-color: var(--accent-info);
 }
 
 .snap-slider__lock-icon--unlocked {
     background-image: url("/Assets/Art/Icons/lock_open.png");
-    -unity-background-image-tint-color: var(--toggle-knob);
+    -unity-background-image-tint-color: var(--text-dim);
 }
 
 /* Settings sliders: stretch to fill the 300 px setting-row */
@@ -783,7 +783,7 @@
 /* Small link button in label row (e.g. "Forgot password?") */
 .labeled-field__label-action {
     font-size: 12px;
-    color: var(--text-link);
+    color: var(--accent-info);
     background-color: rgba(0, 0, 0, 0);
     border-width: 0;
     padding: 0;
@@ -792,7 +792,7 @@
 }
 
 .labeled-field__label-action:hover {
-    color: var(--text-link-hover);
+    color: var(--accent-info);
 }
 
 .labeled-field__input {
@@ -849,7 +849,7 @@
 
 .account-switch-btn {
     font-size: 14px;
-    color: var(--text-link);
+    color: var(--accent-info);
     background-color: rgba(0, 0, 0, 0);
     border-width: 0;
     padding: 4px 0;
@@ -859,5 +859,5 @@
 }
 
 .account-switch-btn:hover {
-    color: var(--text-link-hover);
+    color: var(--accent-info);
 }

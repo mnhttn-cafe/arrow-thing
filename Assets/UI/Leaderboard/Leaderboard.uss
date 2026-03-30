@@ -66,18 +66,18 @@
 }
 
 .lb-scroll .unity-scroller--vertical .unity-base-slider__tracker {
-    background-color: var(--lb-scrollbar-track);
+    background-color: var(--scrollbar-track);
     border-width: 0;
 }
 
 .lb-scroll .unity-scroller--vertical .unity-base-slider__dragger {
-    background-color: var(--lb-scrollbar-thumb);
+    background-color: var(--scrollbar-thumb);
     border-radius: 4px;
     border-width: 0;
 }
 
 .lb-scroll .unity-scroller--vertical .unity-base-slider__dragger:hover {
-    background-color: var(--lb-scrollbar-thumb-hover);
+    background-color: var(--scrollbar-thumb-hover);
 }
 
 .lb-scroll .unity-scroller--vertical .unity-repeat-button {
@@ -97,55 +97,55 @@
     align-items: center;
     padding: 8px 8px;
     margin-bottom: 2px;
-    background-color: var(--bg-entry);
+    background-color: var(--bg-row);
     border-radius: 6px;
 }
 
 .lb-entry:hover {
-    background-color: var(--bg-entry-hover);
+    background-color: var(--bg-row-hover);
 }
 
 .lb-entry--gold {
-    background-color: var(--lb-gold-bg);
+    background-color: var(--rank-gold-bg);
 }
 
 .lb-entry--gold:hover {
-    background-color: var(--lb-gold-bg-hover);
+    background-color: var(--rank-gold-bg-hover);
 }
 
 .lb-entry--silver {
-    background-color: var(--lb-silver-bg);
+    background-color: var(--rank-silver-bg);
 }
 
 .lb-entry--silver:hover {
-    background-color: var(--lb-silver-bg-hover);
+    background-color: var(--rank-silver-bg-hover);
 }
 
 .lb-entry--bronze {
-    background-color: var(--lb-bronze-bg);
+    background-color: var(--rank-bronze-bg);
 }
 
 .lb-entry--bronze:hover {
-    background-color: var(--lb-bronze-bg-hover);
+    background-color: var(--rank-bronze-bg-hover);
 }
 
 .lb-entry--favorite {
-    background-color: var(--lb-favorite-bg);
+    background-color: var(--row-favorite-bg);
 }
 
 .lb-entry--favorite:hover {
-    background-color: var(--lb-favorite-bg-hover);
+    background-color: var(--row-favorite-bg-hover);
 }
 
 .lb-entry--focused {
-    background-color: var(--lb-focused-bg);
+    background-color: var(--row-focused-bg);
     border-width: 1px;
-    border-color: var(--lb-focused-border);
+    border-color: var(--row-focused-border);
 }
 
 .lb-entry--gold.lb-entry--focused {
-    background-color: var(--lb-gold-focused-bg);
-    border-color: var(--lb-gold-focused-border);
+    background-color: var(--rank-gold-focused-bg);
+    border-color: var(--rank-gold-focused-border);
 }
 
 .lb-rank {
@@ -157,15 +157,15 @@
 }
 
 .lb-rank--gold {
-    color: var(--lb-rank-gold);
+    color: var(--rank-gold);
 }
 
 .lb-rank--silver {
-    color: var(--lb-rank-silver);
+    color: var(--rank-silver);
 }
 
 .lb-rank--bronze {
-    color: var(--lb-rank-bronze);
+    color: var(--rank-bronze);
 }
 
 .lb-size {
@@ -278,7 +278,7 @@
 
 .lb-coming-soon {
     flex-grow: 1;
-    background-color: var(--bg-screen-dim);
+    background-color: var(--bg-loading-overlay);
     align-items: center;
     justify-content: center;
 }

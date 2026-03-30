@@ -45,7 +45,7 @@
 .loading-bar-fill {
     height: 100%;
     width: 0%;
-    background-color: var(--accent-progress);
+    background-color: var(--accent-info);
     border-radius: 4px;
 }
 
@@ -464,7 +464,7 @@
 .tab-bar__tab {
     font-size: 15px;
     color: var(--text-secondary);
-    background-color: var(--bg-tab);
+    background-color: var(--bg-nav);
     border-width: 0;
     padding: 8px 16px;
     margin: 0 2px;
@@ -472,12 +472,12 @@
 }
 
 .tab-bar__tab:hover {
-    background-color: var(--bg-tab-hover);
+    background-color: var(--bg-nav-hover);
 }
 
 .tab-bar__tab--active {
     color: var(--text-primary);
-    background-color: var(--bg-tab-active);
+    background-color: var(--bg-nav-active);
     border-bottom-width: 2px;
     border-bottom-color: var(--accent-info);
 }
@@ -496,19 +496,19 @@
 .toggle-group__btn {
     font-size: 13px;
     color: var(--text-secondary);
-    background-color: var(--bg-toggle);
+    background-color: var(--bg-nav);
     border-width: 0;
     padding: 5px 10px;
     margin: 0 1px;
 }
 
 .toggle-group__btn:hover {
-    background-color: var(--bg-toggle-hover);
+    background-color: var(--bg-nav-hover);
 }
 
 .toggle-group__btn--active {
     color: var(--text-primary);
-    background-color: var(--bg-toggle-active);
+    background-color: var(--bg-nav-active);
 }
 
 .toggle-group__btn--first {
@@ -549,5 +549,5 @@
 
 .filter-row__btn--active {
     color: var(--text-primary);
-    background-color: var(--bg-filter-active);
+    background-color: var(--bg-nav-active);
 }
