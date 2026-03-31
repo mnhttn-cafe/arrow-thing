@@ -12,6 +12,7 @@ using UnityEngine.UIElements;
 public abstract class UILayoutTestBase
 {
     protected const string MainMenuUxmlPath = "Assets/UI/Shared/Root.uxml";
+    protected const string SettingsPanelUxmlPath = "Assets/UI/Shared/Settings Panel.uxml";
     protected const string VictoryUxmlPath = "Assets/UI/Game/VictoryPopup.uxml";
     protected const string GameHudUxmlPath = "Assets/UI/Game/GameHud.uxml";
     protected const string LeaderboardUxmlPath = "Assets/UI/Leaderboard/Leaderboard.uxml";

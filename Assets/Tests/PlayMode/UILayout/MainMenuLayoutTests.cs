@@ -123,9 +123,8 @@ public class MainMenuLayoutTests : UILayoutTestBase
             UILayoutTestHelper.AspectRatio ratio
     )
     {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+        var root = SetUpDocument(SettingsPanelUxmlPath, ratio);
 
-        // Settings is an overlay — show it over the main menu
         root.Q("settings").RemoveFromClassList("screen--hidden");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
@@ -191,9 +190,8 @@ public class MainMenuLayoutTests : UILayoutTestBase
             UILayoutTestHelper.AspectRatio ratio
     )
     {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+        var root = SetUpDocument(SettingsPanelUxmlPath, ratio);
 
-        root.Q("main-menu").AddToClassList("screen--hidden");
         var modal = root.Q("clear-scores-modal");
         modal.style.display = DisplayStyle.Flex;
         var overlay = modal.Q(className: "modal-overlay");
@@ -230,9 +228,8 @@ public class MainMenuLayoutTests : UILayoutTestBase
             UILayoutTestHelper.AspectRatio ratio
     )
     {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+        var root = SetUpDocument(SettingsPanelUxmlPath, ratio);
 
-        root.Q("main-menu").AddToClassList("screen--hidden");
         root.Q("settings").RemoveFromClassList("screen--hidden");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
@@ -260,9 +257,8 @@ public class MainMenuLayoutTests : UILayoutTestBase
             UILayoutTestHelper.AspectRatio ratio
     )
     {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+        var root = SetUpDocument(SettingsPanelUxmlPath, ratio);
 
-        root.Q("main-menu").AddToClassList("screen--hidden");
         root.Q("settings").RemoveFromClassList("screen--hidden");
 
         var settings = root.Q("settings");
@@ -294,9 +290,8 @@ public class MainMenuLayoutTests : UILayoutTestBase
             UILayoutTestHelper.AspectRatio ratio
     )
     {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
+        var root = SetUpDocument(SettingsPanelUxmlPath, ratio);
 
-        root.Q("main-menu").AddToClassList("screen--hidden");
         root.Q("settings").RemoveFromClassList("screen--hidden");
 
         var settings = root.Q("settings");
