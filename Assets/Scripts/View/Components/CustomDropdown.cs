@@ -20,9 +20,10 @@ public sealed class CustomDropdown
 
     private readonly Label _valueLabel;
     private readonly List<string> _choices;
-    private VisualElement _backdrop;
+    private VisualElement _popup;
     private ScrollView _watchedScroll;
     private Action<float> _scrollListener;
+    private EventCallback<PointerDownEvent> _outsideClickListener;
 
     public CustomDropdown(IReadOnlyList<string> choices, string initialValue)
     {
@@ -83,30 +84,9 @@ public sealed class CustomDropdown
                 panelRoot.styleSheets.Add(sheet);
         }
 
-        // Backdrop: fills the whole panel, captures outside clicks and scrolls
-        _backdrop = new VisualElement();
-        _backdrop.AddToClassList("custom-dropdown__backdrop");
-        _backdrop.RegisterCallback<PointerDownEvent>(evt =>
-        {
-            if (evt.target == _backdrop)
-            {
-                evt.StopPropagation();
-                Close();
-            }
-        });
-
-        // Close when the nearest ancestor ScrollView scrolls — listen on the
-        // scroller directly so the WheelEvent reaches the ScrollView unimpeded.
-        _watchedScroll = FindAncestorScrollView(Root);
-        if (_watchedScroll != null)
-        {
-            _scrollListener = _ => Close();
-            _watchedScroll.verticalScroller.valueChanged += _scrollListener;
-        }
-
-        // Popup list
-        var popup = new VisualElement();
-        popup.AddToClassList("custom-dropdown__popup");
+        // Popup list — injected directly into panelRoot, no backdrop overlay
+        _popup = new VisualElement();
+        _popup.AddToClassList("custom-dropdown__popup");
 
         foreach (var choice in _choices)
         {
@@ -121,14 +101,31 @@ public sealed class CustomDropdown
                 evt.StopPropagation();
                 Select(captured);
             });
-            popup.Add(item);
+            _popup.Add(item);
         }
 
-        _backdrop.Add(popup);
-        panelRoot.Add(_backdrop);
+        panelRoot.Add(_popup);
 
         // Position popup below trigger button after layout
-        Root.schedule.Execute(() => PositionPopup(popup));
+        Root.schedule.Execute(() => PositionPopup(_popup));
+
+        // Observe pointer-down on the panel in the capture phase — fires before
+        // any element handles it, doesn't consume the event, so scrolling and
+        // clicks pass through normally.
+        _outsideClickListener = evt =>
+        {
+            if (_popup != null && !_popup.worldBound.Contains(evt.position))
+                Close();
+        };
+        panelRoot.RegisterCallback(_outsideClickListener, TrickleDown.TrickleDown);
+
+        // Close when the ancestor ScrollView scrolls.
+        _watchedScroll = FindAncestorScrollView(Root);
+        if (_watchedScroll != null)
+        {
+            _scrollListener = _ => Close();
+            _watchedScroll.verticalScroller.valueChanged += _scrollListener;
+        }
 
         Root.AddToClassList("custom-dropdown--open");
     }
@@ -139,12 +136,7 @@ public sealed class CustomDropdown
         if (panelRoot == null)
             return;
 
-        // Convert trigger button rect to panel root local space
         var triggerBounds = Root.worldBound;
-        float scale =
-            panelRoot.resolvedStyle.width > 0 ? panelRoot.resolvedStyle.width / Screen.width : 1f;
-        // worldBound is in screen pixels; panel uses logical pixels (may differ by DPI scale)
-        // Use the panel's scale to convert
         var panelBounds = panelRoot.worldBound;
 
         popup.style.position = Position.Absolute;
@@ -169,8 +161,16 @@ public sealed class CustomDropdown
             _watchedScroll = null;
             _scrollListener = null;
         }
-        _backdrop?.RemoveFromHierarchy();
-        _backdrop = null;
+        if (_outsideClickListener != null)
+        {
+            Root.panel?.visualTree.UnregisterCallback(
+                _outsideClickListener,
+                TrickleDown.TrickleDown
+            );
+            _outsideClickListener = null;
+        }
+        _popup?.RemoveFromHierarchy();
+        _popup = null;
         Root.RemoveFromClassList("custom-dropdown--open");
     }
 

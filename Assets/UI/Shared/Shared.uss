@@ -598,15 +598,7 @@
     background-image: url("/Assets/Art/Icons/arrow_up.png");
 }
 
-/* Popup — injected into panel root, positioned absolutely below trigger */
-.custom-dropdown__backdrop {
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-}
-
+/* Popup — injected directly into panel root, positioned absolutely below trigger */
 .custom-dropdown__popup {
     background-color: var(--bg-panel);
     border-color: var(--border-emphasis);
