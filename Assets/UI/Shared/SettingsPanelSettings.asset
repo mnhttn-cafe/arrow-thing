@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 19101, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: PanelSettings
+  m_Name: SettingsPanelSettings
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.PanelSettings
-  themeUss: {fileID: -4733365628477956816, guid: 4f9446d549be27f4e971be3a50f4ca1a, type: 3}
+  themeUss: {fileID: -4733365628477956816, guid: f55b3a3e1832e9848890fc4bbb556fc6, type: 3}
   m_DisableNoThemeWarning: 0
   m_TargetTexture: {fileID: 0}
   m_RenderMode: 0
@@ -27,7 +27,7 @@ MonoBehaviour:
   m_ReferenceResolution: {x: 1200, y: 800}
   m_ScreenMatchMode: 0
   m_Match: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 100
   m_TargetDisplay: 0
   m_BindingLogLevel: 0
   m_ClearDepthStencil: 1

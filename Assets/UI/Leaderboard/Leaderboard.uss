@@ -137,16 +137,6 @@
     background-color: var(--row-favorite-bg-hover);
 }
 
-.lb-entry--focused {
-    background-color: var(--row-focused-bg);
-    border-width: 1px;
-    border-color: var(--row-focused-border);
-}
-
-.lb-entry--gold.lb-entry--focused {
-    background-color: var(--rank-gold-focused-bg);
-    border-color: var(--rank-gold-focused-border);
-}
 
 .lb-rank {
     font-size: 14px;

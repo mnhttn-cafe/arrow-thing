@@ -12,17 +12,28 @@ public sealed class TapIndicatorPool
     private const float RingOuterRadius = 0.45f;
     private const float RingInnerRadius = 0.35f;
 
-    private static readonly Color ClearColor = new(1f, 1f, 1f, 0.8f);
-    private static readonly Color RejectColor = new(1f, 0.3f, 0.3f, 0.8f);
+    private static readonly Color DefaultClearColor = new(1f, 1f, 1f, 0.8f);
+    private static readonly Color DefaultRejectColor = new(1f, 0.3f, 0.3f, 0.8f);
 
+    private Color ClearColor;
+    private Color RejectColor;
     private readonly Queue<TapIndicator> _pool = new();
     private readonly Sprite _sprite;
     private readonly float _duration;
     private readonly float _maxScale;
     private readonly Transform _parent;
 
-    public TapIndicatorPool(Sprite sprite, float duration, float maxScale, Transform parent)
+    public TapIndicatorPool(
+        Sprite sprite,
+        float duration,
+        float maxScale,
+        Transform parent,
+        Color? clearColor = null,
+        Color? rejectColor = null
+    )
     {
+        ClearColor = clearColor ?? DefaultClearColor;
+        RejectColor = rejectColor ?? DefaultRejectColor;
         _sprite = sprite != null ? sprite : CreateRingSprite();
         _duration = duration;
         _maxScale = maxScale;
@@ -30,6 +41,12 @@ public sealed class TapIndicatorPool
 
         for (int i = 0; i < PoolSize; i++)
             _pool.Enqueue(CreateIndicator());
+    }
+
+    public void UpdateColors(Color clearColor, Color rejectColor)
+    {
+        ClearColor = clearColor;
+        RejectColor = rejectColor;
     }
 
     public void Spawn(Vector3 worldPos, bool isReject)

@@ -22,8 +22,6 @@ public static class GameSettings
     public const float MinDragThreshold = 5f;
     public const float MaxDragThreshold = 60f;
 
-    public const string ArrowColoringPrefKey = "ArrowColoring";
-
     public const string ZoomSpeedPrefKey = "ZoomSpeed";
     public const float DefaultZoomSpeed = 1f;
     public const float MinZoomSpeed = 0.2f;

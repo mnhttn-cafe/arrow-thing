@@ -136,7 +136,29 @@ public sealed class GameController : MonoBehaviour
         if (mainCamera != null)
             mainCamera.backgroundColor = (ThemeManager.Current ?? visualSettings).backgroundColor;
 
+        SettingsController.IsOpenChanged += OnSettingsOpenChanged;
+        ThemeManager.ThemeChanged += OnThemeChanged;
         StartCoroutine(GenerateAndSetup());
+    }
+
+    private void OnDestroy()
+    {
+        SettingsController.IsOpenChanged -= OnSettingsOpenChanged;
+        ThemeManager.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged(VisualSettings theme)
+    {
+        if (mainCamera != null)
+            mainCamera.backgroundColor = theme.backgroundColor;
+        if (_boardView != null)
+            _boardView.ApplyTheme(theme);
+    }
+
+    private void OnSettingsOpenChanged(bool open)
+    {
+        if (_inputHandler != null)
+            _inputHandler.SetInputEnabled(!open);
     }
 
     private void Update()
@@ -312,7 +334,11 @@ public sealed class GameController : MonoBehaviour
 
     private void CreateBoardAndView()
     {
-        (_board, _boardView) = BoardSetupHelper.CreateBoardAndView(_w, _h, visualSettings);
+        (_board, _boardView) = BoardSetupHelper.CreateBoardAndView(
+            _w,
+            _h,
+            ThemeManager.Current ?? visualSettings
+        );
     }
 
     private void SetupCamera()

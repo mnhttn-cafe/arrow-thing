@@ -77,15 +77,29 @@ public sealed class BoardView : MonoBehaviour
     }
 
     /// <summary>
+    /// Re-colors all arrows for a new theme. Safe to call at any time.
+    /// </summary>
+    public void ApplyTheme(VisualSettings settings)
+    {
+        _settings = settings;
+        if (settings.arrowPalette.Count > 0)
+        {
+            ApplyColoring();
+        }
+        else
+        {
+            foreach (var view in _arrowViews.Values)
+                view.SetBaseColor(settings.arrowBodyColor, settings.arrowHeadColor);
+        }
+    }
+
+    /// <summary>
     /// Applies map-coloring palette to all current arrow views. Call after all
     /// arrows have been added (coloring requires the full adjacency graph).
     /// </summary>
     public void ApplyColoring()
     {
-        if (
-            PlayerPrefs.GetInt(GameSettings.ArrowColoringPrefKey, 0) == 1
-            && _settings.arrowPalette.Count > 0
-        )
+        if (_settings.arrowPalette.Count > 0)
         {
             int[] colors = ArrowColoring.AssignColors(_board, _settings.arrowPalette.Count);
             for (int i = 0; i < _board.Arrows.Count; i++)

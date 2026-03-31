@@ -10,20 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6bfc8e9f9d54aa447b7d4e8b9e74b30b, type: 3}
-  m_Name: VisualSettings
+  m_Name: Dark (Monochrome)
   m_EditorClassIdentifier: Assembly-CSharp::VisualSettings
-  themeUIStyleSheet: {fileID: 7433441132597879392, guid: a9a6be8b4dabb9945ba372d2b92985d2, type: 3}
+  themeUIStyleSheet: {fileID: 7433441132597879392, guid: b7f38a9f9dfadd548bfb691333d107d8, type: 3}
   backgroundColor: {r: 0.102, g: 0.102, b: 0.18, a: 1}
   gridDotColor: {r: 0.18, g: 0.227, b: 0.349, a: 1}
   gridDotScale: 1
   boardDotSprite: {fileID: 21300000, guid: 8121e4e108c755342acdfcd64a7be331, type: 3}
   arrowBodyColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
   arrowHeadColor: {r: 0.816, g: 0.847, b: 0.91, a: 1}
-  arrowPalette:
-  - {r: 0.396, g: 0.573, b: 0.816, a: 1}
-  - {r: 0.753, g: 0.576, b: 0.824, a: 1}
-  - {r: 0.467, g: 0.757, b: 0.537, a: 1}
-  - {r: 0.878, g: 0.718, b: 0.38, a: 1}
+  arrowPalette: []
   arrowBodyWidth: 0.1
   arrowHeadLength: 0.35
   arrowHeadWidthMultiplier: 2

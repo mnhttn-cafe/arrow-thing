@@ -7,7 +7,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement class="title" />
-        <ui:Button name="play-btn" class="menu-btn" text="Play" />
+        <ui:Button name="play-btn" class="menu-btn start-btn" text="Play" />
         <ui:Button name="continue-btn" class="menu-btn continue-btn screen--hidden" text="Continue" />
         <ui:Button name="settings-btn" class="menu-btn" text="Settings" />
 

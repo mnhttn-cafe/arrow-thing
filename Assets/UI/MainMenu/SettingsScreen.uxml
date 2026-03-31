@@ -123,10 +123,6 @@
                         <ui:Label class="setting-label" text="Zoom Speed" />
                     </ui:VisualElement>
 
-                    <ui:VisualElement class="setting-row setting-row--toggle">
-                        <ui:Label class="setting-label" text="Arrow Coloring" />
-                        <ui:Toggle name="arrow-coloring-toggle" class="setting-toggle" value="false" />
-                    </ui:VisualElement>
                 </ui:VisualElement>
 
                 <!-- Data section -->

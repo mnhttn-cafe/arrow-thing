@@ -82,6 +82,7 @@ public sealed class ReplayViewController : MonoBehaviour
     private bool _isPressed;
     private bool _isDragging;
     private float _dragThreshold = 15f;
+    private bool _inputEnabled = true;
 
     private void Awake()
     {
@@ -105,13 +106,50 @@ public sealed class ReplayViewController : MonoBehaviour
         if (mainCamera != null)
             mainCamera.backgroundColor = (ThemeManager.Current ?? visualSettings).backgroundColor;
 
+        SettingsController.IsOpenChanged += OnSettingsOpenChanged;
+        ThemeManager.ThemeChanged += OnThemeChanged;
         StartCoroutine(LoadAndPlay());
     }
 
     private void OnDestroy()
     {
+        SettingsController.IsOpenChanged -= OnSettingsOpenChanged;
+        ThemeManager.ThemeChanged -= OnThemeChanged;
         if (EnhancedTouchSupport.enabled)
             EnhancedTouchSupport.Disable();
+    }
+
+    private void OnThemeChanged(VisualSettings theme)
+    {
+        if (mainCamera != null)
+            mainCamera.backgroundColor = theme.backgroundColor;
+        if (_boardView != null)
+            _boardView.ApplyTheme(theme);
+        if (_tapPool != null)
+        {
+            var (clearColor, rejectColor) = TapColorsForTheme(theme);
+            _tapPool.UpdateColors(clearColor, rejectColor);
+        }
+    }
+
+    private static (Color clear, Color reject) TapColorsForTheme(VisualSettings theme)
+    {
+        bool lightBg = theme.backgroundColor.grayscale > 0.5f;
+        Color clear = lightBg ? new Color(0.1f, 0.1f, 0.15f, 0.8f) : new Color(1f, 1f, 1f, 0.8f);
+        Color reject = lightBg
+            ? new Color(0.75f, 0.15f, 0.15f, 0.8f)
+            : new Color(1f, 0.3f, 0.3f, 0.8f);
+        return (clear, reject);
+    }
+
+    private void OnSettingsOpenChanged(bool open)
+    {
+        _inputEnabled = !open;
+        if (open && _player != null && _player.IsPlaying)
+        {
+            _player.IsPlaying = false;
+            UpdatePlayPauseButton();
+        }
     }
 
     private IEnumerator LoadAndPlay()
@@ -124,7 +162,7 @@ public sealed class ReplayViewController : MonoBehaviour
         (_board, _boardView) = BoardSetupHelper.CreateBoardAndView(
             _replayData.boardWidth,
             _replayData.boardHeight,
-            visualSettings
+            ThemeManager.Current ?? visualSettings
         );
 
         _camCtrl = BoardSetupHelper.SetupCamera(mainCamera, _board);
@@ -161,12 +199,15 @@ public sealed class ReplayViewController : MonoBehaviour
         // Create replay player
         _player = new ReplayPlayer(_replayData);
 
-        // Set up tap indicator pool
+        // Set up tap indicator pool — use dark rings on light backgrounds
+        var (clearColor, rejectColor) = TapColorsForTheme(ThemeManager.Current ?? visualSettings);
         _tapPool = new TapIndicatorPool(
             tapRingSprite,
             tapIndicatorDuration,
             tapIndicatorMaxScale,
-            transform
+            transform,
+            clearColor,
+            rejectColor
         );
 
         // Wire input for camera pan/zoom
@@ -185,7 +226,8 @@ public sealed class ReplayViewController : MonoBehaviour
             return;
 
         // Camera input
-        HandleCameraInput();
+        if (_inputEnabled)
+            HandleCameraInput();
 
         // Advance playback (skip while seeking)
         if (!_isSeeking && _player.IsPlaying && !_player.IsFinished)
@@ -532,7 +574,7 @@ public sealed class ReplayViewController : MonoBehaviour
         (_board, _boardView) = BoardSetupHelper.CreateBoardAndView(
             _replayData.boardWidth,
             _replayData.boardHeight,
-            visualSettings
+            ThemeManager.Current ?? visualSettings
         );
 
         // Synchronous restore (seek must be instant)

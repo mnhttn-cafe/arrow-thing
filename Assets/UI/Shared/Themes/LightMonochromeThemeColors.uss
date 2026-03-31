@@ -1,10 +1,8 @@
 /* ====================================================================
-   LightThemeColors.uss — Light theme
-   Swap this file (via VisualSettings.themeUIStyleSheet) to change the
-   entire UI colour scheme at runtime without touching any other file.
-
-   Variables are organised into semantic groups; the same variable name
-   must appear in every theme file, even if the value is unchanged.
+   LightMonochromeThemeColors.uss — Light monochrome theme
+   Same as light theme but with desaturated/grey accents.
+   Arrow palette is empty on the corresponding VisualSettings asset,
+   so all arrows render in a single monochrome color.
    ==================================================================== */
 
 :root {
@@ -16,7 +14,7 @@
     --text-dim:                     rgb(145, 145, 165);
     --text-danger:                  rgb(190, 40, 40);
     --text-success:                 rgb(30, 140, 60);
-    --text-gold:                    rgb(210, 165, 0);
+    --text-gold:                    rgb(120, 120, 140);
 
     /* ── Surfaces ─────────────────────────────────────────────────────── */
     --bg-screen:                    rgb(235, 235, 245);
@@ -45,38 +43,38 @@
     /* ── Navigation (tabs, toggles, filter pills) ─────────────────────── */
     --bg-nav:                       rgb(222, 222, 235);
     --bg-nav-hover:                 rgb(206, 206, 224);
-    --bg-nav-active:                rgb(190, 212, 240);
+    --bg-nav-active:                rgb(195, 195, 215);
 
     /* ── List rows ────────────────────────────────────────────────────── */
     --bg-row:                       rgb(252, 252, 255);
     --bg-row-hover:                 rgb(240, 240, 252);
 
     /* ── Accent: info (focus / active / links / account actions) ─────── */
-    --accent-info:                  rgb(40, 110, 200);
-    --accent-info-bg:               rgba(40, 110, 200, 0.06);
-    --accent-info-bg-mid:           rgba(40, 110, 200, 0.12);
-    --accent-info-bg-strong:        rgba(40, 110, 200, 0.2);
-    --accent-info-btn:              rgb(60, 110, 180);
-    --accent-info-btn-hover:        rgb(45, 90, 155);
-    --accent-info-btn-active:       rgb(30, 75, 140);
+    --accent-info:                  rgb(100, 100, 130);
+    --accent-info-bg:               rgba(100, 100, 130, 0.06);
+    --accent-info-bg-mid:           rgba(100, 100, 130, 0.12);
+    --accent-info-bg-strong:        rgba(100, 100, 130, 0.2);
+    --accent-info-btn:              rgb(110, 110, 140);
+    --accent-info-btn-hover:        rgb(90, 90, 118);
+    --accent-info-btn-active:       rgb(75, 75, 100);
 
     /* ── Accent: approval (start / affirmative action) ────────────────── */
-    --accent-approval:              rgb(30, 130, 60);
-    --accent-approval-hover:        rgb(25, 155, 75);
-    --accent-approval-active:       rgb(20, 180, 90);
+    --accent-approval:              rgb(80, 80, 105);
+    --accent-approval-hover:        rgb(65, 65, 90);
+    --accent-approval-active:       rgb(50, 50, 75);
 
     /* ── Accent: confirm (continue / resume) ─────────────────────────── */
-    --accent-confirm:               rgb(45, 95, 160);
-    --accent-confirm-hover:         rgb(35, 80, 145);
-    --accent-confirm-active:        rgb(25, 65, 130);
+    --accent-confirm:               rgb(90, 90, 118);
+    --accent-confirm-hover:         rgb(75, 75, 100);
+    --accent-confirm-active:        rgb(60, 60, 85);
 
     /* ── Accent: danger ───────────────────────────────────────────────── */
     --accent-danger-btn:            rgb(175, 40, 40);
     --accent-danger-btn-hover:      rgb(200, 50, 50);
 
     /* ── Accent: gold (trophy / leaderboard) ─────────────────────────── */
-    --accent-gold-btn:              rgb(205, 160, 0);
-    --accent-gold-btn-hover:        rgb(185, 143, 0);
+    --accent-gold-btn:              rgb(120, 120, 148);
+    --accent-gold-btn-hover:        rgb(100, 100, 128);
 
     /* ── Accent: favorite ─────────────────────────────────────────────── */
     --accent-favorite:              rgb(210, 60, 85);
@@ -92,23 +90,23 @@
     --scrollbar-thumb-hover:        rgba(0, 0, 0, 0.4);
 
     /* ── Rank row tints ───────────────────────────────────────────────── */
-    --rank-gold-bg:                 rgb(255, 246, 205);
-    --rank-gold-bg-hover:           rgb(252, 238, 175);
+    --rank-gold-bg:                 rgb(238, 238, 248);
+    --rank-gold-bg-hover:           rgb(225, 225, 240);
     --rank-silver-bg:               rgb(232, 232, 245);
     --rank-silver-bg-hover:         rgb(218, 218, 238);
-    --rank-bronze-bg:               rgb(252, 232, 210);
-    --rank-bronze-bg-hover:         rgb(245, 218, 192);
+    --rank-bronze-bg:               rgb(228, 228, 242);
+    --rank-bronze-bg-hover:         rgb(215, 215, 232);
     --row-favorite-bg:              rgba(210, 60, 85, 0.07);
     --row-favorite-bg-hover:        rgba(210, 60, 85, 0.13);
 
     /* ── Rank text ────────────────────────────────────────────────────── */
-    --rank-gold:                    rgb(175, 130, 0);
+    --rank-gold:                    rgb(80, 80, 115);
     --rank-silver:                  rgb(80, 80, 120);
-    --rank-bronze:                  rgb(140, 80, 10);
+    --rank-bronze:                  rgb(90, 90, 118);
 
     /* ── Clearable highlight (replay viewer) ──────────────────────────── */
-    --highlight-clearable:          rgb(0, 160, 190);
-    --highlight-clearable-btn:      rgb(0, 148, 175);
-    --highlight-clearable-btn-hover: rgb(0, 128, 155);
+    --highlight-clearable:          rgb(80, 80, 120);
+    --highlight-clearable-btn:      rgb(100, 100, 138);
+    --highlight-clearable-btn-hover: rgb(80, 80, 115);
 
 }

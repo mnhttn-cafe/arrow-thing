@@ -146,7 +146,6 @@ public class MainMenuLayoutTests : UILayoutTestBase
             settings.Q<Button>("nav-about"),
             settings.Q("drag-threshold-row"),
             settings.Q("zoom-speed-row"),
-            settings.Q<Toggle>("arrow-coloring-toggle"),
             settings.Q<Button>("clear-scores-btn"),
             settings.Q<Button>("settings-close-btn")
         );

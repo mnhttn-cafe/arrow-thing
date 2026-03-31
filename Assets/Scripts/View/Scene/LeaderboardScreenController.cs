@@ -315,8 +315,6 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         row.AddToClassList("lb-entry");
         row.userData = entry.gameId;
 
-        bool isFocused = _focusGameId != null && entry.gameId == _focusGameId;
-
         // Medal highlights (non-Favorites sort)
         string medalRow = null;
         string medalRank = null;
@@ -341,8 +339,6 @@ public sealed class LeaderboardScreenController : MonoBehaviour
             row.AddToClassList("lb-entry--favorite");
         if (medalRow != null)
             row.AddToClassList(medalRow);
-        if (isFocused)
-            row.AddToClassList("lb-entry--focused");
 
         // Rank
         var rankLabel = new Label($"#{rank}");

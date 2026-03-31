@@ -87,6 +87,19 @@
     -unity-background-image-tint-color: var(--text-primary);
 }
 
+.icon-btn--gold {
+    background-color: var(--accent-gold-btn);
+}
+
+.icon-btn--gold:hover {
+    background-color: var(--accent-gold-btn-hover);
+}
+
+.icon-btn--gold .icon-btn__icon,
+.icon-btn--gold:hover .icon-btn__icon {
+    -unity-background-image-tint-color: var(--text-on-accent);
+}
+
 /* ── Icon Row ────────────────────────────────────────────────────── */
 /*
    Absolutely-positioned row of icon buttons. Combine with a corner
@@ -164,7 +177,6 @@
 
 .icon--trophy {
     background-image: url("/Assets/Art/Icons/trophy_icon.png");
-    -unity-background-image-tint-color: var(--text-gold);
 }
 
 .icon--arrow-lane-preview {

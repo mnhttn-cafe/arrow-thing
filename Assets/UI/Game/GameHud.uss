@@ -16,7 +16,7 @@
 }
 
 .timer-label--solving {
-    color: var(--text-on-accent);
+    color: var(--text-primary);
 }
 
 .timer-label--warning {

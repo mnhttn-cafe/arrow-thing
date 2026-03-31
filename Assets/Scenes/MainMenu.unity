@@ -174,7 +174,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ArrowThing::MainMenuController
   uiDocument: {fileID: 1520836568}
-  inputActions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
 --- !u!4 &1520836570
 Transform:
   m_ObjectHideFlags: 0
@@ -184,7 +183,7 @@ Transform:
   m_GameObject: {fileID: 1520836567}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.43967, y: 0.96214, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -202,7 +201,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b356203ee21fba428ac4e24d888c2ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ArrowThing::UIThemeApplier
-  visualSettings: {fileID: 11400000, guid: f7b34a78b24c8fb408fadddec598eca5, type: 2}
 --- !u!1 &1955145144
 GameObject:
   m_ObjectHideFlags: 0

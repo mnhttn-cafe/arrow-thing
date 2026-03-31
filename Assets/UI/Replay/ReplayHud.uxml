@@ -16,9 +16,6 @@
         <ui:VisualElement class="hud-icon-btn__icon icon--close" />
     </ui:Button>
 
-    <!-- Highlight toggle (top-right, wider to fit text) -->
-    <ui:Button name="highlight-btn" class="hud-icon-btn rh-highlight-btn" text="Clearable" />
-
     <!-- Controls toggle button (bottom-center, above controls bar) -->
     <ui:Button name="controls-toggle-btn" class="rh-controls-toggle">
         <ui:VisualElement name="controls-toggle-icon" class="rh-controls-toggle-icon rh-controls-toggle-icon--down" />
@@ -36,12 +33,16 @@
             <ui:Label name="time-total" class="rh-time-label" text="0:00" />
         </ui:VisualElement>
 
-        <!-- Playback controls -->
+        <!-- Playback controls: [play centered] | speed + clearable right -->
         <ui:VisualElement class="rh-playback-row">
+            <ui:VisualElement class="rh-playback-spacer" />
             <ui:Button name="play-pause-btn" class="rh-play-btn">
                 <ui:VisualElement name="play-pause-icon" class="rh-play-icon rh-play-icon--pause" />
             </ui:Button>
-            <ui:Button name="speed-btn" class="rh-speed-btn" text="1x" />
+            <ui:VisualElement class="rh-playback-spacer rh-playback-spacer--right">
+                <ui:Button name="speed-btn" class="rh-speed-btn" text="1x" />
+                <ui:Button name="highlight-btn" class="rh-highlight-btn" text="Clearable" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

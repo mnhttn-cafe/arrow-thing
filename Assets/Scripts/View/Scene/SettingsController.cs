@@ -15,6 +15,9 @@ public sealed class SettingsController : MonoBehaviour
 {
     public static SettingsController Instance { get; private set; }
 
+    /// <summary>Fired with <c>true</c> when settings opens, <c>false</c> when it closes.</summary>
+    public static event Action<bool> IsOpenChanged;
+
     [SerializeField]
     private InputActionAsset inputActions;
 
@@ -97,17 +100,23 @@ public sealed class SettingsController : MonoBehaviour
 
     public void Open()
     {
+        if (IsOpen)
+            return;
         IsOpen = true;
         SetVisible(_settings, true);
+        IsOpenChanged?.Invoke(true);
     }
 
     public void Close()
     {
+        if (!IsOpen)
+            return;
         IsOpen = false;
         if (_themeDropdown != null)
             _themeDropdown.Close();
         _accountManager.CancelEditing();
         SetVisible(_settings, false);
+        IsOpenChanged?.Invoke(false);
     }
 
     public void Toggle()
@@ -156,13 +165,6 @@ public sealed class SettingsController : MonoBehaviour
         zoomSnap.OnValueChanged += val => PlayerPrefs.SetFloat(GameSettings.ZoomSpeedPrefKey, val);
         zoomSnap.Root.AddToClassList("setting-snap-slider");
         _settings.Q("zoom-speed-row").Add(zoomSnap.Root);
-
-        bool savedColoring = PlayerPrefs.GetInt(GameSettings.ArrowColoringPrefKey, 0) == 1;
-        var coloringToggle = _settings.Q<Toggle>("arrow-coloring-toggle");
-        coloringToggle.value = savedColoring;
-        coloringToggle.RegisterValueChangedCallback(evt =>
-            PlayerPrefs.SetInt(GameSettings.ArrowColoringPrefKey, evt.newValue ? 1 : 0)
-        );
 
         var themeChoices = new System.Collections.Generic.List<string>();
         foreach (var t in ThemeManager.Available)

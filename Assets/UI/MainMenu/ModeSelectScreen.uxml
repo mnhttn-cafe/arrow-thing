@@ -6,7 +6,7 @@
             </ui:Button>
         </ui:VisualElement>
         <ui:VisualElement class="icon-row icon-row--top-right">
-            <ui:Button name="trophy-btn" class="icon-btn">
+            <ui:Button name="trophy-btn" class="icon-btn icon-btn--gold">
                 <ui:VisualElement class="icon-btn__icon icon--trophy" />
             </ui:Button>
         </ui:VisualElement>
