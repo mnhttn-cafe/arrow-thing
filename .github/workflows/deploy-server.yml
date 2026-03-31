@@ -54,3 +54,19 @@ jobs:
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
           ssh -i ~/.ssh/id_ed25519 deploy@${{ secrets.VPS_HOST }} \
             "cd /home/deploy/arrow-thing && docker compose pull api && docker compose up -d --no-deps api"
+
+      - name: Health check
+        run: |
+          echo "Waiting for container to be ready..."
+          sleep 5
+          for i in $(seq 1 6); do
+            STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://api.arrow-thing.com/health)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS — retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after all retries"
+          exit 1
