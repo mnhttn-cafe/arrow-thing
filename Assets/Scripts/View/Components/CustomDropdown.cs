@@ -74,9 +74,12 @@ public sealed class CustomDropdown
         var docRoot = Root;
         while (docRoot.parent != null && docRoot.parent != panelRoot)
             docRoot = docRoot.parent;
-        foreach (var sheet in docRoot.styleSheets)
+        for (int i = 0; i < docRoot.styleSheets.count; i++)
+        {
+            var sheet = docRoot.styleSheets[i];
             if (!panelRoot.styleSheets.Contains(sheet))
                 panelRoot.styleSheets.Add(sheet);
+        }
 
         // Backdrop: fills the whole panel, captures outside clicks and scrolls
         _backdrop = new VisualElement();
