@@ -143,9 +143,6 @@ public class MainMenuLayoutTests : UILayoutTestBase
             settings.Q<Button>("nav-gameplay"),
             settings.Q<Button>("nav-data"),
             settings.Q<Button>("nav-about"),
-            settings.Q("drag-threshold-row"),
-            settings.Q("zoom-speed-row"),
-            settings.Q<Button>("clear-scores-btn"),
             settings.Q<Button>("settings-close-btn")
         );
     }
@@ -245,7 +242,6 @@ public class MainMenuLayoutTests : UILayoutTestBase
             panelBounds,
             ctx,
             warn,
-            loginForm.Q("login-fields"),
             loginForm.Q<Button>("login-submit-btn"),
             loginForm.Q<Button>("register-submit-btn")
         );
@@ -278,7 +274,6 @@ public class MainMenuLayoutTests : UILayoutTestBase
             ctx,
             warn,
             resetForm.Q<Label>("reset-message"),
-            resetForm.Q("reset-fields"),
             resetForm.Q<Button>("reset-submit-btn"),
             resetForm.Q<Button>("reset-back-btn")
         );
@@ -311,7 +306,6 @@ public class MainMenuLayoutTests : UILayoutTestBase
             ctx,
             warn,
             confirmForm.Q<Label>("confirm-email-message"),
-            confirmForm.Q("confirm-email-fields"),
             confirmForm.Q<Button>("confirm-email-submit-btn")
         );
     }

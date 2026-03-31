@@ -25,6 +25,8 @@ public sealed class SettingsController : MonoBehaviour
     private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
 
     private VisualElement _settings;
+    private VisualElement _settingsPanel;
+    private VisualElement _settingsBackdrop;
     private AccountManager _accountManager;
     private CustomDropdown _themeDropdown;
     private ConfirmModal _clearScoresModal;
@@ -84,6 +86,12 @@ public sealed class SettingsController : MonoBehaviour
             return;
         }
 
+        var settingsScreen = _settings.Q(className: "settings-screen");
+        _settingsPanel = settingsScreen?.Q(className: "settings-panel");
+        _settingsBackdrop = settingsScreen?.Q("settings-backdrop");
+        if (settingsScreen != null)
+            settingsScreen.RegisterCallback<GeometryChangedEvent>(OnSettingsGeometryChanged);
+
         WireSettingsControls();
         WireSettingsNav();
         WireModals(root);
@@ -125,6 +133,46 @@ public sealed class SettingsController : MonoBehaviour
             Close();
         else
             Open();
+    }
+
+    // -- Responsive layout --------------------------------------------------
+
+    private void OnSettingsGeometryChanged(GeometryChangedEvent evt)
+    {
+        if (_settingsPanel == null || evt.newRect.height <= 0)
+            return;
+
+        float ratio = evt.newRect.width / evt.newRect.height;
+
+        // Breakpoints: >=1.5 wide landscape → 50%; taper to 100% at 3:4; portrait → fullscreen.
+        float widthPct;
+        float maxWidthPx;
+        if (ratio >= 1.5f)
+        {
+            widthPct = 50f;
+            maxWidthPx = 520f;
+        }
+        else if (ratio >= 1.0f)
+        {
+            widthPct = Mathf.Lerp(65f, 50f, (ratio - 1.0f) / 0.5f);
+            maxWidthPx = 520f;
+        }
+        else if (ratio >= 0.75f)
+        {
+            widthPct = Mathf.Lerp(100f, 65f, (ratio - 0.75f) / 0.25f);
+            maxWidthPx = 9999f;
+        }
+        else
+        {
+            widthPct = 100f;
+            maxWidthPx = 9999f;
+        }
+
+        _settingsPanel.style.width = new StyleLength(new Length(widthPct, LengthUnit.Percent));
+        _settingsPanel.style.maxWidth = new StyleLength(new Length(maxWidthPx, LengthUnit.Pixel));
+        if (_settingsBackdrop != null)
+            _settingsBackdrop.style.display =
+                widthPct >= 100f ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     // -- Settings controls --------------------------------------------------
