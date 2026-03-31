@@ -39,12 +39,6 @@ public sealed class CustomDropdown
         Root.Add(arrow);
 
         Root.RegisterCallback<ClickEvent>(_ => Toggle());
-        // Close popup when the trigger moves (e.g. parent ScrollView scrolls)
-        Root.RegisterCallback<GeometryChangedEvent>(_ =>
-        {
-            if (_backdrop != null)
-                Close();
-        });
     }
 
     public void SetChoices(IReadOnlyList<string> choices)
@@ -75,7 +69,16 @@ public sealed class CustomDropdown
         if (panelRoot == null)
             return;
 
-        // Backdrop: fills the whole panel, captures outside clicks
+        // Copy stylesheets from the UIDocument root (direct child of panelRoot)
+        // so the popup inherits component styles as well as theme variables.
+        var docRoot = Root;
+        while (docRoot.parent != null && docRoot.parent != panelRoot)
+            docRoot = docRoot.parent;
+        foreach (var sheet in docRoot.styleSheets)
+            if (!panelRoot.styleSheets.Contains(sheet))
+                panelRoot.styleSheets.Add(sheet);
+
+        // Backdrop: fills the whole panel, captures outside clicks and scrolls
         _backdrop = new VisualElement();
         _backdrop.AddToClassList("custom-dropdown__backdrop");
         _backdrop.RegisterCallback<PointerDownEvent>(evt =>
@@ -86,6 +89,7 @@ public sealed class CustomDropdown
                 Close();
             }
         });
+        _backdrop.RegisterCallback<WheelEvent>(_ => Close());
 
         // Popup list
         var popup = new VisualElement();
