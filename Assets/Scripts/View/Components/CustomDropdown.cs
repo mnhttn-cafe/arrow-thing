@@ -21,6 +21,8 @@ public sealed class CustomDropdown
     private readonly Label _valueLabel;
     private readonly List<string> _choices;
     private VisualElement _backdrop;
+    private ScrollView _watchedScroll;
+    private Action<float> _scrollListener;
 
     public CustomDropdown(IReadOnlyList<string> choices, string initialValue)
     {
@@ -92,7 +94,15 @@ public sealed class CustomDropdown
                 Close();
             }
         });
-        _backdrop.RegisterCallback<WheelEvent>(_ => Close());
+
+        // Close when the nearest ancestor ScrollView scrolls — listen on the
+        // scroller directly so the WheelEvent reaches the ScrollView unimpeded.
+        _watchedScroll = FindAncestorScrollView(Root);
+        if (_watchedScroll != null)
+        {
+            _scrollListener = _ => Close();
+            _watchedScroll.verticalScroller.valueChanged += _scrollListener;
+        }
 
         // Popup list
         var popup = new VisualElement();
@@ -153,8 +163,26 @@ public sealed class CustomDropdown
 
     public void Close()
     {
+        if (_watchedScroll != null && _scrollListener != null)
+        {
+            _watchedScroll.verticalScroller.valueChanged -= _scrollListener;
+            _watchedScroll = null;
+            _scrollListener = null;
+        }
         _backdrop?.RemoveFromHierarchy();
         _backdrop = null;
         Root.RemoveFromClassList("custom-dropdown--open");
+    }
+
+    private static ScrollView FindAncestorScrollView(VisualElement el)
+    {
+        var parent = el.parent;
+        while (parent != null)
+        {
+            if (parent is ScrollView sv)
+                return sv;
+            parent = parent.parent;
+        }
+        return null;
     }
 }
