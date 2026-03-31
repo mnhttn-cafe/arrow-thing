@@ -31,11 +31,11 @@ public class AuthService
 
         // Validate display name
         if (
-            string.IsNullOrWhiteSpace(request.DisplayName)
-            || request.DisplayName.Length < 2
+            request.DisplayName == null
+            || request.DisplayName.Length < 1
             || request.DisplayName.Length > 24
         )
-            return (null, 400, "Display name must be 2-24 characters.");
+            return (null, 400, "Display name must be 1-24 characters.");
 
         // Validate password
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
@@ -67,7 +67,7 @@ public class AuthService
         {
             Id = Guid.NewGuid(),
             Email = normalizedEmail,
-            DisplayName = request.DisplayName.Trim(),
+            DisplayName = request.DisplayName,
             PasswordHash = PasswordHasher.Hash(request.Password),
             CreatedAt = DateTime.UtcNow,
             VerificationCode = code,
@@ -130,17 +130,17 @@ public class AuthService
     )> UpdateDisplayNameAsync(Guid userId, UpdateDisplayNameRequest request)
     {
         if (
-            string.IsNullOrWhiteSpace(request.DisplayName)
-            || request.DisplayName.Length < 2
+            request.DisplayName == null
+            || request.DisplayName.Length < 1
             || request.DisplayName.Length > 24
         )
-            return (null, 400, "Display name must be 2-24 characters.");
+            return (null, 400, "Display name must be 1-24 characters.");
 
         var user = await _db.Users.FindAsync(userId);
         if (user == null)
             return (null, 401, "User not found.");
 
-        user.DisplayName = request.DisplayName.Trim();
+        user.DisplayName = request.DisplayName;
         await _db.SaveChangesAsync();
 
         return (new DisplayNameResponse(user.DisplayName), 200, null);

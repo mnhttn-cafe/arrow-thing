@@ -75,9 +75,10 @@ public class EmailService : IEmailService
 
     public async Task SendEmailChangeNotificationAsync(string toOldEmail, string newEmail)
     {
+        var safeNewEmail = System.Net.WebUtility.HtmlEncode(newEmail);
         var html = $"""
             <h2>Email change requested</h2>
-            <p>Someone requested to change the email on your Arrow Thing account to <strong>{newEmail}</strong>.</p>
+            <p>Someone requested to change the email on your Arrow Thing account to <strong>{safeNewEmail}</strong>.</p>
             <p>If this was you, no action is needed — just confirm via the link sent to your new email.</p>
             <p>If this wasn't you, please reach out to us on <a href="https://discord.gg/FBwTyaWzpE">Discord</a> so we can help secure your account.</p>
             """;

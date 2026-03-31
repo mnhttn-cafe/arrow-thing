@@ -26,7 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _FlashT: 0
-    - _HighlightStrength: 0.5
+    - _HighlightStrength: 0
     m_Colors:
     - _Color: {r: 0.816, g: 0.847, b: 0.91, a: 1}
     - _FlashColor: {r: 1, g: 0.267, b: 0.267, a: 1}

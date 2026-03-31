@@ -1,0 +1,640 @@
+/* ====================================================================
+   Shared.uss — Reusable UI components
+   Add <Style src="Shared.uss" /> to every UXML document that uses
+   any of these classes. ThemeColors.uss must also be applied to the
+   panel root (via UIThemeApplier) for the var() references to resolve.
+
+   ── Text scale ────────────────────────────────────────────────────────
+   Display  28px+  --text-on-accent      Timer, victory msg, hero overlays
+   Title    20px   --text-primary    Screen headers, modal titles
+   Body     16px   --text-primary    Panel content, buttons, entry values
+   Secondary 14px  --text-secondary  Descriptions, labels, muted helpers
+   Small    13px   --text-dim        Tabs, filter/nav btns, dates
+   ==================================================================== */
+
+/* ── Loading Overlay ──────────────────────────────────────────────── */
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-loading-overlay);
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-label {
+    font-size: 32px;
+    color: var(--text-primary);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+}
+
+.loading-bar-track {
+    width: 300px;
+    height: 8px;
+    background-color: var(--bg-track);
+    border-radius: 4px;
+    margin-top: 20px;
+    overflow: hidden;
+}
+
+.loading-bar-fill {
+    height: 100%;
+    width: 0%;
+    background-color: var(--accent-info);
+    border-radius: 4px;
+}
+
+.loading-percent {
+    font-size: 18px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    -unity-text-align: middle-center;
+}
+
+/* ── Icon Button ─────────────────────────────────────────────────── */
+/*
+   Circular 48×48 icon button. Add an .icon-btn__icon child carrying a
+   named icon class (e.g. .icon--close).
+   For groups, wrap buttons in an .icon-row container with a corner
+   modifier.
+*/
+
+.icon-btn {
+    width: 48px;
+    height: 48px;
+    padding: 8px;
+    background-color: var(--bg-btn);
+    border-radius: 24px;
+    border-width: 0;
+}
+
+.icon-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.icon-btn__icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+.icon-btn:hover .icon-btn__icon {
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+.icon-btn--gold {
+    background-color: var(--accent-gold-btn);
+}
+
+.icon-btn--gold:hover {
+    background-color: var(--accent-gold-btn-hover);
+}
+
+.icon-btn--gold .icon-btn__icon,
+.icon-btn--gold:hover .icon-btn__icon {
+    -unity-background-image-tint-color: var(--text-on-accent);
+}
+
+/* ── Icon Row ────────────────────────────────────────────────────── */
+/*
+   Absolutely-positioned row of icon buttons. Combine with a corner
+   modifier: --top-left / --top-right / --bottom-left / --bottom-right.
+*/
+
+.icon-row {
+    position: absolute;
+    flex-direction: row;
+    align-items: center;
+}
+
+.icon-row .icon-btn {
+    margin-left: 8px;
+}
+
+.icon-row--top-left {
+    top: 16px;
+    left: 16px;
+}
+
+.icon-row--top-right {
+    top: 16px;
+    right: 16px;
+}
+
+.icon-row--bottom-left {
+    bottom: 16px;
+    left: 16px;
+}
+
+.icon-row--bottom-right {
+    bottom: 16px;
+    right: 16px;
+}
+
+/* ── Breadcrumb Label ────────────────────────────────────────────── */
+
+.breadcrumb-label {
+    font-size: 16px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-left;
+    margin-left: 4px;
+}
+
+/* ── Named Icons ─────────────────────────────────────────────────── */
+
+.icon--close {
+    background-image: url("/Assets/Art/Icons/close.png");
+}
+
+.icon--info {
+    background-image: url("/Assets/Art/Icons/info.png");
+}
+
+.icon--account {
+    background-image: url("/Assets/Art/Icons/account_icon.png");
+}
+
+.icon--github {
+    background-image: url("/Assets/Art/Icons/Octicons-mark-github.svg.png");
+}
+
+.icon--discord {
+    background-image: url("/Assets/Art/Icons/discord-white-icon.png");
+}
+
+.icon--arrow-back {
+    background-image: url("/Assets/Art/Icons/arrow_back.png");
+}
+
+.icon--logout {
+    background-image: url("/Assets/Art/Icons/logout.png");
+}
+
+.icon--trophy {
+    background-image: url("/Assets/Art/Icons/trophy_icon.png");
+}
+
+.icon--arrow-lane-preview {
+    background-image: url("/Assets/Art/Icons/arrow_lane_preview_icon.png");
+}
+
+/* ── HUD Icon Button ──────────────────────────────────────────────── */
+/*
+   Base: absolute-positioned circular button.
+   Combine with a position modifier:
+     .hud-icon-btn--top-left / --top-right / --bottom-left / --bottom-right
+   For image-only buttons add .hud-icon-btn--padded instead of relying on
+   font-size centering. Child images should use .hud-icon-btn__icon.
+*/
+
+.hud-icon-btn {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    color: var(--text-secondary);
+    background-color: var(--bg-btn);
+    border-radius: 24px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.hud-icon-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-btn-hover);
+}
+
+.hud-icon-btn:active {
+    background-color: var(--bg-btn-active);
+}
+
+/* Position modifiers */
+.hud-icon-btn--top-left {
+    top: 16px;
+    left: 16px;
+}
+
+.hud-icon-btn--top-right {
+    top: 16px;
+    right: 16px;
+}
+
+.hud-icon-btn--bottom-left {
+    bottom: 16px;
+    left: 16px;
+}
+
+.hud-icon-btn--bottom-right {
+    bottom: 16px;
+    right: 16px;
+}
+
+/* Toggled/active state — blue tint */
+.hud-icon-btn--active {
+    color: var(--accent-info);
+    background-color: var(--accent-info-bg-mid);
+}
+
+.hud-icon-btn--active:hover {
+    background-color: var(--accent-info-bg-strong);
+}
+
+/* Use instead of text when the button contains a background-image child */
+.hud-icon-btn--padded {
+    padding: 8px;
+}
+
+/* Standard icon child element — default tint matches the text colour */
+.hud-icon-btn__icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+.hud-icon-btn:hover .hud-icon-btn__icon {
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+/* ── Empty State ─────────────────────────────────────────────────── */
+/*
+   Muted centered placeholder used when a list or panel has no content.
+*/
+
+.empty-state {
+    font-size: 16px;
+    color: var(--text-dim);
+    -unity-text-align: middle-center;
+    flex-grow: 1;
+    padding: 40px;
+    white-space: normal;
+}
+
+/* ── Context Menu ────────────────────────────────────────────────── */
+/*
+   Floating popup positioned in C# via style.top/bottom/left/right.
+   Add .context-menu__btn children for each action.
+*/
+
+.context-menu {
+    position: absolute;
+    background-color: var(--bg-panel);
+    border-radius: 8px;
+    padding: 4px 0;
+    min-width: 140px;
+}
+
+.context-menu__btn {
+    font-size: 16px;
+    color: var(--text-primary);
+    background-color: transparent;
+    border-width: 0;
+    padding: 8px 16px;
+    -unity-text-align: middle-left;
+}
+
+.context-menu__btn:hover {
+    background-color: var(--bg-btn);
+}
+
+.context-menu__btn--danger {
+    color: var(--text-danger);
+}
+
+/* ── Modal Instance ──────────────────────────────────────────────── */
+/*
+   Wrapper element for ConfirmModal template instances.
+   Hidden by default; shown/hidden from C# via ConfirmModal.Show/Hide.
+*/
+
+.modal-instance {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────── */
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-overlay);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-box {
+    background-color: var(--bg-panel);
+    border-radius: 12px;
+    padding: 32px 48px;
+    align-items: center;
+    max-width: 90%;
+}
+
+.modal-label {
+    font-size: 20px;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.modal-sublabel {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    margin-top: -12px;
+}
+
+.modal-buttons {
+    flex-direction: row;
+}
+
+.modal-btn {
+    width: 120px;
+    padding: 10px 0;
+    font-size: 16px;
+    margin: 0 8px;
+    color: var(--text-primary);
+    background-color: var(--bg-btn);
+    border-radius: 8px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.modal-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.modal-btn:active {
+    background-color: var(--bg-btn-active);
+}
+
+/* Destructive action — filled red background */
+.modal-btn--danger {
+    background-color: var(--accent-danger-btn);
+}
+
+.modal-btn--danger:hover {
+    background-color: var(--accent-danger-btn-hover);
+}
+
+/* Small dismiss button, absolute-positioned inside .modal-box */
+.modal-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 16px;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.modal-close-btn__icon {
+    width: 18px;
+    height: 18px;
+    -unity-background-image-tint-color: var(--text-dim);
+}
+
+.modal-close-btn:hover .modal-close-btn__icon {
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+/* ── Screen Header ────────────────────────────────────────────────── */
+/*
+   Horizontal header row: back button + title + optional right-side controls.
+   Screens should add their own margin-bottom.
+*/
+
+.screen-header {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.screen-header__back-btn {
+    width: 40px;
+    height: 40px;
+    padding: 7px;
+    background-color: var(--bg-btn);
+    border-radius: 20px;
+    border-width: 0;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.screen-header__back-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.screen-header__back-btn .hud-icon-btn__icon {
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+.screen-header__back-btn:hover .hud-icon-btn__icon {
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+.screen-header__title {
+    font-size: 20px;
+    color: var(--text-primary);
+    -unity-font-style: bold;
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+/* ── Tab Bar ──────────────────────────────────────────────────────── */
+/*
+   Horizontal row of tabs with a blue underline on the active tab.
+   Screens should add their own margin-bottom.
+*/
+
+.tab-bar {
+    flex-direction: row;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tab-bar__tab {
+    font-size: 15px;
+    color: var(--text-secondary);
+    background-color: var(--bg-nav);
+    border-width: 0;
+    padding: 8px 16px;
+    margin: 0 2px;
+    border-radius: 6px;
+}
+
+.tab-bar__tab:hover {
+    background-color: var(--bg-nav-hover);
+}
+
+.tab-bar__tab--active {
+    color: var(--text-primary);
+    background-color: var(--bg-nav-active);
+    border-bottom-width: 2px;
+    border-bottom-color: var(--accent-info);
+}
+
+/* ── Toggle Group ─────────────────────────────────────────────────── */
+/*
+   Pill-shaped button pair (e.g. Local / Global).
+   First button gets --first, last button gets --last.
+*/
+
+.toggle-group {
+    flex-direction: row;
+    flex-shrink: 0;
+}
+
+.toggle-group__btn {
+    font-size: 13px;
+    color: var(--text-secondary);
+    background-color: var(--bg-nav);
+    border-width: 0;
+    padding: 5px 10px;
+    margin: 0 1px;
+}
+
+.toggle-group__btn:hover {
+    background-color: var(--bg-nav-hover);
+}
+
+.toggle-group__btn--active {
+    color: var(--text-primary);
+    background-color: var(--bg-nav-active);
+}
+
+.toggle-group__btn--first {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.toggle-group__btn--last {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/* ── Filter Row ───────────────────────────────────────────────────── */
+/*
+   Row of transparent filter/sort buttons; active one gets a filled pill.
+   Screens should add their own margin-bottom.
+*/
+
+.filter-row {
+    flex-direction: row;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.filter-row__btn {
+    font-size: 13px;
+    color: var(--text-dim);
+    background-color: transparent;
+    border-width: 0;
+    padding: 4px 12px;
+    margin: 0 2px;
+    border-radius: 4px;
+}
+
+.filter-row__btn:hover {
+    background-color: var(--bg-btn);
+}
+
+.filter-row__btn--active {
+    color: var(--text-primary);
+    background-color: var(--bg-nav-active);
+}
+
+/* ── CustomDropdown ───────────────────────────────────────────────────── */
+/*
+   Trigger button — add to any VisualElement via CustomDropdown constructor.
+   The popup is injected into panel.visualTree so it layers above all UI.
+*/
+
+.custom-dropdown {
+    align-self: stretch;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--bg-input);
+    border-color: var(--border-normal);
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 8px 12px;
+
+}
+
+.custom-dropdown:hover {
+    border-color: var(--border-emphasis);
+    background-color: var(--bg-btn);
+}
+
+.custom-dropdown--open {
+    border-color: var(--border-emphasis);
+}
+
+.custom-dropdown__value {
+    font-size: 15px;
+    color: var(--text-primary);
+    flex-grow: 1;
+}
+
+.custom-dropdown__arrow {
+    width: 12px;
+    height: 12px;
+    background-image: url("/Assets/Art/Icons/arrow_down.png");
+    -unity-background-image-tint-color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.custom-dropdown--open .custom-dropdown__arrow {
+    background-image: url("/Assets/Art/Icons/arrow_up.png");
+}
+
+/* Popup — injected directly into panel root, positioned absolutely below trigger */
+.custom-dropdown__popup {
+    background-color: var(--bg-panel);
+    border-color: var(--border-emphasis);
+    border-width: 1px;
+    border-radius: 8px;
+    padding: 4px 0;
+    max-height: 320px;
+    overflow: hidden;
+}
+
+.custom-dropdown__item {
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 0;
+    padding: 10px 14px;
+    font-size: 15px;
+    color: var(--text-primary);
+    -unity-text-align: middle-left;
+}
+
+.custom-dropdown__item:hover {
+    background-color: var(--bg-btn);
+}
+
+.custom-dropdown__item--selected {
+    color: var(--accent-info);
+}

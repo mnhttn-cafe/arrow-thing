@@ -1,0 +1,48 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="../Shared/Shared.uss" />
+    <Style src="ReplayHud.uss" />
+
+    <!-- Loading overlay -->
+    <ui:VisualElement name="loading-overlay" class="loading-overlay">
+        <ui:Label name="loading-label" class="loading-label" text="Loading..." />
+        <ui:VisualElement class="loading-bar-track">
+            <ui:VisualElement name="loading-bar-fill" class="loading-bar-fill" />
+        </ui:VisualElement>
+        <ui:Label name="loading-percent" class="loading-percent" text="" />
+    </ui:VisualElement>
+
+    <!-- Exit button (top-left) -->
+    <ui:Button name="exit-btn" class="hud-icon-btn hud-icon-btn--top-left">
+        <ui:VisualElement class="hud-icon-btn__icon icon--close" />
+    </ui:Button>
+
+    <!-- Controls toggle button (bottom-center, above controls bar) -->
+    <ui:Button name="controls-toggle-btn" class="rh-controls-toggle">
+        <ui:VisualElement name="controls-toggle-icon" class="rh-controls-toggle-icon rh-controls-toggle-icon--down" />
+    </ui:Button>
+
+    <!-- Bottom controls bar -->
+    <ui:VisualElement name="controls-bar" class="rh-controls-bar">
+        <!-- Time labels and seek slider -->
+        <ui:VisualElement class="rh-seek-row">
+            <ui:Label name="time-current" class="rh-time-label" text="0:00" />
+            <ui:VisualElement class="rh-seek-track" name="seek-track">
+                <ui:VisualElement name="seek-fill" class="rh-seek-fill" />
+                <ui:VisualElement name="seek-handle" class="rh-seek-handle" />
+            </ui:VisualElement>
+            <ui:Label name="time-total" class="rh-time-label" text="0:00" />
+        </ui:VisualElement>
+
+        <!-- Playback controls: [play centered] | speed + clearable right -->
+        <ui:VisualElement class="rh-playback-row">
+            <ui:VisualElement class="rh-playback-spacer" />
+            <ui:Button name="play-pause-btn" class="rh-play-btn">
+                <ui:VisualElement name="play-pause-icon" class="rh-play-icon rh-play-icon--pause" />
+            </ui:Button>
+            <ui:VisualElement class="rh-playback-spacer rh-playback-spacer--right">
+                <ui:Button name="speed-btn" class="rh-speed-btn" text="1x" />
+                <ui:Button name="highlight-btn" class="rh-highlight-btn" text="Clearable" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

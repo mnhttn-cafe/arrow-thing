@@ -1,0 +1,58 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="../Shared/Shared.uss" />
+    <Style src="Leaderboard.uss" />
+
+    <ui:Template name="ConfirmModal" src="project://database/Assets/UI/Shared/ConfirmModal.uxml" />
+
+    <ui:VisualElement name="leaderboard-root" class="lb-screen">
+        <!-- Header row -->
+        <ui:VisualElement class="screen-header">
+            <ui:Button name="lb-back-btn" class="screen-header__back-btn">
+                <ui:VisualElement class="hud-icon-btn__icon icon--arrow-back" />
+            </ui:Button>
+            <ui:Label class="screen-header__title" text="Leaderboards" />
+            <ui:VisualElement class="toggle-group">
+                <ui:Button name="lb-local-btn" class="toggle-group__btn toggle-group__btn--active toggle-group__btn--first" text="Local" />
+                <ui:Button name="lb-global-btn" class="toggle-group__btn toggle-group__btn--last" text="Global" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Size tabs -->
+        <ui:VisualElement class="tab-bar">
+            <ui:Button name="tab-small" class="tab-bar__tab tab-bar__tab--active" text="Small" />
+            <ui:Button name="tab-medium" class="tab-bar__tab" text="Medium" />
+            <ui:Button name="tab-large" class="tab-bar__tab" text="Large" />
+            <ui:Button name="tab-xlarge" class="tab-bar__tab" text="XLarge" />
+            <ui:Button name="tab-all" class="tab-bar__tab" text="All" />
+        </ui:VisualElement>
+
+        <!-- Sort controls -->
+        <ui:VisualElement class="filter-row">
+            <ui:Button name="sort-fastest" class="filter-row__btn filter-row__btn--active" text="Fastest" />
+            <ui:Button name="sort-biggest" class="filter-row__btn" text="Biggest" />
+            <ui:Button name="sort-favorites" class="filter-row__btn" text="Favorites" />
+        </ui:VisualElement>
+
+        <!-- Entry list -->
+        <ui:ScrollView name="lb-scroll" class="lb-scroll">
+            <ui:VisualElement name="lb-list" class="lb-list" />
+        </ui:ScrollView>
+
+        <!-- Empty state -->
+        <ui:Label name="lb-empty" class="empty-state lb--hidden" text="No scores yet. Play a game to see your times here!" />
+
+        <!-- Coming Soon overlay (global) -->
+        <ui:VisualElement name="lb-coming-soon" class="lb-coming-soon lb--hidden">
+            <ui:Label class="lb-coming-soon-text" text="Coming Soon" />
+        </ui:VisualElement>
+
+        <!-- Context menu (floating) -->
+        <ui:VisualElement name="lb-context-menu" class="context-menu lb--hidden">
+            <ui:Button name="ctx-delete-btn" class="context-menu__btn context-menu__btn--danger" text="Delete" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+    <!-- Delete confirmation modal (reusable ConfirmModal, configured in C#) -->
+    <ui:Instance template="ConfirmModal" name="delete-modal" class="modal-instance" />
+</ui:UXML>

@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Shared.uss" />
+    <Style src="../MainMenu/MainMenu.uss" />
+
+    <ui:Template name="MainMenuScreen" src="project://database/Assets/UI/MainMenu/MainMenuScreen.uxml" />
+    <ui:Template name="ModeSelectScreen" src="project://database/Assets/UI/MainMenu/ModeSelectScreen.uxml" />
+    <ui:Template name="ConfirmModal" src="project://database/Assets/UI/Shared/ConfirmModal.uxml" />
+
+    <!-- Screens -->
+    <ui:Instance template="MainMenuScreen" name="main-menu" class="screen-instance" />
+    <ui:Instance template="ModeSelectScreen" name="mode-select" class="screen-instance screen--hidden" />
+
+    <!-- Modals -->
+    <ui:Instance template="ConfirmModal" name="quit-modal" class="modal-instance" />
+</ui:UXML>
