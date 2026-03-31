@@ -54,6 +54,9 @@ public static class BoardSetupHelper
             snapshotArrows.Add(new Arrow(arrowCells));
 
         int totalArrows = snapshotArrows.Count;
+        Debug.Log(
+            $"[BoardSetupHelper] RestoreBoardFromSnapshot: {totalArrows} arrows, board={board.Width}x{board.Height}"
+        );
         int totalSteps = totalArrows * 2;
         var restorer = board.RestoreArrowsIncremental(snapshotArrows);
 
@@ -78,5 +81,8 @@ public static class BoardSetupHelper
             if (done)
                 break;
         }
+        Debug.Log(
+            $"[BoardSetupHelper] RestoreBoardFromSnapshot complete: {board.Arrows.Count} arrows placed"
+        );
     }
 }

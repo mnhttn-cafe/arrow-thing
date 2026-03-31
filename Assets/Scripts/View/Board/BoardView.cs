@@ -116,13 +116,21 @@ public sealed class BoardView : MonoBehaviour
     public ClearResult TryClearArrow(Arrow arrow)
     {
         if (!_arrowViews.TryGetValue(arrow, out ArrowView view))
+        {
+            Debug.LogWarning(
+                $"[BoardView] TryClearArrow: no view for arrow@({arrow.HeadCell.X},{arrow.HeadCell.Y}) — returning Blocked"
+            );
             return ClearResult.Blocked;
+        }
 
         // Reset any previously tinted arrows before applying new feedback.
         ClearPreviousTints();
 
         if (!_board.IsClearable(arrow))
         {
+            Debug.Log(
+                $"[BoardView] Blocked: arrow@({arrow.HeadCell.X},{arrow.HeadCell.Y}) dir={arrow.HeadDirection}"
+            );
             PlayBlockedFeedback(arrow, view);
             return ClearResult.Blocked;
         }
@@ -141,6 +149,14 @@ public sealed class BoardView : MonoBehaviour
             TrailAutoOff?.Invoke();
         }
 
+        ClearResult result =
+            wasLast ? ClearResult.ClearedLast
+            : wasFirst ? ClearResult.ClearedFirst
+            : ClearResult.Cleared;
+        Debug.Log(
+            $"[BoardView] Cleared: arrow@({arrow.HeadCell.X},{arrow.HeadCell.Y}) dir={arrow.HeadDirection} → {result} (remaining={_board.Arrows.Count})"
+        );
+
         view.PlayPullOut(onComplete: () =>
         {
             Destroy(view.gameObject);
@@ -148,11 +164,7 @@ public sealed class BoardView : MonoBehaviour
                 BoardCleared?.Invoke();
         });
 
-        if (wasLast)
-            return ClearResult.ClearedLast;
-        if (wasFirst)
-            return ClearResult.ClearedFirst;
-        return ClearResult.Cleared;
+        return result;
     }
 
     /// <summary>
@@ -163,6 +175,14 @@ public sealed class BoardView : MonoBehaviour
     private void PlayBlockedFeedback(Arrow arrow, ArrowView view)
     {
         Arrow blocker = _board.GetFirstInRay(arrow);
+        if (blocker != null)
+            Debug.Log(
+                $"[BoardView] BlockedFeedback: arrow@({arrow.HeadCell.X},{arrow.HeadCell.Y}) blocked by arrow@({blocker.HeadCell.X},{blocker.HeadCell.Y})"
+            );
+        else
+            Debug.Log(
+                $"[BoardView] BlockedFeedback: arrow@({arrow.HeadCell.X},{arrow.HeadCell.Y}) has no blocker in ray (dependency set non-empty but GetFirstInRay returned null)"
+            );
         if (blocker != null)
         {
             // Contact distance: cells between arrow head and blocker's first ray cell
