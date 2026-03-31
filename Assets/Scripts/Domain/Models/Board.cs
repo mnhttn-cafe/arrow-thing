@@ -158,7 +158,8 @@ public sealed class Board
         var revDeps = new HashSet<Arrow>();
         foreach (Cell c in arrow.Cells)
         {
-            int cx = c.X, cy = c.Y;
+            int cx = c.X,
+                cy = c.Y;
             foreach (Arrow a in _rightHeadsByRow[cy])
                 if (a.HeadCell.X < cx && revDeps.Add(a))
                     _dependsOn[a].Add(arrow);
@@ -316,7 +317,8 @@ public sealed class Board
     /// </summary>
     internal bool AnyArrowWithRayThroughMatches(Cell cell, HashSet<Arrow> set)
     {
-        int cx = cell.X, cy = cell.Y;
+        int cx = cell.X,
+            cy = cell.Y;
 
         foreach (Arrow a in _rightHeadsByRow[cy])
             if (a.HeadCell.X < cx && set.Contains(a))
