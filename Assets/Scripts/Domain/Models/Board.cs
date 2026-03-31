@@ -3,9 +3,19 @@ using System.Collections.Generic;
 public sealed class Board
 {
     private readonly List<Arrow> _arrows = new();
+    private readonly HashSet<Arrow> _arrowSet = new();
     private readonly Arrow[,] _occupancy;
     private readonly Dictionary<Arrow, HashSet<Arrow>> _dependsOn = new();
     private readonly Dictionary<Arrow, HashSet<Arrow>> _dependedOnBy = new();
+
+    // Spatial ray index: arrows grouped by head direction and row/column.
+    // For a cell (cx, cy), arrows whose ray crosses it are:
+    //   Right-facing on row cy with head.X < cx, Left-facing on row cy with head.X > cx,
+    //   Up-facing on col cx with head.Y < cy, Down-facing on col cx with head.Y > cy.
+    private readonly List<Arrow>[] _rightHeadsByRow;
+    private readonly List<Arrow>[] _leftHeadsByRow;
+    private readonly List<Arrow>[] _upHeadsByCol;
+    private readonly List<Arrow>[] _downHeadsByCol;
 
     // Generation candidate pool (null until InitializeForGeneration)
     internal List<ArrowHeadData> _availableArrowHeads;
@@ -28,6 +38,22 @@ public sealed class Board
         Width = width;
         Height = height;
         _occupancy = new Arrow[width, height];
+
+        _rightHeadsByRow = new List<Arrow>[height];
+        _leftHeadsByRow = new List<Arrow>[height];
+        for (int y = 0; y < height; y++)
+        {
+            _rightHeadsByRow[y] = new List<Arrow>();
+            _leftHeadsByRow[y] = new List<Arrow>();
+        }
+
+        _upHeadsByCol = new List<Arrow>[width];
+        _downHeadsByCol = new List<Arrow>[width];
+        for (int x = 0; x < width; x++)
+        {
+            _upHeadsByCol[x] = new List<Arrow>();
+            _downHeadsByCol[x] = new List<Arrow>();
+        }
     }
 
     public void InitializeForGeneration()
@@ -53,11 +79,13 @@ public sealed class Board
         foreach (Arrow arrow in arrows)
         {
             _arrows.Add(arrow);
+            _arrowSet.Add(arrow);
             foreach (Cell c in arrow.Cells)
                 _occupancy[c.X, c.Y] = arrow;
             OccupiedCellCount += arrow.Cells.Count;
             _dependsOn[arrow] = new HashSet<Arrow>();
             _dependedOnBy[arrow] = new HashSet<Arrow>();
+            AddToRayIndex(arrow);
             yield return _arrows.Count;
         }
 
@@ -88,7 +116,7 @@ public sealed class Board
         // Validations
         if (arrow == null)
             throw new System.ArgumentNullException(nameof(arrow));
-        if (_arrows.Contains(arrow))
+        if (_arrowSet.Contains(arrow))
             throw new System.InvalidOperationException("Arrow is already on the board.");
         foreach (Cell c in arrow.Cells)
         {
@@ -104,6 +132,7 @@ public sealed class Board
 
         // Set occupancy
         _arrows.Add(arrow);
+        _arrowSet.Add(arrow);
         foreach (Cell c in arrow.Cells)
             _occupancy[c.X, c.Y] = arrow;
         OccupiedCellCount += arrow.Cells.Count;
@@ -123,23 +152,30 @@ public sealed class Board
         foreach (Arrow dep in deps)
             _dependedOnBy[dep].Add(arrow);
 
-        // Reverse deps: existing arrows whose rays pass through this arrow's cells now depend on it
+        // Reverse deps: existing arrows whose rays pass through this arrow's cells
+        // Uses the spatial ray index for O(crossing) instead of O(N) scan.
+        // Must run BEFORE AddToRayIndex so the new arrow doesn't match itself.
         var revDeps = new HashSet<Arrow>();
-        foreach (Arrow existing in _arrows)
+        foreach (Cell c in arrow.Cells)
         {
-            if (existing == arrow)
-                continue;
-            foreach (Cell c in arrow.Cells)
-            {
-                if (IsInRay(c, existing.HeadCell, existing.HeadDirection))
-                {
-                    _dependsOn[existing].Add(arrow);
-                    revDeps.Add(existing);
-                    break;
-                }
-            }
+            int cx = c.X,
+                cy = c.Y;
+            foreach (Arrow a in _rightHeadsByRow[cy])
+                if (a.HeadCell.X < cx && revDeps.Add(a))
+                    _dependsOn[a].Add(arrow);
+            foreach (Arrow a in _leftHeadsByRow[cy])
+                if (a.HeadCell.X > cx && revDeps.Add(a))
+                    _dependsOn[a].Add(arrow);
+            foreach (Arrow a in _upHeadsByCol[cx])
+                if (a.HeadCell.Y < cy && revDeps.Add(a))
+                    _dependsOn[a].Add(arrow);
+            foreach (Arrow a in _downHeadsByCol[cx])
+                if (a.HeadCell.Y > cy && revDeps.Add(a))
+                    _dependsOn[a].Add(arrow);
         }
         _dependedOnBy[arrow] = revDeps;
+
+        AddToRayIndex(arrow);
 
         // Prune candidates whose head/next cell is now occupied
         if (_candidateLookup != null)
@@ -159,7 +195,7 @@ public sealed class Board
     {
         if (arrow == null)
             throw new System.ArgumentNullException(nameof(arrow));
-        if (!_arrows.Contains(arrow))
+        if (!_arrowSet.Contains(arrow))
             throw new System.InvalidOperationException("Arrow is not on the board.");
         if (!IsClearable(arrow))
             throw new System.InvalidOperationException(
@@ -167,6 +203,7 @@ public sealed class Board
             );
 
         _arrows.Remove(arrow);
+        _arrowSet.Remove(arrow);
         foreach (Cell c in arrow.Cells)
             _occupancy[c.X, c.Y] = null;
         OccupiedCellCount -= arrow.Cells.Count;
@@ -180,6 +217,8 @@ public sealed class Board
                 _dependsOn[depBy].Remove(arrow);
             _dependedOnBy.Remove(arrow);
         }
+
+        RemoveFromRayIndex(arrow);
     }
 
     public bool Contains(Cell cell)
@@ -233,6 +272,69 @@ public sealed class Board
             Arrow.Direction.Left => target.Y == head.Y && target.X < head.X,
             _ => false,
         };
+
+    private void AddToRayIndex(Arrow arrow)
+    {
+        switch (arrow.HeadDirection)
+        {
+            case Arrow.Direction.Right:
+                _rightHeadsByRow[arrow.HeadCell.Y].Add(arrow);
+                break;
+            case Arrow.Direction.Left:
+                _leftHeadsByRow[arrow.HeadCell.Y].Add(arrow);
+                break;
+            case Arrow.Direction.Up:
+                _upHeadsByCol[arrow.HeadCell.X].Add(arrow);
+                break;
+            case Arrow.Direction.Down:
+                _downHeadsByCol[arrow.HeadCell.X].Add(arrow);
+                break;
+        }
+    }
+
+    private void RemoveFromRayIndex(Arrow arrow)
+    {
+        switch (arrow.HeadDirection)
+        {
+            case Arrow.Direction.Right:
+                _rightHeadsByRow[arrow.HeadCell.Y].Remove(arrow);
+                break;
+            case Arrow.Direction.Left:
+                _leftHeadsByRow[arrow.HeadCell.Y].Remove(arrow);
+                break;
+            case Arrow.Direction.Up:
+                _upHeadsByCol[arrow.HeadCell.X].Remove(arrow);
+                break;
+            case Arrow.Direction.Down:
+                _downHeadsByCol[arrow.HeadCell.X].Remove(arrow);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if any arrow whose forward ray passes through <paramref name="cell"/>
+    /// is contained in <paramref name="set"/>. Used by cycle detection during generation.
+    /// </summary>
+    internal bool AnyArrowWithRayThroughMatches(Cell cell, HashSet<Arrow> set)
+    {
+        int cx = cell.X,
+            cy = cell.Y;
+
+        foreach (Arrow a in _rightHeadsByRow[cy])
+            if (a.HeadCell.X < cx && set.Contains(a))
+                return true;
+        foreach (Arrow a in _leftHeadsByRow[cy])
+            if (a.HeadCell.X > cx && set.Contains(a))
+                return true;
+        foreach (Arrow a in _upHeadsByCol[cx])
+            if (a.HeadCell.Y < cy && set.Contains(a))
+                return true;
+        foreach (Arrow a in _downHeadsByCol[cx])
+            if (a.HeadCell.Y > cy && set.Contains(a))
+                return true;
+
+        return false;
+    }
 
     private List<ArrowHeadData> CreateInitialArrowHeads()
     {
