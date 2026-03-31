@@ -54,9 +54,6 @@ public sealed class GameController : MonoBehaviour
     [SerializeField]
     private int boardHeight = 6;
 
-    [SerializeField]
-    private int minArrowLength = 2;
-
     [Tooltip(
         "Max arrow length used when playing this scene directly. Ignored when coming from the main menu."
     )]
@@ -184,7 +181,7 @@ public sealed class GameController : MonoBehaviour
 
     private IEnumerator GenerateAndSetup()
     {
-        ResolveParameters(out int minLen, out ReplayData priorData, out bool deferredResume);
+        ResolveParameters(out ReplayData priorData, out bool deferredResume);
         ResolveHudElements();
 
         string modeStr =
@@ -231,7 +228,7 @@ public sealed class GameController : MonoBehaviour
         }
         else
         {
-            yield return GenerateBoard(minLen);
+            yield return GenerateBoard();
         }
 
         if (priorData != null)
@@ -265,15 +262,10 @@ public sealed class GameController : MonoBehaviour
 
     // --- Parameter resolution ---
 
-    private void ResolveParameters(
-        out int minLen,
-        out ReplayData priorData,
-        out bool deferredResume
-    )
+    private void ResolveParameters(out ReplayData priorData, out bool deferredResume)
     {
         _w = boardWidth;
         _h = boardHeight;
-        minLen = minArrowLength;
         _maxLen = maxArrowLength;
         _inspectionDur = inspectionDuration;
         priorData = null;
@@ -392,11 +384,10 @@ public sealed class GameController : MonoBehaviour
         }
     }
 
-    private IEnumerator GenerateBoard(int minLen)
+    private IEnumerator GenerateBoard()
     {
         var generator = BoardGeneration.FillBoardIncremental(
             _board,
-            minLen,
             _maxLen,
             new System.Random(_activeSeed)
         );
@@ -435,7 +426,7 @@ public sealed class GameController : MonoBehaviour
         if (_board.Arrows.Count == 0)
         {
             Debug.LogWarning(
-                $"[GameController] GenerateBoard produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
+                $"[GameController] GenerateBoard produced 0 arrows (board {_w}x{_h}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
             );
             SceneManager.LoadScene("MainMenu");
             yield break;

@@ -6,14 +6,14 @@ using NUnit.Framework;
 [TestFixture, Category("Performance"), Explicit("Run manually — these are slow benchmarks")]
 public class PerformanceTests
 {
-    private static void Run(int w, int h, int minLen, int maxLen, int deadEndLimit, int seed = 0)
+    private static void Run(int w, int h, int maxLen, int deadEndLimit, int seed = 0)
     {
         var board = new Board(w, h);
         var sw = Stopwatch.StartNew();
-        TestBoardHelper.FillBoard(board, minLen, maxLen, new System.Random(seed), deadEndLimit);
+        TestBoardHelper.FillBoard(board, maxLen, new System.Random(seed), deadEndLimit);
         sw.Stop();
         UnityEngine.Debug.Log(
-            $"{w}x{h}  len=[{minLen},{maxLen}]  deadEnds={deadEndLimit, -5}  arrows={board.Arrows.Count}  cells={TotalCells(board)}  time={sw.ElapsedMilliseconds}ms"
+            $"{w}x{h}  maxLen={maxLen}  deadEnds={deadEndLimit, -5}  arrows={board.Arrows.Count}  cells={TotalCells(board)}  time={sw.ElapsedMilliseconds}ms"
         );
     }
 
@@ -27,35 +27,35 @@ public class PerformanceTests
 
     // Sweep dead-end limits on the expensive 50x50 case
     [Test]
-    public void Perf_50x50_VeryLong_DeadEnd10() => Run(50, 50, 10, 50, 10);
+    public void Perf_50x50_VeryLong_DeadEnd10() => Run(50, 50, 50, 10);
 
     [Test]
-    public void Perf_50x50_VeryLong_DeadEnd20() => Run(50, 50, 10, 50, 20);
+    public void Perf_50x50_VeryLong_DeadEnd20() => Run(50, 50, 50, 20);
 
     [Test]
-    public void Perf_50x50_VeryLong_DeadEnd50() => Run(50, 50, 10, 50, 50);
+    public void Perf_50x50_VeryLong_DeadEnd50() => Run(50, 50, 50, 50);
 
     [Test]
-    public void Perf_50x50_VeryLong_DeadEnd100() => Run(50, 50, 10, 50, 100);
+    public void Perf_50x50_VeryLong_DeadEnd100() => Run(50, 50, 50, 100);
 
     // Baseline short/long at a sensible default (10) for comparison
     [Test]
-    public void Perf_50x50_Short() => Run(50, 50, 2, 5, 10);
+    public void Perf_50x50_Short() => Run(50, 50, 5, 10);
 
     [Test]
-    public void Perf_50x50_Long() => Run(50, 50, 5, 20, 10);
+    public void Perf_50x50_Long() => Run(50, 50, 20, 10);
 
     [Test]
-    public void Perf_200x200_Short() => Run(200, 200, 2, 5, 10);
+    public void Perf_200x200_Short() => Run(200, 200, 5, 10);
 
     [Test]
-    public void Perf_200x200_Long() => Run(200, 200, 5, 20, 10);
+    public void Perf_200x200_Long() => Run(200, 200, 20, 10);
 
     [Test]
-    public void Perf_200x200_VeryLong() => Run(200, 200, 10, 50, 10);
+    public void Perf_200x200_VeryLong() => Run(200, 200, 50, 10);
 
     [Test]
-    public void Perf_200x200_MaxWidth() => Run(200, 200, 10, 300, 10);
+    public void Perf_200x200_MaxWidth() => Run(200, 200, 300, 10);
 
     [Test]
     public void Solvability_500Seeds_10x10()
@@ -65,7 +65,7 @@ public class PerformanceTests
         for (int seed = 0; seed < 500; seed++)
         {
             var board = new Board(10, 10);
-            TestBoardHelper.FillBoard(board, 2, 5, new System.Random(seed));
+            TestBoardHelper.FillBoard(board, 5, new System.Random(seed));
             totalArrows += board.Arrows.Count;
             AssertFullyClearable(board, seed);
         }
@@ -83,7 +83,7 @@ public class PerformanceTests
         for (int seed = 0; seed < 100; seed++)
         {
             var board = new Board(20, 20);
-            TestBoardHelper.FillBoard(board, 2, 10, new System.Random(seed));
+            TestBoardHelper.FillBoard(board, 10, new System.Random(seed));
             totalArrows += board.Arrows.Count;
             AssertFullyClearable(board, seed);
         }
@@ -101,7 +101,7 @@ public class PerformanceTests
         for (int seed = 0; seed < 20; seed++)
         {
             var board = new Board(50, 50);
-            TestBoardHelper.FillBoard(board, 2, 20, new System.Random(seed));
+            TestBoardHelper.FillBoard(board, 20, new System.Random(seed));
             totalArrows += board.Arrows.Count;
             AssertFullyClearable(board, seed);
         }
@@ -121,20 +121,15 @@ public class PerformanceTests
     [Test]
     public void ProfileDepletionCurve_DumpData()
     {
-        var configs = new[] { (100, 100, 2, 50, 1), (200, 200, 2, 50, 1) };
+        var configs = new[] { (100, 100, 50, 1), (200, 200, 50, 1) };
 
-        foreach (var (w, h, minLen, maxLen, seedCount) in configs)
+        foreach (var (w, h, maxLen, seedCount) in configs)
         {
             for (int s = 0; s < seedCount; s++)
             {
                 var board = new Board(w, h);
                 var sw = Stopwatch.StartNew();
-                var gen = BoardGeneration.FillBoardIncremental(
-                    board,
-                    minLen,
-                    maxLen,
-                    new Random(s)
-                );
+                var gen = BoardGeneration.FillBoardIncremental(board, maxLen, new Random(s));
 
                 int initial = 0;
                 var samples = new List<(double ms, float raw, int arrowCount, int cellCount)>();
