@@ -60,7 +60,7 @@ public sealed class CustomDropdown
 
     private void Toggle()
     {
-        if (_backdrop != null)
+        if (_popup != null)
             Close();
         else
             Open();

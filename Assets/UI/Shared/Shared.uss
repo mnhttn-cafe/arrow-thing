@@ -568,7 +568,7 @@
     border-width: 1px;
     border-radius: 6px;
     padding: 8px 12px;
-    cursor: hand;
+    cursor: link;
 }
 
 .custom-dropdown:hover {
