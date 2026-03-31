@@ -34,6 +34,9 @@ public sealed class SettingsController : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
+        if (Instance != null)
+            return;
+
         var prefab = Resources.Load<GameObject>("SettingsController");
         if (prefab == null)
         {
