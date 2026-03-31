@@ -1,0 +1,189 @@
+/* ReplayHud-specific styles. Shared components live in Shared.uss. */
+
+/* ── Highlight button (inline in controls bar) ────────────────────── */
+.rh-highlight-btn {
+    height: 36px;
+    width: auto;
+    padding: 0 14px;
+    font-size: 15px;
+    color: var(--text-secondary);
+    background-color: var(--bg-btn);
+    border-radius: 18px;
+    border-width: 0;
+    margin-left: 8px;
+}
+
+.rh-highlight-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-btn-hover);
+}
+
+.rh-highlight-btn--active {
+    color: var(--text-on-accent);
+    background-color: var(--highlight-clearable-btn);
+}
+
+.rh-highlight-btn--active:hover {
+    background-color: var(--highlight-clearable-btn-hover);
+}
+
+/* ── Controls toggle button ───────────────────────────────────────── */
+.rh-controls-toggle {
+    position: absolute;
+    bottom: 100px;
+    right: 16px;
+    width: 40px;
+    height: 28px;
+    background-color: var(--bg-hud-panel);
+    border-radius: 8px;
+    border-width: 0;
+    padding: 4px;
+    align-items: center;
+    justify-content: center;
+}
+
+.rh-controls-toggle:hover {
+    background-color: var(--bg-loading-overlay);
+}
+
+.rh-controls-toggle-icon {
+    width: 16px;
+    height: 16px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+.rh-controls-toggle-icon--down {
+    background-image: url("/Assets/Art/Icons/arrow_down.png");
+}
+
+.rh-controls-toggle-icon--up {
+    background-image: url("/Assets/Art/Icons/arrow_up.png");
+}
+
+.rh-controls-bar--hidden {
+    display: none;
+}
+
+/* ── Bottom controls bar ──────────────────────────────────────────── */
+.rh-controls-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 16px 16px 16px;
+    background-color: var(--bg-hud-panel);
+    border-top-width: 1px;
+    border-top-color: var(--border-normal);
+}
+
+/* Seek row */
+.rh-seek-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.rh-time-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    width: 50px;
+    -unity-text-align: middle-center;
+    flex-shrink: 0;
+}
+
+.rh-seek-track {
+    flex-grow: 1;
+    height: 8px;
+    background-color: var(--bg-track);
+    border-radius: 4px;
+    margin: 0 8px;
+    overflow: visible;
+}
+
+.rh-seek-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 0%;
+    background-color: var(--accent-info);
+    border-radius: 4px;
+}
+
+.rh-seek-handle {
+    position: absolute;
+    top: -6px;
+    width: 20px;
+    height: 20px;
+    background-color: var(--text-primary);
+    border-radius: 10px;
+    margin-left: -10px;
+    left: 0%;
+}
+
+.rh-seek-handle:hover {
+    background-color: var(--text-on-accent);
+}
+
+/* Playback controls row */
+.rh-playback-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.rh-playback-spacer {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+}
+
+.rh-playback-spacer--right {
+    justify-content: flex-end;
+}
+
+.rh-play-btn {
+    width: 56px;
+    height: 40px;
+    background-color: var(--bg-btn);
+    border-radius: 20px;
+    border-width: 0;
+    margin-right: 12px;
+    align-items: center;
+    justify-content: center;
+}
+
+.rh-play-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.rh-play-icon {
+    width: 20px;
+    height: 20px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+.rh-play-icon--play {
+    background-image: url("/Assets/Art/Icons/play_icon.png");
+}
+
+.rh-play-icon--pause {
+    background-image: url("/Assets/Art/Icons/pause_icon.png");
+}
+
+.rh-speed-btn {
+    width: 48px;
+    height: 36px;
+    font-size: 16px;
+    color: var(--text-secondary);
+    background-color: var(--bg-btn);
+    border-radius: 18px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.rh-speed-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-track);
+}

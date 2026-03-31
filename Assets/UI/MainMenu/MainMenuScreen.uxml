@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="screen">
+        <ui:VisualElement class="icon-row icon-row--top-left">
+            <ui:Button name="quit-btn" class="icon-btn">
+                <ui:VisualElement class="icon-btn__icon icon--close" />
+            </ui:Button>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="title" />
+        <ui:Button name="play-btn" class="menu-btn start-btn" text="Play" />
+        <ui:Button name="continue-btn" class="menu-btn continue-btn screen--hidden" text="Continue" />
+        <ui:Button name="settings-btn" class="menu-btn" text="Settings" />
+
+        <ui:VisualElement class="icon-row icon-row--bottom-left">
+            <ui:Button name="link-github-btn" class="icon-btn">
+                <ui:VisualElement class="icon-btn__icon icon--github" />
+            </ui:Button>
+            <ui:Button name="link-discord-btn" class="icon-btn">
+                <ui:VisualElement class="icon-btn__icon icon--discord" />
+            </ui:Button>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

@@ -129,6 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 338058735}
   - component: {fileID: 338058734}
+  - component: {fileID: 338058736}
   m_Layer: 5
   m_Name: Victory Popup
   m_TagString: Untagged
@@ -174,6 +175,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &338058736
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 338058733}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b356203ee21fba428ac4e24d888c2ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ArrowThing::UIThemeApplier
+  visualSettings: {fileID: 11400000, guid: f7b34a78b24c8fb408fadddec598eca5, type: 2}
 --- !u!1 &600507207
 GameObject:
   m_ObjectHideFlags: 0
@@ -337,6 +351,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1011308179}
   - component: {fileID: 1011308178}
+  - component: {fileID: 1011308180}
   m_Layer: 5
   m_Name: HUD
   m_TagString: Untagged
@@ -382,6 +397,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1011308180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1011308177}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b356203ee21fba428ac4e24d888c2ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ArrowThing::UIThemeApplier
+  visualSettings: {fileID: 11400000, guid: f7b34a78b24c8fb408fadddec598eca5, type: 2}
 --- !u!1 &1767663918
 GameObject:
   m_ObjectHideFlags: 0

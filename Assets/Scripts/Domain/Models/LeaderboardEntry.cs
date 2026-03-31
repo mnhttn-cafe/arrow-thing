@@ -26,6 +26,9 @@ public sealed class LeaderboardEntry
     /// <summary>Application version at the time of play.</summary>
     public string gameVersion;
 
+    /// <summary>Display name at the time the game was completed. May be empty if not logged in.</summary>
+    public string displayName;
+
     /// <summary>Parameterless constructor for deserialization.</summary>
     public LeaderboardEntry() { }
 

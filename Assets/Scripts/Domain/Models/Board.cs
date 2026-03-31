@@ -30,7 +30,8 @@ public sealed class Board
     public int InitialCandidateCount { get; private set; }
 
     /// <summary>Number of remaining unpruned head candidates. 0 before initialization.</summary>
-    public int RemainingCandidateCount => _availableArrowHeads?.Count ?? 0;
+    public int RemainingCandidateCount =>
+        _availableArrowHeads != null ? _availableArrowHeads.Count : 0;
 
     public Board(int width, int height)
     {

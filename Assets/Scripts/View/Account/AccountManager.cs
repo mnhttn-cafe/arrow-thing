@@ -1,0 +1,623 @@
+using System;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+/// <summary>
+/// Manages the account forms within the settings screen: display name (works offline),
+/// login, register, verification, forgot/reset password, email change, and password change.
+/// </summary>
+public class AccountManager
+{
+    private readonly ApiClient _api;
+
+    // Forms
+    private readonly VisualElement _loginForm;
+    private readonly VisualElement _verifyForm;
+    private readonly VisualElement _forgotForm;
+    private readonly VisualElement _resetForm;
+    private readonly VisualElement _accountInfo;
+    private readonly VisualElement _changeEmailForm;
+    private readonly VisualElement _confirmEmailForm;
+    private readonly VisualElement _changePasswordForm;
+
+    // Display name (always visible, works offline)
+    private readonly EditableLabel _displayName;
+    private readonly Label _displayNameError;
+
+    // Login / register fields (shared form)
+    private readonly LabeledField _loginEmail;
+    private readonly LabeledField _loginPassword;
+    private readonly Label _loginError;
+
+    // Verify fields
+    private readonly Label _verifyMessage;
+    private readonly LabeledField _verifyCode;
+    private readonly Label _verifyError;
+    private readonly Label _verifySuccess;
+
+    // Forgot password fields
+    private readonly LabeledField _forgotEmail;
+    private readonly Label _forgotError;
+    private readonly Label _forgotSuccess;
+
+    // Reset password fields
+    private readonly Label _resetMessage;
+    private readonly LabeledField _resetCode;
+    private readonly LabeledField _resetNewPassword;
+    private readonly LabeledField _resetConfirmPassword;
+    private readonly Label _resetError;
+    private readonly Label _resetSuccess;
+
+    // Account status label ("Playing offline" / "Logged in as ...")
+    private readonly Label _accountStatusLabel;
+
+    // Account info fields
+    private readonly Label _accountEmail;
+    private readonly Label _accountError;
+
+    // Change email fields
+    private readonly LabeledField _newEmail;
+    private readonly LabeledField _confirmPassword;
+    private readonly Label _changeEmailError;
+
+    // Confirm email change fields
+    private readonly Label _confirmEmailMessage;
+    private readonly LabeledField _confirmEmailCode;
+    private readonly Label _confirmEmailError;
+
+    // Change password fields
+    private readonly LabeledField _currentPassword;
+    private readonly LabeledField _newPassword;
+    private readonly LabeledField _confirmNewPassword;
+    private readonly Label _changePasswordError;
+    private readonly Label _changePasswordSuccess;
+
+    // Track email for resend / confirm flows
+    private string _pendingVerificationEmail;
+    private string _pendingNewEmail;
+    private string _pendingResetEmail;
+
+    private readonly ConfirmModal _logoutModal;
+
+    public AccountManager(VisualElement settingsRoot, VisualElement logoutModalRoot)
+    {
+        _api = new ApiClient();
+
+        // Logout confirmation modal
+        _logoutModal = new ConfirmModal(
+            logoutModalRoot,
+            "Log out?",
+            "Log Out",
+            "Cancel",
+            isDanger: true
+        );
+        _logoutModal.Confirmed += OnLogoutConfirm;
+        _logoutModal.Cancelled += () => _logoutModal.Hide();
+
+        // Display name — always visible, works offline
+        _displayName = new EditableLabel();
+        _displayName.OnCommit += OnDisplayNameCommit;
+        _displayNameError = settingsRoot.Q<Label>("display-name-error");
+        settingsRoot.Q("display-name-slot").Add(_displayName.Root);
+
+        // Load persisted display name into the shared static on first access
+        if (string.IsNullOrEmpty(GameSettings.DisplayName))
+            GameSettings.DisplayName = UnityEngine.PlayerPrefs.GetString(
+                GameSettings.DisplayNamePrefKey,
+                ""
+            );
+        _displayName.Value = string.IsNullOrEmpty(GameSettings.DisplayName)
+            ? "Player"
+            : GameSettings.DisplayName;
+
+        // Combined login / register form
+        _loginForm = settingsRoot.Q("login-form");
+        _loginEmail = new LabeledField("Email", "login-email");
+        _loginPassword = new LabeledField("Password", "login-password") { IsPassword = true };
+        _loginError = settingsRoot.Q<Label>("login-error");
+
+        // "Forgot password?" inline in the password label row
+        var forgotBtn = new Button(ShowForgotForm) { text = "Forgot password?" };
+        forgotBtn.AddToClassList("labeled-field__label-action");
+        _loginPassword.AddToLabelRow(forgotBtn);
+
+        var loginFields = settingsRoot.Q("login-fields");
+        loginFields.Add(_loginEmail.Root);
+        loginFields.Add(_loginPassword.Root);
+
+        settingsRoot.Q<Button>("login-submit-btn").clicked += OnLogin;
+        settingsRoot.Q<Button>("register-submit-btn").clicked += OnRegister;
+
+        // Verify form
+        _verifyForm = settingsRoot.Q("verify-form");
+        _verifyMessage = settingsRoot.Q<Label>("verify-message");
+        _verifyCode = new LabeledField("Verification Code", "verify-code");
+        _verifyError = settingsRoot.Q<Label>("verify-error");
+        _verifySuccess = settingsRoot.Q<Label>("verify-success");
+
+        settingsRoot.Q("verify-fields").Add(_verifyCode.Root);
+
+        settingsRoot.Q<Button>("verify-submit-btn").clicked += OnVerifyCode;
+        settingsRoot.Q<Button>("resend-verify-btn").clicked += OnResendVerification;
+        settingsRoot.Q<Button>("verify-back-btn").clicked += ShowLoginForm;
+
+        // Forgot password form
+        _forgotForm = settingsRoot.Q("forgot-form");
+        _forgotEmail = new LabeledField("Email", "forgot-email");
+        _forgotError = settingsRoot.Q<Label>("forgot-error");
+        _forgotSuccess = settingsRoot.Q<Label>("forgot-success");
+
+        settingsRoot.Q("forgot-fields").Add(_forgotEmail.Root);
+
+        settingsRoot.Q<Button>("forgot-submit-btn").clicked += OnForgotPassword;
+        settingsRoot.Q<Button>("forgot-back-btn").clicked += ShowLoginForm;
+
+        // Reset password form
+        _resetForm = settingsRoot.Q("reset-form");
+        _resetMessage = settingsRoot.Q<Label>("reset-message");
+        _resetCode = new LabeledField("Reset Code", "reset-code");
+        _resetNewPassword = new LabeledField("New Password", "reset-new-password")
+        {
+            IsPassword = true,
+        };
+        _resetConfirmPassword = new LabeledField("Confirm Password", "reset-confirm-password")
+        {
+            IsPassword = true,
+        };
+        _resetError = settingsRoot.Q<Label>("reset-error");
+        _resetSuccess = settingsRoot.Q<Label>("reset-success");
+
+        var resetFields = settingsRoot.Q("reset-fields");
+        resetFields.Add(_resetCode.Root);
+        resetFields.Add(_resetNewPassword.Root);
+        resetFields.Add(_resetConfirmPassword.Root);
+
+        settingsRoot.Q<Button>("reset-submit-btn").clicked += OnResetPassword;
+        settingsRoot.Q<Button>("reset-back-btn").clicked += ShowLoginForm;
+
+        // Account status label
+        _accountStatusLabel = settingsRoot.Q<Label>("account-status-label");
+
+        // Account info
+        _accountInfo = settingsRoot.Q("account-info");
+        _accountEmail = settingsRoot.Q<Label>("account-email");
+        _accountError = settingsRoot.Q<Label>("account-error");
+
+        settingsRoot.Q<Button>("change-email-btn").clicked += ShowChangeEmailForm;
+        settingsRoot.Q<Button>("change-password-btn").clicked += ShowChangePasswordForm;
+        settingsRoot.Q<Button>("logout-btn").clicked += () => _logoutModal.Show();
+
+        // Change email form
+        _changeEmailForm = settingsRoot.Q("change-email-form");
+        _newEmail = new LabeledField("New Email", "new-email");
+        _confirmPassword = new LabeledField("Current Password", "confirm-password")
+        {
+            IsPassword = true,
+        };
+        _changeEmailError = settingsRoot.Q<Label>("change-email-error");
+
+        var changeEmailFields = settingsRoot.Q("change-email-fields");
+        changeEmailFields.Add(_newEmail.Root);
+        changeEmailFields.Add(_confirmPassword.Root);
+
+        settingsRoot.Q<Button>("change-email-submit-btn").clicked += OnChangeEmail;
+
+        // Confirm email change form
+        _confirmEmailForm = settingsRoot.Q("confirm-email-form");
+        _confirmEmailMessage = settingsRoot.Q<Label>("confirm-email-message");
+        _confirmEmailCode = new LabeledField("Confirmation Code", "confirm-email-code");
+        _confirmEmailError = settingsRoot.Q<Label>("confirm-email-error");
+
+        settingsRoot.Q("confirm-email-fields").Add(_confirmEmailCode.Root);
+
+        settingsRoot.Q<Button>("confirm-email-submit-btn").clicked += OnConfirmEmailChange;
+
+        // Change password form
+        _changePasswordForm = settingsRoot.Q("change-password-form");
+        _currentPassword = new LabeledField("Current Password", "current-password")
+        {
+            IsPassword = true,
+        };
+        _newPassword = new LabeledField("New Password", "new-password") { IsPassword = true };
+        _confirmNewPassword = new LabeledField("Confirm New Password", "confirm-new-password")
+        {
+            IsPassword = true,
+        };
+        _changePasswordError = settingsRoot.Q<Label>("change-password-error");
+        _changePasswordSuccess = settingsRoot.Q<Label>("change-password-success");
+
+        var changePasswordFields = settingsRoot.Q("change-password-fields");
+        changePasswordFields.Add(_currentPassword.Root);
+        changePasswordFields.Add(_newPassword.Root);
+        changePasswordFields.Add(_confirmNewPassword.Root);
+
+        settingsRoot.Q<Button>("change-password-submit-btn").clicked += OnChangePassword;
+
+        // Start in correct state
+        if (_api.IsLoggedIn)
+            ShowAccountInfo();
+        else
+            ShowLoginForm();
+    }
+
+    private void ShowLoginForm()
+    {
+        HideAllForms();
+        _loginEmail.Value = "";
+        _loginPassword.Value = "";
+        SetVisible(_loginForm, true);
+        UpdateStatusLabel();
+    }
+
+    private void ShowVerifyForm()
+    {
+        HideAllForms();
+        _verifyCode.Value = "";
+        SetVisible(_verifyForm, true);
+    }
+
+    private void ShowForgotForm()
+    {
+        HideAllForms();
+        _forgotEmail.Value = "";
+        SetVisible(_forgotForm, true);
+    }
+
+    private void ShowResetForm()
+    {
+        HideAllForms();
+        _resetCode.Value = "";
+        _resetNewPassword.Value = "";
+        _resetConfirmPassword.Value = "";
+        _resetMessage.text = $"We sent a 6-digit code to {_pendingResetEmail}.";
+        SetVisible(_resetForm, true);
+    }
+
+    private async void ShowAccountInfo()
+    {
+        HideAllForms();
+        SetVisible(_accountInfo, true);
+        UpdateStatusLabel();
+
+        // Refresh account state from server
+        var result = await _api.GetMeAsync();
+
+        if (result.Success && !string.IsNullOrEmpty(_api.DisplayName))
+        {
+            GameSettings.DisplayName = _api.DisplayName;
+            _displayName.Value = _api.DisplayName;
+        }
+
+        _accountEmail.text = MaskEmail(_api.Email);
+        UpdateStatusLabel();
+    }
+
+    private void UpdateStatusLabel()
+    {
+        if (_accountStatusLabel == null)
+            return;
+        _accountStatusLabel.text = _api.IsLoggedIn ? "Logged in as:" : "Playing offline as:";
+    }
+
+    private void ShowChangeEmailForm()
+    {
+        HideAllForms();
+        _newEmail.Value = "";
+        _confirmPassword.Value = "";
+        SetVisible(_changeEmailForm, true);
+    }
+
+    private void ShowConfirmEmailForm()
+    {
+        HideAllForms();
+        _confirmEmailCode.Value = "";
+        _confirmEmailMessage.text = $"We sent a 6-digit code to {_pendingNewEmail}.";
+        SetVisible(_confirmEmailForm, true);
+    }
+
+    private void ShowChangePasswordForm()
+    {
+        HideAllForms();
+        _currentPassword.Value = "";
+        _newPassword.Value = "";
+        _confirmNewPassword.Value = "";
+        SetVisible(_changePasswordForm, true);
+    }
+
+    private void HideAllForms()
+    {
+        _displayName.CancelEdit();
+
+        SetVisible(_loginForm, false);
+        SetVisible(_verifyForm, false);
+        SetVisible(_forgotForm, false);
+        SetVisible(_resetForm, false);
+        SetVisible(_accountInfo, false);
+        SetVisible(_changeEmailForm, false);
+        SetVisible(_confirmEmailForm, false);
+        SetVisible(_changePasswordForm, false);
+        ClearErrors();
+    }
+
+    private async void OnLogin()
+    {
+        ClearErrors();
+        var result = await _api.LoginAsync(_loginEmail.Value, _loginPassword.Value);
+
+        if (result.Success)
+        {
+            SyncServerDisplayName();
+            ShowAccountInfo();
+        }
+        else
+        {
+            ShowError(_loginError, result.Error);
+        }
+    }
+
+    private async void OnRegister()
+    {
+        ClearErrors();
+
+        var result = await _api.RegisterAsync(
+            _loginEmail.Value,
+            _loginPassword.Value,
+            GameSettings.DisplayName
+        );
+
+        if (result.Success)
+        {
+            _pendingVerificationEmail = _loginEmail.Value;
+            _verifyMessage.text = $"We sent a 6-digit code to {_pendingVerificationEmail}.";
+            ShowVerifyForm();
+        }
+        else
+        {
+            ShowError(_loginError, result.Error);
+        }
+    }
+
+    private async void OnVerifyCode()
+    {
+        ClearErrors();
+        SetVisible(_verifySuccess, false);
+
+        if (string.IsNullOrEmpty(_pendingVerificationEmail))
+            return;
+
+        var result = await _api.VerifyCodeAsync(_pendingVerificationEmail, _verifyCode.Value);
+
+        if (result.Success)
+        {
+            SyncServerDisplayName();
+            ShowAccountInfo();
+        }
+        else
+        {
+            ShowError(_verifyError, result.Error);
+        }
+    }
+
+    private async void OnResendVerification()
+    {
+        ClearErrors();
+        if (string.IsNullOrEmpty(_pendingVerificationEmail))
+            return;
+
+        var result = await _api.ResendVerificationAsync(_pendingVerificationEmail);
+
+        if (result.Success)
+        {
+            _verifyMessage.text = "Verification email sent. Check your inbox.";
+        }
+        else
+        {
+            ShowError(_verifyError, result.Error);
+        }
+    }
+
+    private async void OnForgotPassword()
+    {
+        ClearErrors();
+        SetVisible(_forgotSuccess, false);
+
+        var result = await _api.ForgotPasswordAsync(_forgotEmail.Value);
+
+        if (result.Success)
+        {
+            _pendingResetEmail = _forgotEmail.Value;
+            ShowResetForm();
+        }
+        else
+        {
+            ShowError(_forgotError, result.Error);
+        }
+    }
+
+    private async void OnResetPassword()
+    {
+        ClearErrors();
+        SetVisible(_resetSuccess, false);
+
+        if (string.IsNullOrEmpty(_pendingResetEmail))
+            return;
+
+        if (_resetNewPassword.Value != _resetConfirmPassword.Value)
+        {
+            ShowError(_resetError, "Passwords do not match.");
+            return;
+        }
+
+        var result = await _api.ResetPasswordAsync(
+            _pendingResetEmail,
+            _resetCode.Value,
+            _resetNewPassword.Value
+        );
+
+        if (result.Success)
+        {
+            _resetSuccess.text = result.Data.message;
+            SetVisible(_resetSuccess, true);
+            _resetCode.Value = "";
+            _resetNewPassword.Value = "";
+            _resetConfirmPassword.Value = "";
+        }
+        else
+        {
+            ShowError(_resetError, result.Error);
+        }
+    }
+
+    private async void OnDisplayNameCommit(string newName)
+    {
+        SetVisible(_displayNameError, false);
+
+        // Always save locally first — works offline
+        GameSettings.DisplayName = newName;
+        UnityEngine.PlayerPrefs.SetString(GameSettings.DisplayNamePrefKey, newName);
+        UnityEngine.PlayerPrefs.Save();
+
+        // If logged in, also sync to server
+        if (_api.IsLoggedIn)
+        {
+            var result = await _api.UpdateDisplayNameAsync(newName);
+            if (result.Success)
+                _displayName.Value = _api.DisplayName;
+            else
+                ShowError(_displayNameError, result.Error);
+        }
+    }
+
+    private async void OnChangeEmail()
+    {
+        ClearErrors();
+
+        var result = await _api.ChangeEmailAsync(_newEmail.Value, _confirmPassword.Value);
+
+        if (result.Success)
+        {
+            _pendingNewEmail = _newEmail.Value;
+            ShowConfirmEmailForm();
+        }
+        else
+        {
+            ShowError(_changeEmailError, result.Error);
+        }
+    }
+
+    private async void OnConfirmEmailChange()
+    {
+        ClearErrors();
+
+        if (string.IsNullOrEmpty(_pendingNewEmail))
+            return;
+
+        var result = await _api.ConfirmEmailChangeAsync(_pendingNewEmail, _confirmEmailCode.Value);
+
+        if (result.Success)
+        {
+            ShowAccountInfo();
+        }
+        else
+        {
+            ShowError(_confirmEmailError, result.Error);
+        }
+    }
+
+    private async void OnChangePassword()
+    {
+        ClearErrors();
+        SetVisible(_changePasswordSuccess, false);
+
+        if (_newPassword.Value != _confirmNewPassword.Value)
+        {
+            ShowError(_changePasswordError, "Passwords do not match.");
+            return;
+        }
+
+        var result = await _api.ChangePasswordAsync(_currentPassword.Value, _newPassword.Value);
+
+        if (result.Success)
+        {
+            _changePasswordSuccess.text = result.Data.message;
+            SetVisible(_changePasswordSuccess, true);
+            _currentPassword.Value = "";
+            _newPassword.Value = "";
+            _confirmNewPassword.Value = "";
+        }
+        else
+        {
+            ShowError(_changePasswordError, result.Error);
+        }
+    }
+
+    /// <summary>Syncs the server display name to the local GameSettings store and UI.</summary>
+    private void SyncServerDisplayName()
+    {
+        if (!string.IsNullOrEmpty(_api.DisplayName))
+        {
+            GameSettings.DisplayName = _api.DisplayName;
+            _displayName.Value = _api.DisplayName;
+        }
+    }
+
+    /// <summary>Cancels any in-progress inline edit (e.g. display name). Call when leaving the settings screen.</summary>
+    public void CancelEditing() => _displayName.CancelEdit();
+
+    private void OnLogoutConfirm()
+    {
+        _logoutModal.Hide();
+        _api.Logout();
+        ShowLoginForm();
+        UpdateStatusLabel();
+    }
+
+    private void ClearErrors()
+    {
+        SetVisible(_displayNameError, false);
+        SetVisible(_loginError, false);
+        SetVisible(_verifyError, false);
+        SetVisible(_verifySuccess, false);
+        SetVisible(_forgotError, false);
+        SetVisible(_forgotSuccess, false);
+        SetVisible(_resetError, false);
+        SetVisible(_resetSuccess, false);
+        SetVisible(_accountError, false);
+        SetVisible(_changeEmailError, false);
+        SetVisible(_confirmEmailError, false);
+        SetVisible(_changePasswordError, false);
+        SetVisible(_changePasswordSuccess, false);
+    }
+
+    private static string MaskEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return "";
+
+        var atIndex = email.IndexOf('@');
+        if (atIndex <= 0)
+            return email;
+
+        var local = email.Substring(0, atIndex);
+        var domain = email.Substring(atIndex);
+
+        if (local.Length <= 2)
+            return local[0] + new string('*', local.Length - 1) + domain;
+
+        return local[0] + new string('*', local.Length - 2) + local[local.Length - 1] + domain;
+    }
+
+    private static void ShowError(Label label, string message)
+    {
+        label.text = message;
+        label.RemoveFromClassList("screen--hidden");
+    }
+
+    private static void SetVisible(VisualElement el, bool visible)
+    {
+        if (visible)
+            el.RemoveFromClassList("screen--hidden");
+        else
+            el.AddToClassList("screen--hidden");
+    }
+}

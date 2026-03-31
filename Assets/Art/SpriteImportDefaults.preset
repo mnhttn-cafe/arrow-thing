@@ -20,4 +20,12 @@ Preset:
     propertyPath: m_TextureType
     value: 8
     objectReference: {fileID: 0}
+  - target: {fileID: 0}
+    propertyPath: m_AlphaIsTransparency
+    value: 1
+    objectReference: {fileID: 0}
+  - target: {fileID: 0}
+    propertyPath: m_EnableMipMap
+    value: 0
+    objectReference: {fileID: 0}
   m_ExcludedProperties: []

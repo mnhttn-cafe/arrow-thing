@@ -1,0 +1,106 @@
+/* VictoryPopup-specific styles. Shared components live in Shared.uss. */
+
+.victory-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-overlay);
+    align-items: center;
+    justify-content: center;
+}
+
+.victory--hidden {
+    display: none;
+}
+
+.victory-box {
+    background-color: var(--bg-panel);
+    border-radius: 12px;
+    padding: 40px 56px;
+    align-items: center;
+    max-height: 80%;
+    max-width: 90%;
+}
+
+.victory-message {
+    font-size: 40px;
+    color: var(--text-primary);
+    -unity-font-style: bold;
+    margin-bottom: 32px;
+    letter-spacing: 2px;
+    max-width: 500px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.victory-time {
+    font-size: 28px;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+    -unity-text-align: middle-center;
+}
+
+.new-best-label {
+    font-size: 22px;
+    color: var(--text-gold);
+    -unity-font-style: bold;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    -unity-text-align: middle-center;
+}
+
+.victory-time--gold {
+    color: var(--text-gold);
+}
+
+.victory-btn {
+    width: 240px;
+    padding: 14px 0;
+    margin: 4px 0;
+    font-size: 26px;
+    color: var(--text-primary);
+    background-color: var(--bg-btn);
+    border-radius: 8px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.victory-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.victory-btn:active {
+    background-color: var(--bg-btn-active);
+}
+
+.victory-btn--primary {
+    color: var(--text-on-accent);
+    background-color: var(--accent-approval);
+}
+
+.victory-btn--primary:hover {
+    background-color: var(--accent-approval-hover);
+}
+
+.victory-btn--primary:active {
+    background-color: var(--accent-approval-active);
+}
+
+.victory-btn--leaderboard {
+    font-size: 22px;
+    padding: 11px 0;
+    margin-top: 8px;
+    color: var(--text-on-accent);
+    background-color: var(--accent-info-btn);
+}
+
+.victory-btn--leaderboard:hover {
+    background-color: var(--accent-info-btn-hover);
+}
+
+.victory-btn--leaderboard:active {
+    background-color: var(--accent-info-btn-active);
+}

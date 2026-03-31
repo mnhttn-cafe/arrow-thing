@@ -1,0 +1,162 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bfc8e9f9d54aa447b7d4e8b9e74b30b, type: 3}
+  m_Name: Light
+  m_EditorClassIdentifier: Assembly-CSharp::VisualSettings
+  themeUIStyleSheet: {fileID: 7433441132597879392, guid: 1861f405e9d44748904c27a943cb8c7c, type: 3}
+  backgroundColor: {r: 0.878, g: 0.898, b: 0.949, a: 1}
+  gridDotColor: {r: 0.775, g: 0.790, b: 0.830, a: 1}
+  gridDotScale: 1
+  boardDotSprite: {fileID: 21300000, guid: 8121e4e108c755342acdfcd64a7be331, type: 3}
+  arrowBodyColor: {r: 0.22, g: 0.251, b: 0.38, a: 1}
+  arrowHeadColor: {r: 0.22, g: 0.251, b: 0.38, a: 1}
+  arrowPalette:
+  - {r: 0.396, g: 0.573, b: 0.816, a: 1}
+  - {r: 0.753, g: 0.576, b: 0.824, a: 1}
+  - {r: 0.467, g: 0.757, b: 0.537, a: 1}
+  - {r: 0.878, g: 0.718, b: 0.38, a: 1}
+  arrowBodyWidth: 0.1
+  arrowHeadLength: 0.35
+  arrowHeadWidthMultiplier: 2
+  arrowBodyMaterial: {fileID: 2100000, guid: aa9f78cb7cbca1d4ca79624a882a1211, type: 2}
+  arrowHeadMaterial: {fileID: 2100000, guid: b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7, type: 2}
+  arrowTrailMaterial: {fileID: 2100000, guid: a1b2c3d4e5f6789012345678abcdef01, type: 2}
+  trailColor: {r: 0.596, g: 0.639, b: 0.737, a: 1}
+  blockedTintIntensity: 1
+  rejectFlashColor: {r: 1, g: 0.267, b: 0.267, a: 1}
+  rejectFlashDuration: 0.35
+  rejectFlashCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  clearSlideDuration: 0.4
+  clearSlideCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  pathExtensionMultiplier: 1.5
+  bumpSlideDuration: 0.15
+  bumpSlideCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  bumpDuration: 0.15
+  bumpMagnitude: 0.15
+  bumpCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  bumpReturnDuration: 0.2
+  bumpReturnCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
