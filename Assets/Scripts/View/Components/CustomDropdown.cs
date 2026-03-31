@@ -114,7 +114,11 @@ public sealed class CustomDropdown
         // clicks pass through normally.
         _outsideClickListener = evt =>
         {
-            if (_popup != null && !_popup.worldBound.Contains(evt.position))
+            if (
+                _popup != null
+                && !_popup.worldBound.Contains(evt.position)
+                && !Root.worldBound.Contains(evt.position)
+            )
                 Close();
         };
         panelRoot.RegisterCallback(_outsideClickListener, TrickleDown.TrickleDown);
