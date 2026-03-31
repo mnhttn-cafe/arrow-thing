@@ -442,7 +442,7 @@
     height: 28px;
     flex-direction: row;
     align-items: center;
-    background-color: var(--bg-surface);
+    background-color: var(--bg-surface-active);
     border-radius: 14px;
     border-width: 0;
     padding: 3px;
@@ -484,7 +484,7 @@
     flex-grow: 1;
     height: 22px;
     margin: 0 4px 0 0;
-    background-color: var(--bg-surface);
+    background-color: var(--bg-surface-active);
 }
 
 /* Draggable handle */
@@ -520,7 +520,7 @@
     margin: 0;
     font-size: 12px;
     color: var(--text-primary);
-    background-color: var(--bg-surface);
+    background-color: var(--bg-surface-active);
     border-radius: 0;
     border-width: 0;
     -unity-text-align: middle-center;
@@ -528,11 +528,11 @@
 }
 
 .snap-slider__step-btn:hover {
-    background-color: var(--bg-surface-hover);
+    background-color: var(--bg-btn-hover);
 }
 
 .snap-slider__step-btn:active {
-    background-color: var(--bg-surface-active);
+    background-color: var(--bg-btn-active);
 }
 
 .snap-slider__lock-btn {
