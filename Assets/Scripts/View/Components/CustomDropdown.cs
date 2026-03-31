@@ -123,11 +123,17 @@ public sealed class CustomDropdown
         };
         panelRoot.RegisterCallback(_outsideClickListener, TrickleDown.TrickleDown);
 
-        // Close when the ancestor ScrollView scrolls.
+        // Close only when the trigger scrolls outside the ScrollView's viewport.
         _watchedScroll = FindAncestorScrollView(Root);
         if (_watchedScroll != null)
         {
-            _scrollListener = _ => Close();
+            _scrollListener = _ =>
+            {
+                if (!_watchedScroll.worldBound.Overlaps(Root.worldBound))
+                    Close();
+                else
+                    Root.schedule.Execute(() => PositionPopup(_popup));
+            };
             _watchedScroll.verticalScroller.valueChanged += _scrollListener;
         }
 
