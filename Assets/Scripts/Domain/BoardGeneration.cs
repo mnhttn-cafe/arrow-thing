@@ -9,6 +9,7 @@ public static class BoardGeneration
     /// the best path found so far rather than exhausting the search tree.
     /// </summary>
     private const int DefaultDeadEndLimit = 10;
+    private const int MinArrowLength = 2;
 
     /// <summary>
     /// Incremental version of <see cref="FillBoard"/>. Places as many arrows as possible
@@ -17,7 +18,6 @@ public static class BoardGeneration
     /// </summary>
     public static IEnumerator FillBoardIncremental(
         Board board,
-        int minLength,
         int maxLength,
         Random random,
         int deadEndLimit = DefaultDeadEndLimit
@@ -31,7 +31,7 @@ public static class BoardGeneration
             created < maxPossibleArrows
             && board._availableArrowHeads != null
             && board._availableArrowHeads.Count > 0
-            && TryGenerateArrow(board, minLength, maxLength, random, out Arrow arrow, deadEndLimit)
+            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit)
         )
         {
             board.AddArrow(arrow!);
@@ -42,7 +42,6 @@ public static class BoardGeneration
 
     public static bool GenerateArrows(
         Board board,
-        int minLength,
         int maxLength,
         int amount,
         Random random,
@@ -56,7 +55,7 @@ public static class BoardGeneration
 
         while (
             createdArrows < amount
-            && TryGenerateArrow(board, minLength, maxLength, random, out Arrow arrow, deadEndLimit)
+            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit)
         )
         {
             board.AddArrow(arrow!);
@@ -67,7 +66,6 @@ public static class BoardGeneration
 
     private static bool TryGenerateArrow(
         Board board,
-        int minLength,
         int maxLength,
         Random random,
         out Arrow arrow,
@@ -75,7 +73,7 @@ public static class BoardGeneration
     )
     {
         arrow = null;
-        int targetLength = random.Next(minLength, maxLength + 1);
+        int targetLength = random.Next(MinArrowLength, maxLength + 1);
         var candidates = board._availableArrowHeads!;
 
         while (candidates.Count > 0)
@@ -119,7 +117,7 @@ public static class BoardGeneration
                 deadEndLimit,
                 reachable
             );
-            if (tail.Count < minLength)
+            if (tail.Count < MinArrowLength)
             {
                 candidates.RemoveAt(headIndex);
                 continue;

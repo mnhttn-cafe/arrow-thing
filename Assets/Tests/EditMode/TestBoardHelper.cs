@@ -6,7 +6,6 @@ public static class TestBoardHelper
 {
     public static void FillBoard(
         Board board,
-        int minLength,
         int maxLength,
         System.Random random,
         int deadEndLimit = 10
@@ -14,7 +13,6 @@ public static class TestBoardHelper
     {
         var enumerator = BoardGeneration.FillBoardIncremental(
             board,
-            minLength,
             maxLength,
             random,
             deadEndLimit: deadEndLimit

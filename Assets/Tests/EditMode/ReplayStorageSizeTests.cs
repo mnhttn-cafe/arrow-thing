@@ -22,7 +22,7 @@ public class ReplayStorageSizeTests
     {
         var random = new System.Random(42);
         var board = new Board(width, height);
-        TestBoardHelper.FillBoard(board, 2, width > 20 ? 10 : 5, random);
+        TestBoardHelper.FillBoard(board, width > 20 ? 10 : 5, random);
 
         int arrowCount = board.Arrows.Count;
 
