@@ -11,11 +11,11 @@ using UnityEngine.UIElements;
 /// </summary>
 public abstract class UILayoutTestBase
 {
-    protected const string MainMenuUxmlPath = "Assets/UI/Root.uxml";
-    protected const string VictoryUxmlPath = "Assets/UI/VictoryPopup.uxml";
-    protected const string GameHudUxmlPath = "Assets/UI/GameHud.uxml";
-    protected const string LeaderboardUxmlPath = "Assets/UI/Leaderboard.uxml";
-    protected const string ReplayHudUxmlPath = "Assets/UI/ReplayHud.uxml";
+    protected const string MainMenuUxmlPath = "Assets/UI/Shared/Root.uxml";
+    protected const string VictoryUxmlPath = "Assets/UI/Game/VictoryPopup.uxml";
+    protected const string GameHudUxmlPath = "Assets/UI/Game/GameHud.uxml";
+    protected const string LeaderboardUxmlPath = "Assets/UI/Leaderboard/Leaderboard.uxml";
+    protected const string ReplayHudUxmlPath = "Assets/UI/Replay/ReplayHud.uxml";
     private const string PanelSettingsPath = "Assets/UI/Shared/PanelSettings.asset";
 
     // Aspect ratios that are expected to have layout issues with current fixed-px CSS.
