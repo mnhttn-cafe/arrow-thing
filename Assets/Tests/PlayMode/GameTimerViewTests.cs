@@ -23,7 +23,7 @@ using UnityEngine.UIElements;
 public class GameTimerViewTests
 {
     private const string GameHudUxmlPath = "Assets/UI/GameHud.uxml";
-    private const string PanelSettingsPath = "Assets/Settings/UI/PanelSettings.asset";
+    private const string PanelSettingsPath = "Assets/UI/Shared/PanelSettings.asset";
     private const float RealWaitSeconds = 0.2f;
 
     private GameObject _host;

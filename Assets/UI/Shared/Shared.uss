@@ -68,13 +68,13 @@
     width: 48px;
     height: 48px;
     padding: 8px;
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
     border-radius: 24px;
     border-width: 0;
 }
 
 .icon-btn:hover {
-    background-color: var(--bg-btn-ghost-hover);
+    background-color: var(--bg-btn-hover);
 }
 
 .icon-btn__icon {
@@ -186,7 +186,7 @@
     height: 48px;
     font-size: 28px;
     color: var(--text-secondary);
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
     border-radius: 24px;
     border-width: 0;
     -unity-text-align: middle-center;
@@ -194,11 +194,11 @@
 
 .hud-icon-btn:hover {
     color: var(--text-primary);
-    background-color: var(--bg-btn-ghost-hover);
+    background-color: var(--bg-btn-hover);
 }
 
 .hud-icon-btn:active {
-    background-color: var(--bg-btn-ghost-active);
+    background-color: var(--bg-btn-active);
 }
 
 /* Position modifiers */
@@ -286,7 +286,7 @@
 }
 
 .context-menu__btn:hover {
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
 }
 
 .context-menu__btn--danger {
@@ -392,7 +392,7 @@
 }
 
 .modal-close-btn:hover {
-    background-color: var(--bg-btn-ghost-hover);
+    background-color: var(--bg-btn-hover);
 }
 
 .modal-close-btn__icon {
@@ -421,7 +421,7 @@
     width: 40px;
     height: 40px;
     padding: 7px;
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
     border-radius: 20px;
     border-width: 0;
     margin-right: 12px;
@@ -429,7 +429,7 @@
 }
 
 .screen-header__back-btn:hover {
-    background-color: var(--bg-btn-ghost-hover);
+    background-color: var(--bg-btn-hover);
 }
 
 .screen-header__back-btn .hud-icon-btn__icon {
@@ -544,7 +544,7 @@
 }
 
 .filter-row__btn:hover {
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
 }
 
 .filter-row__btn--active {

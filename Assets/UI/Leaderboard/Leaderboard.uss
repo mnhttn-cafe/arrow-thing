@@ -212,7 +212,7 @@
 }
 
 .lb-fav-btn:hover {
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
     border-radius: 14px;
 }
 
@@ -235,7 +235,7 @@
     width: 26px;
     height: 26px;
     padding: 5px;
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
     border-radius: 13px;
     border-width: 0;
     flex-shrink: 0;
@@ -243,7 +243,7 @@
 }
 
 .lb-play-btn:hover {
-    background-color: var(--bg-btn-ghost-hover);
+    background-color: var(--bg-btn-hover);
 }
 
 .lb-play-icon {
@@ -257,14 +257,14 @@
     width: 26px;
     height: 26px;
     padding: 5px;
-    background-color: var(--bg-btn-ghost);
+    background-color: var(--bg-btn);
     border-radius: 13px;
     border-width: 0;
     flex-shrink: 0;
 }
 
 .lb-ctx-trigger:hover {
-    background-color: var(--bg-btn-ghost-hover);
+    background-color: var(--bg-btn-hover);
 }
 
 .lb-ctx-trigger-icon {

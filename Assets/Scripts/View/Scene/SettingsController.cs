@@ -23,6 +23,7 @@ public sealed class SettingsController : MonoBehaviour
 
     private VisualElement _settings;
     private AccountManager _accountManager;
+    private CustomDropdown _themeDropdown;
     private ConfirmModal _clearScoresModal;
     private ConfirmModal _externalLinkModal;
     private Label _externalLinkLabel;
@@ -100,6 +101,7 @@ public sealed class SettingsController : MonoBehaviour
     public void Close()
     {
         IsOpen = false;
+        _themeDropdown?.Close();
         _accountManager.CancelEditing();
         SetVisible(_settings, false);
     }
@@ -162,11 +164,11 @@ public sealed class SettingsController : MonoBehaviour
         foreach (var t in ThemeManager.Available)
             if (t != null)
                 themeChoices.Add(t.name);
-        var themeDropdown = new CustomDropdown(
+        _themeDropdown = new CustomDropdown(
             themeChoices,
             ThemeManager.Current != null ? ThemeManager.Current.name : ""
         );
-        themeDropdown.ValueChanged += name =>
+        _themeDropdown.ValueChanged += name =>
         {
             foreach (var t in ThemeManager.Available)
                 if (t != null && t.name == name)
@@ -175,7 +177,7 @@ public sealed class SettingsController : MonoBehaviour
                     break;
                 }
         };
-        _settings.Q("theme-dropdown-slot").Add(themeDropdown.Root);
+        _settings.Q("theme-dropdown-slot").Add(_themeDropdown.Root);
     }
 
     private void WireSettingsNav()

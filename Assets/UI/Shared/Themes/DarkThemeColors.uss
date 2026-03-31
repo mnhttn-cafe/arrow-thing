@@ -36,10 +36,6 @@
     --bg-btn:                       rgb(60, 60, 80);
     --bg-btn-hover:                 rgb(80, 80, 110);
     --bg-btn-active:                rgb(100, 100, 140);
-    --bg-btn-ghost:                 rgba(255, 255, 255, 0.05);
-    --bg-btn-ghost-hover:           rgba(255, 255, 255, 0.15);
-    --bg-btn-ghost-hover-strong:    rgba(255, 255, 255, 0.18);
-    --bg-btn-ghost-active:          rgba(255, 255, 255, 0.25);
 
     /* ── Raised surfaces (sliders, toggles, step buttons) ────────────── */
     --bg-surface:                   rgb(50, 55, 75);
@@ -75,10 +71,6 @@
     --accent-confirm-active:        rgb(50, 160, 180);
 
     /* ── Accent: danger ───────────────────────────────────────────────── */
-    --accent-danger-bg:             rgba(220, 80, 80, 0.1);
-    --accent-danger-bg-hover:       rgba(220, 80, 80, 0.15);
-    --accent-danger-border:         rgba(220, 80, 80, 0.35);
-    --accent-danger-border-hover:   rgba(220, 80, 80, 0.6);
     --accent-danger-btn:            rgb(160, 50, 50);
     --accent-danger-btn-hover:      rgb(190, 60, 60);
 

@@ -16,7 +16,7 @@ public abstract class UILayoutTestBase
     protected const string GameHudUxmlPath = "Assets/UI/GameHud.uxml";
     protected const string LeaderboardUxmlPath = "Assets/UI/Leaderboard.uxml";
     protected const string ReplayHudUxmlPath = "Assets/UI/ReplayHud.uxml";
-    private const string PanelSettingsPath = "Assets/Settings/UI/PanelSettings.asset";
+    private const string PanelSettingsPath = "Assets/UI/Shared/PanelSettings.asset";
 
     // Aspect ratios that are expected to have layout issues with current fixed-px CSS.
     private static readonly string[] KnownIssueRatios = { };

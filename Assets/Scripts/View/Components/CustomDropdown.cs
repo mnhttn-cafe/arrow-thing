@@ -78,11 +78,13 @@ public sealed class CustomDropdown
         // Backdrop: fills the whole panel, captures outside clicks
         _backdrop = new VisualElement();
         _backdrop.AddToClassList("custom-dropdown__backdrop");
-        _backdrop.RegisterCallback<ClickEvent>(evt =>
+        _backdrop.RegisterCallback<PointerDownEvent>(evt =>
         {
-            // Only close if the click wasn't consumed by a popup item
             if (evt.target == _backdrop)
+            {
+                evt.StopPropagation();
                 Close();
+            }
         });
 
         // Popup list
@@ -142,7 +144,7 @@ public sealed class CustomDropdown
         ValueChanged?.Invoke(choice);
     }
 
-    private void Close()
+    public void Close()
     {
         _backdrop?.RemoveFromHierarchy();
         _backdrop = null;
