@@ -179,7 +179,7 @@ public sealed class VictoryController : MonoBehaviour
         bool isNewBest = manager.IsPersonalBest(_boardWidth, _boardHeight, solveTime);
 
         // Build and record the completed replay
-        var replayData = _buildReplayData?.Invoke();
+        var replayData = _buildReplayData != null ? _buildReplayData.Invoke() : null;
         if (replayData != null)
         {
             replayData.finalTime = solveTime;

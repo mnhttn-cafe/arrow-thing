@@ -314,12 +314,14 @@ public sealed class ReplayViewController : MonoBehaviour
 
         if (_highlightActive)
         {
-            _highlightBtn?.AddToClassList("rh-highlight-btn--active");
+            if (_highlightBtn != null)
+                _highlightBtn.AddToClassList("rh-highlight-btn--active");
             _boardView.UpdateClearableHighlights(_board);
         }
         else
         {
-            _highlightBtn?.RemoveFromClassList("rh-highlight-btn--active");
+            if (_highlightBtn != null)
+                _highlightBtn.RemoveFromClassList("rh-highlight-btn--active");
             _boardView.ClearAllHighlights();
         }
     }
@@ -333,16 +335,22 @@ public sealed class ReplayViewController : MonoBehaviour
         if (_controlsVisible)
         {
             _controlsBar.style.display = DisplayStyle.Flex;
-            _controlsToggleIcon?.RemoveFromClassList("rh-controls-toggle-icon--up");
-            _controlsToggleIcon?.AddToClassList("rh-controls-toggle-icon--down");
+            if (_controlsToggleIcon != null)
+            {
+                _controlsToggleIcon.RemoveFromClassList("rh-controls-toggle-icon--up");
+                _controlsToggleIcon.AddToClassList("rh-controls-toggle-icon--down");
+            }
             if (_controlsToggleBtn != null)
                 _controlsToggleBtn.style.bottom = 100;
         }
         else
         {
             _controlsBar.style.display = DisplayStyle.None;
-            _controlsToggleIcon?.RemoveFromClassList("rh-controls-toggle-icon--down");
-            _controlsToggleIcon?.AddToClassList("rh-controls-toggle-icon--up");
+            if (_controlsToggleIcon != null)
+            {
+                _controlsToggleIcon.RemoveFromClassList("rh-controls-toggle-icon--down");
+                _controlsToggleIcon.AddToClassList("rh-controls-toggle-icon--up");
+            }
             if (_controlsToggleBtn != null)
                 _controlsToggleBtn.style.bottom = 8;
         }
@@ -425,7 +433,8 @@ public sealed class ReplayViewController : MonoBehaviour
                 }
             }
 
-            _tapPool?.Spawn(worldPos, false);
+            if (_tapPool != null)
+                _tapPool.Spawn(worldPos, false);
 
             if (_highlightActive)
                 _boardView.UpdateClearableHighlights(_board);
@@ -467,7 +476,8 @@ public sealed class ReplayViewController : MonoBehaviour
                 }
             }
 
-            _tapPool?.Spawn(worldPos, true);
+            if (_tapPool != null)
+                _tapPool.Spawn(worldPos, true);
         }
     }
 

@@ -68,9 +68,9 @@ public sealed class CustomDropdown
 
     private void Open()
     {
-        var panelRoot = Root.panel?.visualTree;
-        if (panelRoot == null)
+        if (Root.panel == null)
             return;
+        var panelRoot = Root.panel.visualTree;
 
         // Copy stylesheets from the UIDocument root (direct child of panelRoot)
         // so the popup inherits component styles as well as theme variables.
@@ -142,9 +142,9 @@ public sealed class CustomDropdown
 
     private void PositionPopup(VisualElement popup)
     {
-        var panelRoot = Root.panel?.visualTree;
-        if (panelRoot == null)
+        if (Root.panel == null)
             return;
+        var panelRoot = Root.panel.visualTree;
 
         var triggerBounds = Root.worldBound;
         var panelBounds = panelRoot.worldBound;
@@ -173,14 +173,18 @@ public sealed class CustomDropdown
         }
         if (_outsideClickListener != null)
         {
-            Root.panel?.visualTree.UnregisterCallback(
-                _outsideClickListener,
-                TrickleDown.TrickleDown
-            );
+            if (Root.panel != null)
+                Root.panel.visualTree.UnregisterCallback(
+                    _outsideClickListener,
+                    TrickleDown.TrickleDown
+                );
             _outsideClickListener = null;
         }
-        _popup?.RemoveFromHierarchy();
-        _popup = null;
+        if (_popup != null)
+        {
+            _popup.RemoveFromHierarchy();
+            _popup = null;
+        }
         Root.RemoveFromClassList("custom-dropdown--open");
     }
 

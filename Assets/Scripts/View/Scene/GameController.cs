@@ -180,7 +180,10 @@ public sealed class GameController : MonoBehaviour
         }
 
         ResolveSeed(priorData);
-        bool hasSnapshot = priorData?.boardSnapshot != null && priorData.boardSnapshot.Count > 0;
+        bool hasSnapshot =
+            priorData != null
+            && priorData.boardSnapshot != null
+            && priorData.boardSnapshot.Count > 0;
 
         CreateBoardAndView();
         SetupCamera();
@@ -561,7 +564,8 @@ public sealed class GameController : MonoBehaviour
             _inputHandler.SetInputEnabled(false);
             if (_backBtn != null)
                 _backBtn.style.display = DisplayStyle.None;
-            _recorder?.RecordEndSolve();
+            if (_recorder != null)
+                _recorder.RecordEndSolve();
             if (_autosaveEnabled)
                 SaveManager.Delete();
             victory.OnLastArrowClearing();
@@ -629,7 +633,8 @@ public sealed class GameController : MonoBehaviour
             _trailToggleBtn.style.display = DisplayStyle.Flex;
         if (_backBtn != null)
             _backBtn.clickable = new Clickable(() => { });
-        _cancelGenModal?.AddToClassList("modal--hidden");
+        if (_cancelGenModal != null)
+            _cancelGenModal.AddToClassList("modal--hidden");
     }
 
     // --- Leave modal ---
@@ -670,7 +675,8 @@ public sealed class GameController : MonoBehaviour
     private void HideLeaveModal(VisualElement modal)
     {
         modal.AddToClassList("modal--hidden");
-        _inputHandler?.SetInputEnabled(true);
+        if (_inputHandler != null)
+            _inputHandler.SetInputEnabled(true);
     }
 
     private void OnLeaveYes(VisualElement modal)

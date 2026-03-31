@@ -90,7 +90,7 @@ public static class SaveManager
             {
                 string json = File.ReadAllText(path);
                 var data = JsonConvert.DeserializeObject<ReplayData>(json);
-                if (data?.events == null)
+                if (data == null || data.events == null)
                     failed = true;
                 else
                     result = data;

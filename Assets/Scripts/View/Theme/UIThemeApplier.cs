@@ -28,7 +28,7 @@ public sealed class UIThemeApplier : MonoBehaviour
         var root = GetComponent<UIDocument>().rootVisualElement;
         // Also apply to panel.visualTree so elements injected above the UIDocument
         // root (e.g. CustomDropdown popup) inherit the theme's CSS custom properties.
-        var panelRoot = root.panel?.visualTree;
+        var panelRoot = root.panel != null ? root.panel.visualTree : null;
 
         if (_appliedSheet != null)
         {
@@ -38,7 +38,7 @@ public sealed class UIThemeApplier : MonoBehaviour
                 panelRoot.styleSheets.Remove(_appliedSheet);
         }
 
-        _appliedSheet = settings?.themeUIStyleSheet;
+        _appliedSheet = settings != null ? settings.themeUIStyleSheet : null;
 
         if (_appliedSheet != null)
         {

@@ -104,7 +104,8 @@ public sealed class SettingsController : MonoBehaviour
     public void Close()
     {
         IsOpen = false;
-        _themeDropdown?.Close();
+        if (_themeDropdown != null)
+            _themeDropdown.Close();
         _accountManager.CancelEditing();
         SetVisible(_settings, false);
     }
@@ -273,7 +274,7 @@ public sealed class SettingsController : MonoBehaviour
     private void OnClearScoresConfirm()
     {
         _clearScoresModal.Hide();
-        LeaderboardManager.Instance?.RemoveAllNonFavorited();
+        LeaderboardManager.Instance.RemoveAllNonFavorited();
     }
 
     private void OnExternalLinkRequested(string url, Action confirm)

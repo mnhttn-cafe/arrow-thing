@@ -61,7 +61,7 @@ public sealed class MainMenuController : MonoBehaviour
 
         _mainMenu.Q<Button>("play-btn").clicked += () => ShowScreen(Screen.ModeSelect);
         continueBtn.clicked += OnContinue;
-        _mainMenu.Q<Button>("settings-btn").clicked += () => SettingsController.Instance?.Open();
+        _mainMenu.Q<Button>("settings-btn").clicked += () => SettingsController.Instance.Open();
         _mainMenu.Q<Button>("link-github-btn").clicked += () => ExternalLinks.Open(GitHubUrl);
         _mainMenu.Q<Button>("link-discord-btn").clicked += () => ExternalLinks.Open(DiscordUrl);
 
