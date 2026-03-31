@@ -27,19 +27,21 @@ Neither is responsible for gameplay removal logic or rendering.
 
 ### Structure
 
-`Board` maintains two dictionaries:
+`Board` maintains two dictionaries and a spatial ray index:
 
 - `_dependsOn[arrow]`: the set of arrows that block `arrow` from being cleared (their cells are in `arrow`'s forward ray).
 - `_dependedOnBy[arrow]`: the set of arrows whose forward rays pass through `arrow`'s cells (they depend on `arrow`).
+- **Spatial ray index**: four arrays of lists (`_rightHeadsByRow`, `_leftHeadsByRow`, `_upHeadsByCol`, `_downHeadsByCol`) grouping arrow heads by direction and row/column. Enables O(crossing) lookup of arrows whose ray passes through a given cell, replacing O(N) full-arrow scans in both `AddArrow` (reverse dependency computation) and `WouldCellCauseCycle` (cycle detection during generation).
 
-Both are updated atomically in `AddArrow` and `RemoveArrow`.
+All are updated atomically in `AddArrow` and `RemoveArrow`.
 
 ### Maintenance in `AddArrow`
 
 1. Update occupancy.
 2. Walk the new arrow's forward ray — every existing arrow hit is a forward dependency.
-3. For each existing arrow, check if any of the new arrow's cells lie on that arrow's ray (`IsInRay`) — if yes, that existing arrow now depends on the new arrow (reverse dependency).
-4. Prune stale generation candidates whose head or next cell is now occupied (via `_candidateLookup`).
+3. Use the spatial ray index to find existing arrows whose rays cross the new arrow's cells — these are reverse dependencies. O(crossing) instead of O(N).
+4. Add the new arrow to the ray index.
+5. Prune stale generation candidates whose head or next cell is now occupied (via `_candidateLookup`).
 
 ### Maintenance in `RemoveArrow`
 
@@ -161,7 +163,7 @@ The algorithm:
 
 1. **`ComputeForwardDeps(board, head, direction)`** — walk the candidate's ray, collect all existing arrows.
 2. **`ComputeReachableSet(board, forwardDeps)`** — BFS from forward deps through `Board._dependsOn`. Returns the full transitive closure.
-3. **`WouldCellCauseCycle(board, cell, reachable)`** — for a single cell, iterate `board.Arrows` and check if any arrow whose ray crosses the cell is in the reachable set.
+3. **`WouldCellCauseCycle(board, cell, reachable)`** — for a single cell, use `Board.AnyArrowWithRayThroughMatches` to check if any arrow whose ray crosses the cell is in the reachable set. Uses the spatial ray index for O(crossing) lookup instead of scanning all arrows.
 
 ### Key Property: Stateless Per-Cell Checks
 
@@ -191,10 +193,12 @@ Measured in Unity EditMode tests, single-threaded, seed 0.
 
 Key optimisations applied (in order of impact):
 
-1. **Dead-end limit** — DFS capped at `DefaultDeadEndLimit = 10` dead ends per candidate.
-2. **Eager candidate pruning** — stale candidates are removed immediately on placement via `_candidateLookup`, now inside `Board.AddArrow`.
-3. **Occupancy guard on head/next before cycle check** — avoids computing reachability for candidates whose start cells are already taken.
-4. **Reachability set computed once per head candidate** — the BFS runs once, then each tail cell is checked with a simple O(N) scan against the fixed set.
+1. **Spatial ray index** — per-row/per-column lists of arrow heads grouped by direction. Replaces O(N) full-arrow scans in `WouldCellCauseCycle` and `AddArrow` reverse-dep computation with O(crossing) lookups, where crossing is the small number of arrows whose rays actually cross a given cell. On a 400×400 board (~6000 arrows, 400 rows), this reduces per-cell cycle checks from ~6000 comparisons to ~4–8.
+2. **Dead-end limit** — DFS capped at `DefaultDeadEndLimit = 10` dead ends per candidate.
+3. **Eager candidate pruning** — stale candidates are removed immediately on placement via `_candidateLookup`, now inside `Board.AddArrow`.
+4. **Occupancy guard on head/next before cycle check** — avoids computing reachability for candidates whose start cells are already taken.
+5. **Reachability set computed once per head candidate** — the BFS runs once, then each tail cell is checked against the fixed set via the ray index.
+6. **O(1) arrow membership** — `HashSet<Arrow> _arrowSet` alongside the `List<Arrow>` for O(1) `Contains` checks in `AddArrow`/`RemoveArrow` validation.
 
 ## Loading Progress Heuristic
 
@@ -218,3 +222,4 @@ The current implementation is a rewrite (`generation-rewrite` branch) of an earl
 - **Optimization pass** (`15c8f90`, external contributor): replaced recursive DFS with bounded stochastic constructive growth. Much faster, but non-exhaustive and relied on magic thresholds.
 - **Static class rewrite**: move to a static class with minimal model classes; restore exhaustive DFS+backtracking (now feasible because expensive legality checks are replaced with direct occupancy lookup).
 - **Dependency graph refactor** (`board-generation-validation-v2` branch): replaced geometric ray-hopping cycle detection (`DoesArrowCandidateCauseCycle`) with an explicit dependency graph on `Board`. The old algorithm only followed the first hit per ray, missing multi-dependency cycles. The new algorithm builds a reachability set from forward deps and checks each cell against it. Generation cache (`boardCacheDict`) was merged into `Board` to eliminate desync fragility.
+- **Spatial ray index** (`optimize-domain-performance` branch): added per-row/per-column arrow head lists grouped by direction. Replaced O(N) scans in `WouldCellCauseCycle` and `AddArrow` reverse-dep computation with O(crossing) lookups. Also added `HashSet<Arrow>` for O(1) membership checks and reduced DFS allocation overhead.

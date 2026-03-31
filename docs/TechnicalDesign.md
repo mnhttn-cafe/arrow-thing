@@ -51,7 +51,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ### `Board` (`sealed class`)
 
 - Grid dimensions (`Width`, `Height`) and `List<Arrow> Arrows`.
-- Owns `Arrow[,] _occupancy` and a dependency graph (`_dependsOn`, `_dependedOnBy`), both maintained atomically in `AddArrow`/`RemoveArrow`.
+- Owns `Arrow[,] _occupancy`, a dependency graph (`_dependsOn`, `_dependedOnBy`), and a spatial ray index (per-row/per-column lists of arrow heads grouped by direction), all maintained atomically in `AddArrow`/`RemoveArrow`.
 - `OccupiedCellCount` — incremental counter maintained by `AddArrow`/`RemoveArrow`. Tracks total occupied cells; available for diagnostics and density calculations.
 - `InitialCandidateCount` / `RemainingCandidateCount` — candidate pool size at initialization and current remaining count. Useful for diagnostics and profiling.
 - `Contains(Cell)` performs bounds checking.
@@ -59,7 +59,8 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - `IsClearable(Arrow)` returns true when the arrow's dependency set is empty (O(1)).
 - `IsInRay(Cell, Cell, Direction)` is a public static helper for ray geometry.
 - `InitializeForGeneration()` creates the candidate pool for arrow generation. The candidate lookup matrix is initialized first, then `CreateInitialArrowHeads` populates both the candidate list and lookup in a single pass. Only needed when generating, not for deserialized boards.
-- `RestoreArrowsIncremental(IReadOnlyList<Arrow>)` — coroutine for restoring a saved board from a snapshot. Phase 1 places arrows into occupancy (yielding after each for progress reporting). Phase 2 builds the dependency graph in one forward-ray pass (yielding after each arrow). Much faster than calling `AddArrow` individually because it avoids the O(n^2) reverse-dependency scan.
+- `AnyArrowWithRayThroughMatches(Cell, HashSet<Arrow>)` — internal query used by cycle detection during generation. Uses the spatial ray index to find arrows whose forward ray crosses a cell in O(crossing) instead of O(N).
+- `RestoreArrowsIncremental(IReadOnlyList<Arrow>)` — coroutine for restoring a saved board from a snapshot. Phase 1 places arrows into occupancy and ray index (yielding after each for progress reporting). Phase 2 builds the dependency graph in one forward-ray pass (yielding after each arrow). Much faster than calling `AddArrow` individually because it avoids the per-arrow reverse-dependency scan.
 
 ### `GameTimer` (`sealed class`)
 

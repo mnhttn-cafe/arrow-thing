@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using static ListUtils;
 
 public static class BoardGeneration
 {
@@ -142,9 +141,11 @@ public static class BoardGeneration
         HashSet<Arrow> reachable
     )
     {
-        List<Cell> path = new() { headData.head, headData.next };
+        List<Cell> path = new(targetLength) { headData.head, headData.next };
         HashSet<Cell> visited = new(path);
-        List<Cell> best = new(path);
+        List<Cell> best = new(targetLength);
+        best.Add(headData.head);
+        best.Add(headData.next);
         int deadEnds = 0;
 
         void Dfs(Cell current)
@@ -153,12 +154,15 @@ public static class BoardGeneration
                 return;
             if (path.Count == targetLength)
             {
-                best = new(path);
+                best.Clear();
+                best.AddRange(path);
                 return;
             }
 
             bool anyValid = false;
-            foreach (Cell neighbor in Shuffle(GetNeighbors(current), random))
+            Cell[] neighbors = GetNeighbors(current);
+            Shuffle(neighbors, random);
+            foreach (Cell neighbor in neighbors)
             {
                 if (visited.Contains(neighbor))
                     continue;
@@ -174,7 +178,10 @@ public static class BoardGeneration
                 path.Add(neighbor);
                 visited.Add(neighbor);
                 if (path.Count > best.Count)
-                    best = new(path);
+                {
+                    best.Clear();
+                    best.AddRange(path);
+                }
                 anyValid = true;
                 Dfs(neighbor);
                 if (best.Count == targetLength || deadEnds >= deadEndLimit)
@@ -234,29 +241,33 @@ public static class BoardGeneration
     /// A cycle exists when an existing arrow whose ray crosses the cell is already in the
     /// candidate's transitive dependency set — meaning the candidate would depend on that arrow
     /// (through forward deps) while that arrow simultaneously depends on the candidate.
+    /// Uses the board's spatial ray index for O(crossing) lookup instead of O(N) scan.
     /// </summary>
     private static bool WouldCellCauseCycle(Board board, Cell cell, HashSet<Arrow> reachable)
     {
-        foreach (Arrow arrow in board.Arrows)
-        {
-            if (
-                Board.IsInRay(cell, arrow.HeadCell, arrow.HeadDirection)
-                && reachable.Contains(arrow)
-            )
-                return true;
-        }
-        return false;
+        return board.AnyArrowWithRayThroughMatches(cell, reachable);
     }
 
-    private static List<Cell> GetNeighbors(Cell cell)
+    private static Cell[] GetNeighbors(Cell cell)
     {
-        return new List<Cell>(4)
+        return new Cell[]
         {
             new(cell.X + 1, cell.Y),
             new(cell.X - 1, cell.Y),
             new(cell.X, cell.Y + 1),
             new(cell.X, cell.Y - 1),
         };
+    }
+
+    private static void Shuffle(Cell[] array, Random random)
+    {
+        int n = array.Length;
+        while (n > 1)
+        {
+            n--;
+            int k = random.Next(n + 1);
+            (array[n], array[k]) = (array[k], array[n]);
+        }
     }
 }
 
