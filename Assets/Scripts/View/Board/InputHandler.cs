@@ -143,6 +143,7 @@ public sealed class InputHandler : MonoBehaviour
         if (wasInspecting)
         {
             _timer.StartSolve(wallTime);
+            Debug.Log("[InputHandler] Inspection ended — solve timer started");
             if (_recorder != null)
                 _recorder.RecordStartSolve();
         }
@@ -158,6 +159,9 @@ public sealed class InputHandler : MonoBehaviour
             {
                 if (_timer != null)
                     _timer.Finish(wallTime);
+                Debug.Log(
+                    $"[InputHandler] Last arrow cleared — timer finished, solveElapsed={(_timer != null ? _timer.SolveElapsed.ToString("F3") : "N/A")}s"
+                );
                 _boardView.NotifyLastArrowClearing();
             }
             else

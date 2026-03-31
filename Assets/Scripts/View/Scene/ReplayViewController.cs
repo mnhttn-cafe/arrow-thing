@@ -196,6 +196,10 @@ public sealed class ReplayViewController : MonoBehaviour
         _boardView.ApplyColoring();
         HideLoading();
 
+        Debug.Log(
+            $"[ReplayViewController] Replay loaded: board={_replayData.boardWidth}x{_replayData.boardHeight}, arrows={_board.Arrows.Count}, events={_replayData.events.Count}"
+        );
+
         // Create replay player
         _player = new ReplayPlayer(_replayData);
 
@@ -473,6 +477,18 @@ public sealed class ReplayViewController : MonoBehaviour
                     _boardView.ClearArrowAnimated(arrow);
                     _board.RemoveArrow(arrow);
                 }
+                else
+                {
+                    Debug.LogWarning(
+                        $"[ReplayViewController] ExecuteEvent Clear seq={evt.seq}: {(arrow == null ? "no arrow at" : "arrow not clearable at")} cell ({cell.X},{cell.Y})"
+                    );
+                }
+            }
+            else
+            {
+                Debug.LogWarning(
+                    $"[ReplayViewController] ExecuteEvent Clear seq={evt.seq}: out-of-bounds cell ({cell.X},{cell.Y})"
+                );
             }
 
             if (_tapPool != null)
@@ -566,6 +582,9 @@ public sealed class ReplayViewController : MonoBehaviour
     /// </summary>
     private void RebuildBoardFromScratch()
     {
+        Debug.Log(
+            $"[ReplayViewController] RebuildBoardFromScratch: replaying {_player.ClearedEventIndices.Count} clears to reach seek target"
+        );
         // Destroy existing board view
         if (_boardView != null)
             Destroy(_boardView.gameObject);
@@ -594,6 +613,7 @@ public sealed class ReplayViewController : MonoBehaviour
         _boardView.ApplyColoring();
 
         // Replay cleared events up to current index
+        int replayedClears = 0;
         foreach (int clearedIdx in _player.ClearedEventIndices)
         {
             var evt = GetTimedEvent(clearedIdx);
@@ -608,10 +628,32 @@ public sealed class ReplayViewController : MonoBehaviour
                     {
                         _boardView.RemoveArrowView(arrow);
                         _board.RemoveArrow(arrow);
+                        replayedClears++;
+                    }
+                    else
+                    {
+                        Debug.LogWarning(
+                            $"[ReplayViewController] RebuildBoardFromScratch: clear at ({cell.X},{cell.Y}) failed during replay — {(arrow == null ? "no arrow" : "not clearable")}"
+                        );
                     }
                 }
+                else
+                {
+                    Debug.LogWarning(
+                        $"[ReplayViewController] RebuildBoardFromScratch: clear event maps to out-of-bounds cell ({cell.X},{cell.Y})"
+                    );
+                }
+            }
+            else if (evt == null)
+            {
+                Debug.LogWarning(
+                    $"[ReplayViewController] RebuildBoardFromScratch: GetTimedEvent({clearedIdx}) returned null"
+                );
             }
         }
+        Debug.Log(
+            $"[ReplayViewController] RebuildBoardFromScratch complete: {replayedClears}/{_player.ClearedEventIndices.Count} clears applied, arrows remaining={_board.Arrows.Count}"
+        );
     }
 
     /// <summary>

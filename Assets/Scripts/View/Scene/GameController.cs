@@ -187,6 +187,14 @@ public sealed class GameController : MonoBehaviour
         ResolveParameters(out int minLen, out ReplayData priorData, out bool deferredResume);
         ResolveHudElements();
 
+        string modeStr =
+            deferredResume ? "deferred-resume"
+            : priorData != null ? "resume"
+            : "new";
+        Debug.Log(
+            $"[GameController] GenerateAndSetup: mode={modeStr}, board={_w}x{_h}, maxLen={_maxLen}"
+        );
+
         ShowLoading(deferredResume ? "Resuming..." : "Generating...");
         yield return null;
 
@@ -195,9 +203,15 @@ public sealed class GameController : MonoBehaviour
             yield return LoadSaveAsync(result => priorData = result);
             if (priorData == null)
             {
+                Debug.LogWarning(
+                    "[GameController] Deferred save load returned null — returning to MainMenu."
+                );
                 SceneManager.LoadScene("MainMenu");
                 yield break;
             }
+            Debug.Log(
+                $"[GameController] Save loaded: gameId={priorData.gameId}, board={priorData.boardWidth}x{priorData.boardHeight}, events={priorData.events.Count}"
+            );
             ApplyResumeData(priorData);
         }
 
@@ -356,6 +370,7 @@ public sealed class GameController : MonoBehaviour
     private IEnumerator RestoreBoard(ReplayData priorData)
     {
         int totalArrows = priorData.boardSnapshot.Count;
+        Debug.Log($"[GameController] RestoreBoard: restoring {totalArrows} arrows from snapshot");
         int totalSteps = totalArrows * 2;
         var restorer = BoardSetupHelper.RestoreBoardFromSnapshot(
             _board,
@@ -420,11 +435,14 @@ public sealed class GameController : MonoBehaviour
         if (_board.Arrows.Count == 0)
         {
             Debug.LogWarning(
-                $"BoardGeneration produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
+                $"[GameController] GenerateBoard produced 0 arrows (board {_w}x{_h}, minLen={minLen}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
             );
             SceneManager.LoadScene("MainMenu");
             yield break;
         }
+        Debug.Log(
+            $"[GameController] GenerateBoard complete: {_board.Arrows.Count} arrows, board={_w}x{_h}, seed={_activeSeed}"
+        );
 
         _initialBoardSnapshot = new List<List<Cell>>(_board.Arrows.Count);
         foreach (Arrow arrow in _board.Arrows)
@@ -436,10 +454,13 @@ public sealed class GameController : MonoBehaviour
     private bool ReplayClears(ReplayData priorData, out double solveElapsed)
     {
         bool solving = false;
+        int totalClearEvents = 0;
+        int successfulClears = 0;
         foreach (ReplayEvent evt in priorData.events)
         {
             if (evt.type == ReplayEventType.Clear)
             {
+                totalClearEvents++;
                 var worldPos = new Vector3(evt.posX ?? 0f, evt.posY ?? 0f, 0f);
                 Cell cell = BoardCoords.WorldToCell(worldPos, _board.Width, _board.Height);
                 if (_board.Contains(cell))
@@ -449,13 +470,31 @@ public sealed class GameController : MonoBehaviour
                     {
                         _boardView.RemoveArrowView(arrow);
                         _board.RemoveArrow(arrow);
+                        successfulClears++;
                     }
+                    else if (arrow == null)
+                        Debug.LogWarning(
+                            $"[GameController] ReplayClears: no arrow at cell ({cell.X},{cell.Y}) for clear event seq={evt.seq}"
+                        );
+                    else
+                        Debug.LogWarning(
+                            $"[GameController] ReplayClears: arrow at ({cell.X},{cell.Y}) not clearable for clear event seq={evt.seq}"
+                        );
+                }
+                else
+                {
+                    Debug.LogWarning(
+                        $"[GameController] ReplayClears: clear event seq={evt.seq} maps to out-of-bounds cell ({cell.X},{cell.Y})"
+                    );
                 }
             }
             if (evt.type == ReplayEventType.StartSolve)
                 solving = true;
         }
         solveElapsed = priorData.ComputedSolveElapsed;
+        Debug.Log(
+            $"[GameController] ReplayClears: {successfulClears}/{totalClearEvents} clears applied, solving={solving}, solveElapsed={solveElapsed:F3}s"
+        );
         return solving;
     }
 
@@ -466,6 +505,9 @@ public sealed class GameController : MonoBehaviour
             priorData.events.Count > 0 ? priorData.events[priorData.events.Count - 1].seq + 1 : 0;
         _recorder = new ReplayRecorder(priorData.events, nextSeq);
         _recorder.RecordSessionRejoin();
+        Debug.Log(
+            $"[GameController] Resumed game: id={_gameId}, nextSeq={nextSeq}, remainingArrows={_board.Arrows.Count}"
+        );
     }
 
     private void SetupNewRecorder()
@@ -473,6 +515,9 @@ public sealed class GameController : MonoBehaviour
         _gameId = Guid.NewGuid().ToString();
         _recorder = new ReplayRecorder();
         _recorder.RecordSessionStart();
+        Debug.Log(
+            $"[GameController] New game: id={_gameId}, arrows={_board.Arrows.Count}, board={_w}x{_h}, seed={_activeSeed}"
+        );
     }
 
     private void FinalizeSession(ReplayData priorData)
@@ -489,9 +534,17 @@ public sealed class GameController : MonoBehaviour
         _timer = new GameTimer(_inspectionDur);
         double wallNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
         if (resumeSolving)
+        {
             _timer.Resume(wallNow, resumeSolveElapsed);
+            Debug.Log($"[GameController] Timer resumed: priorElapsed={resumeSolveElapsed:F3}s");
+        }
         else
+        {
             _timer.Start(wallNow);
+            Debug.Log(
+                $"[GameController] Timer started fresh: inspectionDuration={_inspectionDur}s"
+            );
+        }
     }
 
     private void WireHud()
@@ -734,6 +787,10 @@ public sealed class GameController : MonoBehaviour
         if (_clearsSinceLastSave >= AutosaveInterval)
         {
             _clearsSinceLastSave = 0;
+            int cleared = _initialArrowCount - _board.Arrows.Count;
+            Debug.Log(
+                $"[GameController] Autosave triggered: {cleared}/{_initialArrowCount} arrows cleared"
+            );
             SaveManager.Save(BuildReplayData());
         }
     }
@@ -743,6 +800,9 @@ public sealed class GameController : MonoBehaviour
         if (_recorder != null && _timer != null)
         {
             _recorder.RecordSessionLeave();
+            Debug.Log(
+                $"[GameController] SaveAndLeave: saving game id={_gameId}, arrows remaining={_board?.Arrows.Count}"
+            );
             SaveManager.Save(BuildReplayData());
         }
         SceneManager.LoadScene("MainMenu");

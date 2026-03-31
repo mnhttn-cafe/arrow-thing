@@ -146,6 +146,11 @@ public sealed class VictoryController : MonoBehaviour
 
     private void ShowPopup()
     {
+        double elapsed = _timer != null ? _timer.SolveElapsed : -1.0;
+        Debug.Log(
+            $"[VictoryController] Victory popup: board={_boardWidth}x{_boardHeight}, solveElapsed={elapsed:F3}s"
+        );
+
         string msg = Messages[Random.Range(0, Messages.Length)];
         _messageLabel.text = msg;
 
@@ -172,11 +177,26 @@ public sealed class VictoryController : MonoBehaviour
     private void RecordToLeaderboard()
     {
         var manager = LeaderboardManager.Instance;
-        if (manager == null || _timer == null)
+        if (manager == null)
+        {
+            Debug.LogWarning(
+                "[VictoryController] RecordToLeaderboard: LeaderboardManager.Instance is null — result not saved"
+            );
             return;
+        }
+        if (_timer == null)
+        {
+            Debug.LogWarning(
+                "[VictoryController] RecordToLeaderboard: timer is null — result not saved"
+            );
+            return;
+        }
 
         double solveTime = _timer.SolveElapsed;
         bool isNewBest = manager.IsPersonalBest(_boardWidth, _boardHeight, solveTime);
+        Debug.Log(
+            $"[VictoryController] RecordToLeaderboard: board={_boardWidth}x{_boardHeight}, solveTime={solveTime:F3}s, isNewBest={isNewBest}"
+        );
 
         // Build and record the completed replay
         var replayData = _buildReplayData != null ? _buildReplayData.Invoke() : null;
@@ -185,6 +205,13 @@ public sealed class VictoryController : MonoBehaviour
             replayData.finalTime = solveTime;
             var entry = manager.RecordResult(replayData);
             _recordedGameId = entry.gameId;
+            Debug.Log($"[VictoryController] Result recorded: gameId={_recordedGameId}");
+        }
+        else
+        {
+            Debug.LogWarning(
+                "[VictoryController] RecordToLeaderboard: buildReplayData returned null — result not saved"
+            );
         }
 
         // Show "New Best!" label and gold timer
