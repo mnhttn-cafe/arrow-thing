@@ -64,6 +64,21 @@ jobs:
           fi
           echo "All Asset files have matching .meta files."
 
+  test-server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Run server tests
+        run: dotnet test server/ArrowThing.Server.Tests/ArrowThing.Server.Tests.csproj --logger "console;verbosity=normal"
+
   test:
     runs-on: ubuntu-latest
 

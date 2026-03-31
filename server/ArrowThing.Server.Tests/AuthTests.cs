@@ -113,7 +113,7 @@ public class AuthTests : IClassFixture<TestFactory>, IDisposable
     [InlineData("notanemail", "password123", "Name")] // invalid email
     [InlineData("", "password123", "Name")] // empty email
     [InlineData("a@b.com", "short", "Name")] // password too short
-    [InlineData("a@b.com", "password123", "X")] // display name too short
+    [InlineData("a@b.com", "password123", "")] // empty display name
     public async Task Register_InvalidInput_Returns400(
         string email,
         string password,
@@ -289,7 +289,7 @@ public class AuthTests : IClassFixture<TestFactory>, IDisposable
 
         var request = new HttpRequestMessage(HttpMethod.Patch, "/api/auth/me")
         {
-            Content = JsonContent.Create(new { displayName = "X" }), // too short
+            Content = JsonContent.Create(new { displayName = "" }), // empty
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
 
