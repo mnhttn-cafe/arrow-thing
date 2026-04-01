@@ -9,6 +9,8 @@ services:
       - Jwt__Secret=${JWT_SECRET}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
       - ASPNETCORE_URLS=http://+:5000
+      - Resend__ApiKey=${Resend__ApiKey}
+      - Resend__FromAddress=${Resend__FromAddress}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 5s

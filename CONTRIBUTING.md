@@ -2,6 +2,20 @@
 
 Keep contributions small, focused, and easy to review.
 
+## Git Hooks
+
+Install the pre-commit hook after cloning:
+
+```bash
+cp scripts/hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The hook enforces:
+- No private key headers in staged files
+- No public IPv4 addresses in staged files (use `<vps-ip>` placeholders in docs)
+- C# formatting rules: no tabs, no trailing whitespace, final newline, no fully qualified `System.Collections.Generic` usage
+
 ## Core Expectations
 
 - Prefer Unity-independent implementations for game rules, board logic, and generation logic.
