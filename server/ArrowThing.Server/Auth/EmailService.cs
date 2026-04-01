@@ -7,19 +7,16 @@ namespace ArrowThing.Server.Auth;
 public class EmailService : IEmailService
 {
     private readonly HttpClient _http;
+    private readonly string? _apiKey;
     private readonly string _fromAddress;
 
     public EmailService(IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
         _http = httpClientFactory.CreateClient("Resend");
-        var apiKey =
-            configuration["Resend:ApiKey"]
-            ?? throw new InvalidOperationException("Resend:ApiKey is not configured.");
+        _apiKey = configuration["Resend:ApiKey"];
         _fromAddress =
             configuration["Resend:FromAddress"]
             ?? throw new InvalidOperationException("Resend:FromAddress is not configured.");
-
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
     }
 
     public async Task SendVerificationCodeAsync(string toEmail, string code)
@@ -88,6 +85,14 @@ public class EmailService : IEmailService
 
     private async Task SendAsync(string to, string subject, string html)
     {
+        if (_apiKey == null)
+            throw new InvalidOperationException("Resend:ApiKey is not configured.");
+
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            _apiKey
+        );
+
         var payload = new
         {
             from = _fromAddress,
