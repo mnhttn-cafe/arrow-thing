@@ -12,9 +12,38 @@ public static class BoardGeneration
     private const int MinArrowLength = 2;
 
     /// <summary>
-    /// Incremental version of <see cref="FillBoard"/>. Places as many arrows as possible
-    /// within <paramref name="frameBudgetMs"/> per frame, then yields to let the caller
-    /// (e.g. a Unity coroutine) process the next frame. Repeats until generation is complete.
+    /// Pooled resources reused across candidates to eliminate per-candidate allocations.
+    /// </summary>
+    private sealed class GenerationContext
+    {
+        public readonly int bitsetWords;
+        public readonly ulong[] reachable;
+        public readonly ulong[] forwardDeps;
+        public readonly Queue<int> bfsQueue;
+        public readonly bool[,] visited;
+        public readonly List<Cell> path;
+        public readonly List<Cell> best;
+
+        public GenerationContext(int maxArrows, int boardWidth, int boardHeight)
+        {
+            bitsetWords = (maxArrows + 63) >> 6;
+            reachable = new ulong[bitsetWords];
+            forwardDeps = new ulong[bitsetWords];
+            bfsQueue = new Queue<int>(Math.Max(maxArrows, 16));
+            visited = new bool[boardWidth, boardHeight];
+            path = new List<Cell>(32);
+            best = new List<Cell>(32);
+        }
+
+        public void ClearBitset(ulong[] bits)
+        {
+            Array.Clear(bits, 0, bitsetWords);
+        }
+    }
+
+    /// <summary>
+    /// Incremental version of <see cref="FillBoard"/>. Places as many arrows as possible,
+    /// yielding after each arrow to let the caller (e.g. a Unity coroutine) process the next frame.
     /// </summary>
     public static IEnumerator FillBoardIncremental(
         Board board,
@@ -25,13 +54,14 @@ public static class BoardGeneration
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
+        var ctx = new GenerationContext(maxPossibleArrows, board.Width, board.Height);
         int created = 0;
 
         while (
             created < maxPossibleArrows
             && board._availableArrowHeads != null
             && board._availableArrowHeads.Count > 0
-            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit)
+            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit, ctx)
         )
         {
             board.AddArrow(arrow!);
@@ -53,9 +83,12 @@ public static class BoardGeneration
         if (board._availableArrowHeads == null)
             board.InitializeForGeneration();
 
+        int maxPossibleArrows = board.Width * board.Height / 2;
+        var ctx = new GenerationContext(maxPossibleArrows, board.Width, board.Height);
+
         while (
             createdArrows < amount
-            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit)
+            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit, ctx)
         )
         {
             board.AddArrow(arrow!);
@@ -69,7 +102,8 @@ public static class BoardGeneration
         int maxLength,
         Random random,
         out Arrow arrow,
-        int deadEndLimit
+        int deadEndLimit,
+        GenerationContext ctx
     )
     {
         arrow = null;
@@ -86,27 +120,34 @@ public static class BoardGeneration
                 || board.GetArrowAt(candidate.next) != null
             )
             {
-                candidates.RemoveAt(headIndex);
+                // Swap-and-pop: O(1) removal instead of O(N) shift
+                SwapRemove(candidates, headIndex);
                 continue;
             }
 
-            // Compute reachability set: all arrows transitively reachable from the
-            // candidate's forward deps through the committed dependency graph.
-            // A cycle exists iff any arrow whose ray crosses a candidate cell is in this set.
-            HashSet<Arrow> forwardDeps = ComputeForwardDeps(
+            // Compute forward deps as bitset
+            ctx.ClearBitset(ctx.forwardDeps);
+            ctx.ClearBitset(ctx.reachable);
+            int depCount = ComputeForwardDeps(
                 board,
                 candidate.head,
-                candidate.direction
+                candidate.direction,
+                ctx.forwardDeps
             );
-            HashSet<Arrow> reachable = ComputeReachableSet(board, forwardDeps);
 
-            if (
-                WouldCellCauseCycle(board, candidate.head, reachable)
-                || WouldCellCauseCycle(board, candidate.next, reachable)
-            )
+            if (depCount > 0)
             {
-                candidates.RemoveAt(headIndex);
-                continue;
+                // BFS reachability through dependency graph
+                ComputeReachableSet(board, ctx.forwardDeps, ctx.reachable, ctx);
+
+                if (
+                    WouldCellCauseCycle(board, candidate.head, ctx.reachable)
+                    || WouldCellCauseCycle(board, candidate.next, ctx.reachable)
+                )
+                {
+                    SwapRemove(candidates, headIndex);
+                    continue;
+                }
             }
 
             List<Cell> tail = CompleteArrowTail(
@@ -115,11 +156,12 @@ public static class BoardGeneration
                 candidate,
                 random,
                 deadEndLimit,
-                reachable
+                ctx.reachable,
+                ctx
             );
             if (tail.Count < MinArrowLength)
             {
-                candidates.RemoveAt(headIndex);
+                SwapRemove(candidates, headIndex);
                 continue;
             }
 
@@ -136,14 +178,25 @@ public static class BoardGeneration
         ArrowHeadData headData,
         Random random,
         int deadEndLimit,
-        HashSet<Arrow> reachable
+        ulong[] reachable,
+        GenerationContext ctx
     )
     {
-        List<Cell> path = new(targetLength) { headData.head, headData.next };
-        HashSet<Cell> visited = new(path);
-        List<Cell> best = new(targetLength);
+        var path = ctx.path;
+        var best = ctx.best;
+        var visited = ctx.visited;
+
+        path.Clear();
+        path.Add(headData.head);
+        path.Add(headData.next);
+
+        best.Clear();
         best.Add(headData.head);
         best.Add(headData.next);
+
+        visited[headData.head.X, headData.head.Y] = true;
+        visited[headData.next.X, headData.next.Y] = true;
+
         int deadEnds = 0;
 
         void Dfs(Cell current)
@@ -162,9 +215,10 @@ public static class BoardGeneration
             Shuffle(neighbors, random);
             foreach (Cell neighbor in neighbors)
             {
-                if (visited.Contains(neighbor))
+                if (neighbor.X < 0 || neighbor.X >= board.Width
+                    || neighbor.Y < 0 || neighbor.Y >= board.Height)
                     continue;
-                if (!board.Contains(neighbor))
+                if (visited[neighbor.X, neighbor.Y])
                     continue;
                 if (Board.IsInRay(neighbor, headData.head, headData.direction))
                     continue;
@@ -174,7 +228,7 @@ public static class BoardGeneration
                     continue;
 
                 path.Add(neighbor);
-                visited.Add(neighbor);
+                visited[neighbor.X, neighbor.Y] = true;
                 if (path.Count > best.Count)
                 {
                     best.Clear();
@@ -185,7 +239,7 @@ public static class BoardGeneration
                 if (best.Count == targetLength || deadEnds >= deadEndLimit)
                     return;
 
-                visited.Remove(neighbor);
+                visited[neighbor.X, neighbor.Y] = false;
                 path.RemoveAt(path.Count - 1);
             }
 
@@ -194,56 +248,104 @@ public static class BoardGeneration
         }
 
         Dfs(headData.next);
-        return best;
+
+        // Clean up visited grid (handles both normal backtrack and early exit)
+        foreach (Cell c in path)
+            visited[c.X, c.Y] = false;
+
+        // Return a copy since best is pooled and will be reused
+        return new List<Cell>(best);
     }
 
-    /// <summary>Collects all distinct arrows in the forward ray from <paramref name="head"/> in <paramref name="direction"/>.</summary>
-    private static HashSet<Arrow> ComputeForwardDeps(
+    /// <summary>Collects all distinct arrows in the forward ray, storing them in the bitset. Returns the count.</summary>
+    private static int ComputeForwardDeps(
         Board board,
         Cell head,
-        Arrow.Direction direction
+        Arrow.Direction direction,
+        ulong[] depsBitset
     )
     {
-        var deps = new HashSet<Arrow>();
+        int count = 0;
         (int dx, int dy) = Arrow.GetDirectionStep(direction);
         Cell cursor = new(head.X + dx, head.Y + dy);
         while (board.Contains(cursor))
         {
             Arrow hit = board.GetArrowAt(cursor);
             if (hit != null)
-                deps.Add(hit);
+            {
+                int idx = hit._generationIndex;
+                if (idx >= 0)
+                {
+                    int word = idx >> 6;
+                    ulong bit = 1UL << (idx & 63);
+                    if ((depsBitset[word] & bit) == 0)
+                    {
+                        depsBitset[word] |= bit;
+                        count++;
+                    }
+                }
+            }
             cursor = new(cursor.X + dx, cursor.Y + dy);
         }
-        return deps;
+        return count;
     }
 
-    /// <summary>BFS from <paramref name="startSet"/> through committed dependsOn edges. Returns all transitively reachable arrows.</summary>
-    private static HashSet<Arrow> ComputeReachableSet(Board board, HashSet<Arrow> startSet)
+    /// <summary>BFS from <paramref name="startBits"/> through committed dependsOn edges using bitsets.</summary>
+    private static void ComputeReachableSet(
+        Board board,
+        ulong[] startBits,
+        ulong[] reachable,
+        GenerationContext ctx
+    )
     {
-        var reachable = new HashSet<Arrow>(startSet);
-        var queue = new Queue<Arrow>(startSet);
-        while (queue.Count > 0)
+        int words = ctx.bitsetWords;
+        var queue = ctx.bfsQueue;
+        queue.Clear();
+
+        // Initialize reachable with start set and enqueue all set bits
+        for (int w = 0; w < words; w++)
         {
-            Arrow current = queue.Dequeue();
-            foreach (Arrow dep in board.GetDependencies(current))
+            reachable[w] = startBits[w];
+            ulong bits = startBits[w];
+            while (bits != 0)
             {
-                if (reachable.Add(dep))
-                    queue.Enqueue(dep);
+                int bit = Ctz64(bits);
+                queue.Enqueue((w << 6) | bit);
+                bits &= bits - 1;
             }
         }
-        return reachable;
+
+        // BFS: for each reachable arrow, OR in its deps and enqueue newly discovered arrows
+        while (queue.Count > 0)
+        {
+            int idx = queue.Dequeue();
+            int offset = idx * words;
+            ulong[] depsBits = board._depsBitsFlat;
+            for (int w = 0; w < words; w++)
+            {
+                ulong newBits = depsBits[offset + w] & ~reachable[w];
+                if (newBits != 0)
+                {
+                    reachable[w] |= newBits;
+                    ulong scan = newBits;
+                    while (scan != 0)
+                    {
+                        int bit = Ctz64(scan);
+                        queue.Enqueue((w << 6) | bit);
+                        scan &= scan - 1;
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>
     /// Returns true if placing a candidate cell at <paramref name="cell"/> would create a cycle.
-    /// A cycle exists when an existing arrow whose ray crosses the cell is already in the
-    /// candidate's transitive dependency set — meaning the candidate would depend on that arrow
-    /// (through forward deps) while that arrow simultaneously depends on the candidate.
-    /// Uses the board's spatial ray index for O(crossing) lookup instead of O(N) scan.
+    /// Uses bitset-based reachable set for O(1) per-arrow membership tests.
     /// </summary>
-    private static bool WouldCellCauseCycle(Board board, Cell cell, HashSet<Arrow> reachable)
+    private static bool WouldCellCauseCycle(Board board, Cell cell, ulong[] reachable)
     {
-        return board.AnyArrowWithRayThroughMatches(cell, reachable);
+        return board.AnyArrowWithRayThroughBitset(cell, reachable);
     }
 
     private static Cell[] GetNeighbors(Cell cell)
@@ -267,6 +369,32 @@ public static class BoardGeneration
             (array[n], array[k]) = (array[k], array[n]);
         }
     }
+
+    /// <summary>Swap-and-pop removal: O(1) instead of O(N) list shift.</summary>
+    private static void SwapRemove(List<ArrowHeadData> list, int index)
+    {
+        int last = list.Count - 1;
+        if (index != last)
+            list[index] = list[last];
+        list.RemoveAt(last);
+    }
+
+    /// <summary>Count trailing zeros in a 64-bit value (position of lowest set bit).</summary>
+    private static int Ctz64(ulong value)
+    {
+        // De Bruijn method for 64-bit
+        if (value == 0) return 64;
+        ulong isolated = value & (ulong)(-(long)value); // isolate lowest set bit
+        return DeBruijn64Tab[(isolated * 0x03F79D71B4CA8B09UL) >> 58];
+    }
+
+    private static readonly int[] DeBruijn64Tab =
+    {
+         0,  1, 56,  2, 57, 49, 28,  3, 61, 58, 42, 50, 38, 29, 17,  4,
+        62, 47, 59, 36, 45, 43, 51, 22, 53, 39, 33, 30, 24, 18, 12,  5,
+        63, 55, 48, 27, 60, 41, 37, 16, 46, 35, 44, 21, 52, 32, 23, 11,
+        54, 26, 40, 15, 34, 20, 31, 10, 25, 14, 19,  9, 13,  8,  7,  6,
+    };
 }
 
 sealed class ArrowHeadData

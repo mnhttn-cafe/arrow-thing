@@ -19,7 +19,11 @@ public sealed class Board
 
     // Generation candidate pool (null until InitializeForGeneration)
     internal List<ArrowHeadData> _availableArrowHeads;
-    internal List<ArrowHeadData>[,] _candidateLookup;
+
+    // Bitset-based dependency storage for generation (null until InitializeForGeneration)
+    internal int _bitsetWords;
+    internal ulong[] _depsBitsFlat; // [arrowIndex * _bitsetWords + word]
+    internal int _nextGenIndex;
 
     public IReadOnlyList<Arrow> Arrows => _arrows;
     public int Width { get; }
@@ -58,12 +62,13 @@ public sealed class Board
 
     public void InitializeForGeneration()
     {
-        _candidateLookup = new List<ArrowHeadData>[Width, Height];
-        for (int x = 0; x < Width; x++)
-        for (int y = 0; y < Height; y++)
-            _candidateLookup[x, y] = new List<ArrowHeadData>();
         _availableArrowHeads = CreateInitialArrowHeads();
         InitialCandidateCount = _availableArrowHeads.Count;
+
+        int maxArrows = Width * Height / 2;
+        _bitsetWords = (maxArrows + 63) >> 6;
+        _depsBitsFlat = new ulong[maxArrows * _bitsetWords];
+        _nextGenIndex = 0;
     }
 
     /// <summary>
@@ -130,6 +135,10 @@ public sealed class Board
                 );
         }
 
+        // Assign generation index if generation is active
+        if (_depsBitsFlat != null && arrow._generationIndex < 0)
+            arrow._generationIndex = _nextGenIndex++;
+
         // Set occupancy
         _arrows.Add(arrow);
         _arrowSet.Add(arrow);
@@ -151,6 +160,19 @@ public sealed class Board
         _dependsOn[arrow] = deps;
         foreach (Arrow dep in deps)
             _dependedOnBy[dep].Add(arrow);
+
+        // Update bitset deps for forward deps
+        if (_depsBitsFlat != null)
+        {
+            int nIdx = arrow._generationIndex;
+            int offset = nIdx * _bitsetWords;
+            foreach (Arrow dep in deps)
+            {
+                int dIdx = dep._generationIndex;
+                if (dIdx >= 0)
+                    _depsBitsFlat[offset + (dIdx >> 6)] |= 1UL << (dIdx & 63);
+            }
+        }
 
         // Reverse deps: existing arrows whose rays pass through this arrow's cells
         // Uses the spatial ray index for O(crossing) instead of O(N) scan.
@@ -175,20 +197,21 @@ public sealed class Board
         }
         _dependedOnBy[arrow] = revDeps;
 
+        // Update bitset deps for reverse deps
+        if (_depsBitsFlat != null)
+        {
+            int nIdx = arrow._generationIndex;
+            foreach (Arrow a in revDeps)
+            {
+                int aIdx = a._generationIndex;
+                if (aIdx >= 0)
+                    _depsBitsFlat[aIdx * _bitsetWords + (nIdx >> 6)] |= 1UL << (nIdx & 63);
+            }
+        }
+
         AddToRayIndex(arrow);
 
-        // Prune candidates whose head/next cell is now occupied
-        if (_candidateLookup != null)
-        {
-            HashSet<ArrowHeadData> toRemove = new();
-            foreach (Cell c in arrow.Cells)
-            {
-                foreach (ArrowHeadData stale in _candidateLookup[c.X, c.Y])
-                    toRemove.Add(stale);
-                _candidateLookup[c.X, c.Y].Clear();
-            }
-            _availableArrowHeads.RemoveAll(toRemove.Contains);
-        }
+        // Candidate pruning is handled lazily in TryGenerateArrow via occupancy checks
     }
 
     public void RemoveArrow(Arrow arrow)
@@ -313,25 +336,37 @@ public sealed class Board
 
     /// <summary>
     /// Returns true if any arrow whose forward ray passes through <paramref name="cell"/>
-    /// is contained in <paramref name="set"/>. Used by cycle detection during generation.
+    /// has its bit set in the <paramref name="bitset"/>. Used by cycle detection during generation.
     /// </summary>
-    internal bool AnyArrowWithRayThroughMatches(Cell cell, HashSet<Arrow> set)
+    internal bool AnyArrowWithRayThroughBitset(Cell cell, ulong[] bitset)
     {
         int cx = cell.X,
             cy = cell.Y;
 
         foreach (Arrow a in _rightHeadsByRow[cy])
-            if (a.HeadCell.X < cx && set.Contains(a))
+        {
+            int idx = a._generationIndex;
+            if (a.HeadCell.X < cx && idx >= 0 && (bitset[idx >> 6] & (1UL << (idx & 63))) != 0)
                 return true;
+        }
         foreach (Arrow a in _leftHeadsByRow[cy])
-            if (a.HeadCell.X > cx && set.Contains(a))
+        {
+            int idx = a._generationIndex;
+            if (a.HeadCell.X > cx && idx >= 0 && (bitset[idx >> 6] & (1UL << (idx & 63))) != 0)
                 return true;
+        }
         foreach (Arrow a in _upHeadsByCol[cx])
-            if (a.HeadCell.Y < cy && set.Contains(a))
+        {
+            int idx = a._generationIndex;
+            if (a.HeadCell.Y < cy && idx >= 0 && (bitset[idx >> 6] & (1UL << (idx & 63))) != 0)
                 return true;
+        }
         foreach (Arrow a in _downHeadsByCol[cx])
-            if (a.HeadCell.Y > cy && set.Contains(a))
+        {
+            int idx = a._generationIndex;
+            if (a.HeadCell.Y > cy && idx >= 0 && (bitset[idx >> 6] & (1UL << (idx & 63))) != 0)
                 return true;
+        }
 
         return false;
     }
@@ -340,16 +375,9 @@ public sealed class Board
     {
         List<ArrowHeadData> arrowHeads = new();
 
-        void Add(ArrowHeadData candidate)
-        {
-            arrowHeads.Add(candidate);
-            _candidateLookup[candidate.head.X, candidate.head.Y].Add(candidate);
-            _candidateLookup[candidate.next.X, candidate.next.Y].Add(candidate);
-        }
-
         for (int x = 0; x < Width - 1; x++)
         for (int y = 0; y < Height; y++)
-            Add(
+            arrowHeads.Add(
                 new ArrowHeadData
                 {
                     head = new(x + 1, y),
@@ -360,7 +388,7 @@ public sealed class Board
 
         for (int x = 0; x < Width - 1; x++)
         for (int y = 0; y < Height; y++)
-            Add(
+            arrowHeads.Add(
                 new ArrowHeadData
                 {
                     head = new(x, y),
@@ -371,7 +399,7 @@ public sealed class Board
 
         for (int x = 0; x < Width; x++)
         for (int y = 0; y < Height - 1; y++)
-            Add(
+            arrowHeads.Add(
                 new ArrowHeadData
                 {
                     head = new(x, y + 1),
@@ -382,7 +410,7 @@ public sealed class Board
 
         for (int x = 0; x < Width; x++)
         for (int y = 0; y < Height - 1; y++)
-            Add(
+            arrowHeads.Add(
                 new ArrowHeadData
                 {
                     head = new(x, y),

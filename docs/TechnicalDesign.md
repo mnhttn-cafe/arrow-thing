@@ -58,8 +58,8 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - `GetArrowAt(Cell)` returns the arrow occupying a cell, or null.
 - `IsClearable(Arrow)` returns true when the arrow's dependency set is empty (O(1)).
 - `IsInRay(Cell, Cell, Direction)` is a public static helper for ray geometry.
-- `InitializeForGeneration()` creates the candidate pool for arrow generation. The candidate lookup matrix is initialized first, then `CreateInitialArrowHeads` populates both the candidate list and lookup in a single pass. Only needed when generating, not for deserialized boards.
-- `AnyArrowWithRayThroughMatches(Cell, HashSet<Arrow>)` — internal query used by cycle detection during generation. Uses the spatial ray index to find arrows whose forward ray crosses a cell in O(crossing) instead of O(N).
+- `InitializeForGeneration()` creates the candidate pool and bitset dependency storage for arrow generation. Allocates `_depsBitsFlat` (flat `ulong[]` for bitset-based BFS) and populates `_availableArrowHeads`. Only needed when generating, not for deserialized boards.
+- `AnyArrowWithRayThroughBitset(Cell, ulong[])` — internal query used by cycle detection during generation. Uses the spatial ray index to find arrows whose forward ray crosses a cell, testing membership via O(1) bit-check against a `ulong[]` bitset instead of `HashSet.Contains`.
 - `RestoreArrowsIncremental(IReadOnlyList<Arrow>)` — coroutine for restoring a saved board from a snapshot. Phase 1 places arrows into occupancy and ray index (yielding after each for progress reporting). Phase 2 builds the dependency graph in one forward-ray pass (yielding after each arrow). Much faster than calling `AddArrow` individually because it avoids the per-arrow reverse-dependency scan.
 
 ### `GameTimer` (`sealed class`)
