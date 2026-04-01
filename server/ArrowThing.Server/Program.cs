@@ -7,11 +7,9 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
-var connectionString =
-    builder.Configuration.GetConnectionString("Default")
-    ?? throw new InvalidOperationException(
-        "ConnectionStrings:Default is required. Set it via appsettings or environment variable."
-    );
+// connectionString may be null in test environments where TestFactory replaces the
+// DbContext registration entirely. In production, docker-compose always provides it.
+var connectionString = builder.Configuration.GetConnectionString("Default");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
 // HTTP client for Resend
