@@ -7,18 +7,12 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
-var connectionString = builder.Configuration.GetConnectionString("Default");
-if (connectionString != null)
-{
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
-}
-else
-{
-    // Dev/test fallback: SQLite
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlite("Data Source=arrowthing.db")
+var connectionString =
+    builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException(
+        "ConnectionStrings:Default is required. Set it via appsettings or environment variable."
     );
-}
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
 // HTTP client for Resend
 builder.Services.AddHttpClient();
