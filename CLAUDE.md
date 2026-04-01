@@ -41,6 +41,17 @@ View layer scripts live in `Assets/Scripts/View/`:
 - **`LeaderboardManager`** — singleton (view layer), auto-bootstraps via `RuntimeInitializeOnLoadMethod`, persists across scenes via `DontDestroyOnLoad`. Wraps `LeaderboardStore` with file I/O: index at `leaderboard.json`, replays as GZip-compressed JSON at `replays/{gameId}.json.gz`. `RecordResult`, `LoadReplay`, `IsPersonalBest`, `SetFavorite`, `RemoveEntry`.
 - **`LeaderboardScreenController`** — scene entry point for the Leaderboard scene. 5 size tabs, 3 sort modes, Local/Global toggle, scrollable entry list with context menu, favorite toggle, replay launch, auto-scroll via `GameSettings.LeaderboardFocusGameId`.
 - **`ReplayViewController`** — scene entry point for the Replay scene. Restores board from snapshot, drives frame-based playback via `ReplayPlayer`. Supports seek, speed cycling, play/pause, controls bar toggle, and clearable highlighting.
+- **`SettingsController`** — self-contained MonoBehaviour for the settings panel. Works in any scene — attach alongside each scene's UIDocument. Wires drag threshold/zoom speed sliders, arrow coloring toggle, theme dropdown, sidebar nav, clear-scores and external-link confirmation modals, and keyboard shortcut. Creates `AccountManager` internally.
+- **`ThemeManager`** — static class bootstrapped at `BeforeSceneLoad`. Loads `ThemeRegistry` from Resources, restores saved theme from PlayerPrefs. `Apply(VisualSettings)` fires `ThemeChanged` for runtime theme switching.
+- **`ThemeRegistry`** — `ScriptableObject` at `Resources/ThemeRegistry`. Lists all available `VisualSettings` theme assets and designates a default.
+- **`UIThemeApplier`** — `[RequireComponent(typeof(UIDocument))]` MonoBehaviour. Subscribes to `ThemeManager.ThemeChanged` and hot-swaps the active USS theme stylesheet. Attach to every UIDocument GameObject.
+- **`CustomDropdown`** — custom UI Toolkit dropdown that builds its own popup injected into `panel.visualTree`. Used for theme selector.
+- **`ConfirmModal`** — reusable UI Toolkit wrapper for confirm/cancel modals. Used by all confirmation dialogs in the project.
+- **`EditableLabel`** — inline-edit UI component: Label with edit icon, switches to TextField with save/cancel. Used for display name editing.
+- **`LabeledField`** — labeled TextField wrapper with bold label above input. Used for `AccountManager` form fields.
+- **`ExternalLinks`** — static class for WebGL-safe URL opening with confirmation modal. Raises `LinkRequested` event on WebGL.
+- **`AccountManager`** — manages account forms in the settings panel: login, register, verify, forgot/reset password, change email/password, display name editing.
+- **`ApiClient`** — HTTP client wrapper for server API. Attaches JWT, handles errors, stores auth state in PlayerPrefs.
 - **`TapIndicator`** / **`TapIndicatorPool`** — expanding/fading ring indicators shown during replay playback. Pool of 10; procedural ring sprite (no asset file). White for clears, red for rejects.
 
 ## Core Types (`Assets/Scripts/Domain/Models/`)
@@ -63,7 +74,7 @@ Static class, purely algorithmic — all persistent state lives on `Board`. Key 
 
 ## Testing
 
-Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, full solvability verification (50 seeds + counterexample), external AddArrow compatibility, and a 100-iteration timing gate; leaderboard store (add/get/sort/cap/favorites/personal best/neighbor entries/serialization); replay player (advance/seek/speed/boundary conditions). Explicit perf tests include multi-seed solvability stress tests (500×10x10, 100×20x20, 20×50x50). PlayMode UI layout tests cover 21 UI states across 5 aspect ratios (105 test cases) in `Assets/Tests/PlayMode/UILayoutTests.cs`. Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
+Tests use Unity Test Framework (NUnit) in `Assets/Tests/EditMode/`. Run via Unity's **Test Runner** window (Window > General > Test Runner, EditMode tab). Performance tests are marked `[Explicit]` and only run when manually selected. Coverage: head-direction derivation, `GetDirectionStep`, `Board` mutation/bounds, generation correctness, determinism under fixed seeds, no-overlap, min-length enforcement, no-tail-in-own-ray, full solvability verification (50 seeds + counterexample), external AddArrow compatibility, and a 100-iteration timing gate; leaderboard store (add/get/sort/cap/favorites/personal best/neighbor entries/serialization); replay player (advance/seek/speed/boundary conditions). Explicit perf tests include multi-seed solvability stress tests (500×10x10, 100×20x20, 20×50x50). PlayMode UI layout tests cover 21 UI states across 5 aspect ratios (105 test cases) in `Assets/Tests/PlayMode/UILayout/` (split across `MainMenuLayoutTests`, `GameHudLayoutTests`, `VictoryLayoutTests`, `LeaderboardLayoutTests`, `ReplayHudLayoutTests`). Additional PlayMode tests: `ApiClientTests`, `GameTimerViewTests`. Server integration tests (xUnit) in `server/ArrowThing.Server.Tests/`. Unity C# is version 9.0 — avoid C# 12+ features like collection expressions.
 
 ## Feature Workflow
 
@@ -79,7 +90,7 @@ New features follow a three-phase workflow:
 Before committing or opening a PR, verify changes abide by `CONTRIBUTING.md`:
 
 - Unity-independent domain classes have NUnit test coverage in `Assets/Tests/EditMode/`.
-- UI changes (UXML/USS) are reflected in PlayMode layout tests in `Assets/Tests/PlayMode/UILayoutTests.cs` — add new elements to the relevant `AssertElements` call.
+- UI changes (UXML/USS) are reflected in PlayMode layout tests in `Assets/Tests/PlayMode/UILayout/` — add new elements to the relevant `AssertElements` call in the appropriate test class.
 - `docs/TechnicalDesign.md` is updated if architecture or class structure changed.
 - `docs/TODO.md` is deleted before the PR is merge-ready.
 - No docs inconsistencies introduced.

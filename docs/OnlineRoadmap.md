@@ -23,7 +23,7 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 
 ### VPS Hosting
 
-**Provider**: Hetzner Cloud CCX13 — 2 dedicated vCPU (AMD), 8 GB RAM, 80 GB SSD, ~$14.49/mo ($19.99/mo after April 1 2026 price adjustment). Ashburn (US East) datacenter. IPv6-only (no IPv4 add-on); Cloudflare proxy provides IPv4 reachability for clients.
+**Provider**: Hetzner Cloud CCX13 — 2 dedicated vCPU (AMD), 8 GB RAM, 80 GB SSD, ~$19.99/mo. Ashburn (US East) datacenter. IPv6-only (no IPv4 add-on); Cloudflare proxy provides IPv4 reachability for clients.
 
 **Stack**: Docker Compose (ASP.NET API + PostgreSQL) behind Nginx reverse proxy, fronted by Cloudflare for TLS termination, IPv4→IPv6 translation, and DDoS protection.
 
@@ -260,7 +260,7 @@ server/
 │       ├── Score.cs             # Id, UserId, GameId, Time, Seed, BoardConfig, Verified, CreatedAt (planned)
 │       └── BoardConfig.cs       # Width, Height (value object for partitioning) (planned)
 ├── ArrowThing.Domain/           # Shared domain code (netstandard2.1, C# 9)
-└── ArrowThing.Server.Tests/     # xUnit integration tests (37 auth tests)
+└── ArrowThing.Server.Tests/     # xUnit integration tests (37 auth + 1 health check)
 ```
 
 ### API Endpoints
@@ -406,8 +406,8 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 | `TapIndicator` | View | Done | Expanding/fading ring at tap position during replay |
 | `TapIndicatorPool` | View | Done | Object pool for tap indicators with procedural ring sprite |
 | `ReplayVerifier` | Domain | Planned | Simulates replay for server-side verification |
-| `ApiClient` | View | Done | HTTP client, JWT attachment, all auth endpoints (register/login/me/display name/forgot password/resend verification/change email), token storage in PlayerPrefs |
-| `AccountManager` | View | Done | Full-screen account panel with 6 forms (login/register/verify/forgot password/account info/change email), masked email display |
+| `ApiClient` | View | Done | HTTP client, JWT attachment, all auth endpoints (register/login/me/display name/forgot password/reset password/resend verification/change email/confirm email change/change password), token storage in PlayerPrefs |
+| `AccountManager` | View | Done | Account panel with 10 forms (login/register/verify code/forgot password/reset password/account info/change email/confirm email code/change password/change display name) |
 | `ConfirmModal` | View | Done | Reusable confirm modal wrapper (configures ConfirmModal.uxml template) |
 | `OnlineController` | View | Planned | Coordinates online flow (request game → play → submit) |
 | `ServerHealthCheck` | Editor | Done | Editor menu item (Tools > Arrow Thing) to test server connectivity |
@@ -431,7 +431,7 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 ### Automated (NUnit EditMode)
 - `ReplayVerifier`: valid replays pass, invalid replays (wrong cell, skipped arrow, bad order) fail
 
-### Automated (Server Integration — 32 tests)
+### Automated (Server Integration — 38 tests)
 - Auth: register, login (email-based), duplicate email rejection, validation errors
 - Auth: display name change (`PATCH /api/auth/me`), `GET /api/auth/me`
 - Email verification: verify token, resend with rate limiting
