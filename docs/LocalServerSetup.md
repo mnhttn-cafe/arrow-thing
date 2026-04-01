@@ -5,6 +5,7 @@ How to run the Arrow Thing server locally for development and testing.
 ## Prerequisites
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- PostgreSQL (local instance or Docker)
 - `dotnet-ef` CLI tool (for migrations):
   ```
   dotnet tool install --global dotnet-ef
@@ -12,16 +13,31 @@ How to run the Arrow Thing server locally for development and testing.
 
 ## Quick Start
 
-From the `server/` directory:
+Start a local PostgreSQL instance (Docker is easiest):
+
+```bash
+docker run --name arrowthing-dev \
+  -e POSTGRES_PASSWORD=dev \
+  -e POSTGRES_DB=arrowthing \
+  -p 5432:5432 -d postgres:16-alpine
+```
+
+Set the connection string via user secrets:
+
+```bash
+cd server/ArrowThing.Server
+dotnet user-secrets set "ConnectionStrings:Default" \
+  "Host=localhost;Database=arrowthing;Username=postgres;Password=dev"
+```
+
+Then run from the `server/` directory:
 
 ```bash
 cd server
 dotnet run --project ArrowThing.Server
 ```
 
-The server starts at **http://localhost:5000** by default.
-
-When no `ConnectionStrings:Default` is configured (the default for local dev), the server uses **SQLite** and creates `arrowthing.db` in the project directory. Migrations are applied automatically on startup — no manual migration step is needed.
+The server starts at **http://localhost:5000**. Migrations are applied automatically on startup.
 
 ## Configuration
 
@@ -58,12 +74,9 @@ dotnet user-secrets set "Admin:ApiKey" "any-secret-key"
 
 ### Database
 
-| Environment | Provider | Config |
-|---|---|---|
-| Local dev | SQLite | Automatic — no config needed |
-| Production | PostgreSQL | Set `ConnectionStrings:Default` |
+Both local dev and production use PostgreSQL. Set the connection string via user secrets (see Quick Start) or any other [ASP.NET Core configuration source](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration).
 
-To reset the local database, delete `server/ArrowThing.Server/arrowthing.db` and restart.
+To reset the local database, drop and recreate it in PostgreSQL, then restart the server (migrations re-run on startup).
 
 ## Running Tests
 
@@ -72,7 +85,7 @@ cd server
 dotnet test
 ```
 
-Tests use an **in-memory SQLite** database and a **fake email service** via `TestFactory` — they don't touch your local `arrowthing.db` or send real emails.
+Tests use **Testcontainers** to spin up a throwaway `postgres:16-alpine` container and a **fake email service** via `TestFactory` — they don't touch your local database or send real emails. Docker must be running.
 
 ## Unity Client → Local Server
 
@@ -201,6 +214,8 @@ curl -X POST http://localhost:5000/api/admin/lock-account \
 ## EF Core Migrations
 
 Migrations live in `server/ArrowThing.Server/Migrations/` and are applied automatically on startup. To create a new migration after changing `AppDbContext` or models:
+
+The connection string must point to PostgreSQL when generating migrations (not the SQLite fallback) so the snapshot reflects the correct column types. With user secrets configured, this works automatically:
 
 ```bash
 cd server
