@@ -9,6 +9,8 @@ public class AuthService
     private static readonly TimeSpan VerificationCodeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan PasswordResetCodeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan EmailCooldown = TimeSpan.FromMinutes(5);
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan LoginLockoutDuration = TimeSpan.FromMinutes(15);
 
     private readonly AppDbContext _db;
     private readonly JwtHelper _jwt;
@@ -61,7 +63,7 @@ public class AuthService
         }
 
         // Generate 6-digit verification code
-        var code = GenerateVerificationCode();
+        var code = PasswordHasher.GenerateSecureCode();
 
         var user = new User
         {
@@ -70,7 +72,7 @@ public class AuthService
             DisplayName = request.DisplayName,
             PasswordHash = PasswordHasher.Hash(request.Password),
             CreatedAt = DateTime.UtcNow,
-            VerificationCode = code,
+            VerificationCode = PasswordHasher.HashOtp(code),
             VerificationCodeExpiresAt = DateTime.UtcNow.Add(VerificationCodeLifetime),
             LastVerificationEmailAt = DateTime.UtcNow,
         };
@@ -109,15 +111,43 @@ public class AuthService
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
+        // Check temporary lockout from failed attempts
+        if (user != null && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow)
+            return (null, 429, "Too many failed attempts. Please try again later.");
+
         if (
             user == null
             || !PasswordHasher.Verify(request.Password, user.PasswordHash)
             || !user.IsEmailVerified
         )
+        {
+            // Track failed attempts for existing users
+            if (user != null)
+            {
+                // Reset counter if lockout has expired
+                if (user.LockoutEnd.HasValue && user.LockoutEnd.Value <= DateTime.UtcNow)
+                    user.FailedLoginAttempts = 0;
+
+                user.FailedLoginAttempts++;
+                if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
+                    user.LockoutEnd = DateTime.UtcNow.Add(LoginLockoutDuration);
+
+                await _db.SaveChangesAsync();
+            }
+
             return (null, 401, "Invalid email or password.");
+        }
 
         if (user.IsLocked)
             return (null, 403, "Account is locked. Please contact support on Discord.");
+
+        // Reset failed attempts on successful login
+        if (user.FailedLoginAttempts > 0)
+        {
+            user.FailedLoginAttempts = 0;
+            user.LockoutEnd = null;
+            await _db.SaveChangesAsync();
+        }
 
         var token = _jwt.GenerateToken(user);
         return (new AuthResponse(token, user.DisplayName), 200, null);
@@ -196,7 +226,7 @@ public class AuthService
             return (null, 400, "Verification code has expired. Please request a new one.");
         }
 
-        if (user.VerificationCode != request.Code.Trim())
+        if (!PasswordHasher.VerifyOtp(request.Code.Trim(), user.VerificationCode))
             return (null, 400, "Invalid or expired verification code.");
 
         user.EmailVerifiedAt = DateTime.UtcNow;
@@ -234,8 +264,8 @@ public class AuthService
         )
             return (null, 429, "Please wait a few minutes before requesting another code.");
 
-        var code = GenerateVerificationCode();
-        user.VerificationCode = code;
+        var code = PasswordHasher.GenerateSecureCode();
+        user.VerificationCode = PasswordHasher.HashOtp(code);
         user.VerificationCodeExpiresAt = DateTime.UtcNow.Add(VerificationCodeLifetime);
         user.LastVerificationEmailAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -278,8 +308,8 @@ public class AuthService
         )
             return (null, 429, "Please wait a few minutes before requesting another reset.");
 
-        var code = GenerateVerificationCode();
-        user.PasswordResetCode = code;
+        var code = PasswordHasher.GenerateSecureCode();
+        user.PasswordResetCode = PasswordHasher.HashOtp(code);
         user.PasswordResetCodeExpiresAt = DateTime.UtcNow.Add(PasswordResetCodeLifetime);
         user.LastPasswordResetEmailAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -322,12 +352,14 @@ public class AuthService
             return (null, 400, "Reset code has expired. Please request a new one.");
         }
 
-        if (user.PasswordResetCode != request.Code.Trim())
+        if (!PasswordHasher.VerifyOtp(request.Code.Trim(), user.PasswordResetCode))
             return (null, 400, "Invalid or expired reset code.");
 
         user.PasswordHash = PasswordHasher.Hash(request.NewPassword);
         user.PasswordResetCode = null;
         user.PasswordResetCodeExpiresAt = null;
+        // Invalidate all existing sessions — critical for security when password is reset
+        user.SecurityStamp = Guid.NewGuid().ToString();
         await _db.SaveChangesAsync();
 
         return (new MessageResponse("Password has been reset. You can now log in."), 200, null);
@@ -356,13 +388,19 @@ public class AuthService
         if (normalizedNewEmail == user.Email)
             return (null, 400, "New email is the same as current email.");
 
+        // Silently accept even if email is taken — don't reveal existence to the requester.
+        // The confirmation step will catch the race condition anyway.
         if (await _db.Users.AnyAsync(u => u.Email == normalizedNewEmail))
-            return (null, 409, "An account with this email already exists.");
+            return (
+                new MessageResponse("A confirmation code has been sent to your new email address."),
+                200,
+                null
+            );
 
         // Generate confirmation code for the new email
-        var code = GenerateVerificationCode();
+        var code = PasswordHasher.GenerateSecureCode();
         user.PendingEmail = normalizedNewEmail;
-        user.PendingEmailCode = code;
+        user.PendingEmailCode = PasswordHasher.HashOtp(code);
         user.PendingEmailCodeExpiresAt = DateTime.UtcNow.Add(VerificationCodeLifetime);
         await _db.SaveChangesAsync();
 
@@ -422,7 +460,7 @@ public class AuthService
             return (null, 400, "Confirmation code has expired. Please request a new email change.");
         }
 
-        if (user.PendingEmailCode != request.Code.Trim())
+        if (!PasswordHasher.VerifyOtp(request.Code.Trim(), user.PendingEmailCode))
             return (null, 400, "Invalid or expired confirmation code.");
 
         // Check the new email hasn't been taken since the change was requested
@@ -507,8 +545,8 @@ public class AuthService
         user.LockedAt = null;
 
         // Generate a password reset code so the user can set a new password
-        var code = GenerateVerificationCode();
-        user.PasswordResetCode = code;
+        var code = PasswordHasher.GenerateSecureCode();
+        user.PasswordResetCode = PasswordHasher.HashOtp(code);
         user.PasswordResetCodeExpiresAt = DateTime.UtcNow.Add(PasswordResetCodeLifetime);
 
         await _db.SaveChangesAsync();
@@ -528,11 +566,6 @@ public class AuthService
             200,
             null
         );
-    }
-
-    private static string GenerateVerificationCode()
-    {
-        return Random.Shared.Next(100000, 999999).ToString();
     }
 
     private static bool IsValidEmail(string email)

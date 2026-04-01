@@ -784,4 +784,94 @@ public class AuthTests : IClassFixture<TestFactory>, IDisposable
         var response = await _client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    // -- Password Reset Invalidates Sessions --
+
+    [Fact]
+    public async Task ResetPassword_InvalidatesExistingSessions()
+    {
+        var auth = await RegisterAndVerifyAsync(
+            "reset-session@example.com",
+            "password123",
+            "Reset Session"
+        );
+
+        // Request password reset
+        await _client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new { email = "reset-session@example.com" }
+        );
+
+        var resetEmail = _factory.FakeEmail.SentEmails.FindLast(e =>
+            e.To == "reset-session@example.com" && e.Type == "reset"
+        );
+
+        // Reset the password
+        await _client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new
+            {
+                email = "reset-session@example.com",
+                code = resetEmail!.Token,
+                newPassword = "newpassword456",
+            }
+        );
+
+        // Old token should now be rejected (security stamp was bumped)
+        var meRequest = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        meRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        var meResponse = await _client.SendAsync(meRequest);
+        Assert.Equal(HttpStatusCode.Unauthorized, meResponse.StatusCode);
+    }
+
+    // -- Login Lockout --
+
+    [Fact]
+    public async Task Login_LocksOutAfterRepeatedFailures()
+    {
+        await RegisterAndVerifyAsync("lockout@example.com", "password123", "Lockout");
+
+        // Fail 5 times
+        for (var i = 0; i < 5; i++)
+        {
+            await _client.PostAsJsonAsync(
+                "/api/auth/login",
+                new { email = "lockout@example.com", password = "wrongpassword" }
+            );
+        }
+
+        // 6th attempt — even with correct password — should be rate-limited
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "lockout@example.com", password = "password123" }
+        );
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+    }
+
+    // -- Email Change Doesn't Leak Email Existence --
+
+    [Fact]
+    public async Task ChangeEmail_ToExistingEmail_Returns200NotEnumerable()
+    {
+        await RegisterAndVerifyAsync("existing@example.com", "password123", "Existing");
+        var auth = await RegisterAndVerifyAsync(
+            "changer2@example.com",
+            "password123",
+            "Changer2"
+        );
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/change-email")
+        {
+            Content = JsonContent.Create(
+                new { newEmail = "existing@example.com", currentPassword = "password123" }
+            ),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        var response = await _client.SendAsync(request);
+
+        // Should return 200 (not 409) to prevent email enumeration
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 }

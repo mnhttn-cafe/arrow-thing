@@ -25,7 +25,11 @@ public class User
     public DateTime? PasswordResetCodeExpiresAt { get; set; }
     public DateTime? LastPasswordResetEmailAt { get; set; }
 
-    // Account lock
+    // Failed login tracking
+    public int FailedLoginAttempts { get; set; }
+    public DateTime? LockoutEnd { get; set; }
+
+    // Account lock (admin-initiated)
     public DateTime? LockedAt { get; set; }
 
     public bool IsLocked => LockedAt.HasValue;
