@@ -1,18 +1,22 @@
 # Roadmap
 
-## Current State
+## Current State (v0.5)
 
 - **Arrow coloring** — implemented. `ArrowColoring.AssignColors()` in domain layer; `BoardView` applies palette colors after spawn.
 - **Replay recording** — implemented. `ReplayEvent`, `ReplayRecorder`, `ReplayData` exist in domain layer. Events are recorded during play and persisted in save files. Replay viewer built (see below). Server submission not yet built.
 - **Local saves / autosave** — implemented. Initial board snapshot persisted in save file; resumes without re-generation.
 - **Local leaderboards & personal best** — implemented. `LeaderboardStore` (domain) + `LeaderboardManager` (view) with per-config/global caps, favorites, 3 sort criteria. Dedicated leaderboard scene with 5 size tabs, Local/Global toggle. Victory screen records results, detects personal best.
 - **Replay viewer** — implemented. Dedicated scene with `ReplayViewController`, `ReplayPlayer` (domain), seek/speed/play-pause controls, tap indicators, clearable highlighting (electric cyan). Accessed via play button on leaderboard entries.
+- **Accounts & auth** — implemented. Email-based registration, login, verification, password reset, email/password change. JWT auth with SecurityStamp validation. Admin lock/unlock tooling. Account panel with 10-form flow in-game.
+- **Server** — implemented. ASP.NET Core 9 Minimal API, PostgreSQL, shared domain code via monorepo. Deployed via Docker Compose on Hetzner VPS behind Cloudflare. CD pipeline builds and deploys on release.
+- **UI theming** — implemented. CSS custom property system with runtime theme switching. 4 themes (Dark, Light, Dark Monochrome, Light Monochrome). Shared reusable UI component library.
+- **Server CD** — implemented. Docker image → GitHub Container Registry → SSH deploy to VPS. Health check on deploy. Discord release announcements.
 
 Versions are tagged when a coherent chunk of work lands, not on a fixed schedule.
 
 ---
 
-## Planned Features
+## Implemented Features
 
 ### Server Foundation
 
@@ -126,6 +130,8 @@ Email-based authentication with verification, password reset, and email change f
 - **`AccountManager`** (view layer) — manages 10 forms: login, register, verify code, forgot password, reset password, account info, change email, confirm email code, change password, change display name. Calls `GetMeAsync()` on account info show to refresh state. All forms clear fields on navigation.
 - **`ApiClient`** (view layer) — HTTP client wrapper. Attaches JWT. Handles errors. Stores token/display name/email verified in `PlayerPrefs`.
 - No separate "Online" gate — the game is always playable. Logged-in users automatically submit scores; logged-out users play offline.
+
+## Planned Features
 
 ### Server-Side Verification & Global Leaderboards
 

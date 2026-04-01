@@ -5,6 +5,7 @@
 - Genre: Minimalist puzzle, speed-clearing, competitive PvP (planned)
 - Platform(s): WebGL (primary, deployed via Cloudflare Pages); mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
+- Current Version: v0.5
 - Status: Active development. Playable at https://arrow-thing.com/
 - Last Updated: 2026-04-01
 
