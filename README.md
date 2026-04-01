@@ -11,12 +11,17 @@ Core pitch: clear winding grid-based arrows as fast as possible, then weaponize 
   - [`docs/GDD.md`](docs/GDD.md) (game design)
   - [`docs/TechnicalDesign.md`](docs/TechnicalDesign.md) (technical architecture and class structure)
   - [`docs/OnlineRoadmap.md`](docs/OnlineRoadmap.md) (online features plan)
+  - [`docs/BoardGeneration.md`](docs/BoardGeneration.md) (board generation algorithm)
+  - [`docs/LocalServerSetup.md`](docs/LocalServerSetup.md) (local server dev setup)
+  - [`docs/AndroidTesting.md`](docs/AndroidTesting.md) (Android testing guide)
 
 ## Tech Stack
 
 - Unity `6000.3.8f1`
 - C# domain logic under `Assets/Scripts/Domain`
-- NUnit tests via Unity Test Framework in `Assets/Tests/EditMode`
+- ASP.NET Core server under `server/` (shared domain code via monorepo)
+- NUnit tests via Unity Test Framework in `Assets/Tests/EditMode` and `Assets/Tests/PlayMode`
+- xUnit server integration tests in `server/ArrowThing.Server.Tests`
 
 ## Local Development
 
@@ -62,7 +67,11 @@ Git configuration (`.gitattributes`, `.gitignore`, git hooks) is based on [NYU G
 - `Assets/Scripts/Domain` - Core board/arrow domain logic
 - `Assets/Scripts/View` - Unity rendering, input, UI
 - `Assets/Tests/EditMode` - Unit tests (Unity Test Framework)
+- `Assets/Tests/PlayMode` - PlayMode tests (UI layout, API client)
+- `server/` - ASP.NET Core server (auth, shared domain code)
 - `docs/GDD.md` - Game design direction and scope
 - `docs/TechnicalDesign.md` - Architecture and class-structure decisions
 - `docs/OnlineRoadmap.md` - Online features plan
 - `docs/BoardGeneration.md` - Board generation algorithm
+- `docs/LocalServerSetup.md` - Local server development setup
+- `docs/AndroidTesting.md` - Android testing guide

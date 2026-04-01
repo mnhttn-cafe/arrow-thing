@@ -5,8 +5,9 @@
 - Genre: Minimalist puzzle, speed-clearing, competitive PvP (planned)
 - Platform(s): WebGL (primary, deployed via Cloudflare Pages); mobile gameplay works (touch/pinch) but UI needs a responsive scaling pass before shipping
 - Target Audience: Puzzle players who enjoy speed, pattern recognition, and competitive pressure
+- Current Version: v0.5
 - Status: Active development. Playable at https://arrow-thing.com/
-- Last Updated: 2026-03-19
+- Last Updated: 2026-04-01
 
 ## High Concept
 - One-sentence pitch: Clear winding grid-based arrows as fast as possible, then weaponize your speed against opponents by sending garbage.
@@ -79,9 +80,11 @@
   - Static framing is avoided for larger boards to reduce visual overload.
 
 ## Game States
-- Main menu (minimal)
-- In-game
-- Clear/victory screen
+- Main menu (mode select, settings, account panel)
+- In-game (with loading overlay, HUD, leave/save modals)
+- Clear/victory screen (personal best detection, leaderboard link)
+- Leaderboard (local/global, size tabs, sort modes, replay launch)
+- Replay viewer (seek, speed control, clearable highlighting)
 - Planned later:
   - PvP match countdown/start
   - Match result screen
@@ -172,10 +175,11 @@
   - Easier testing and determinism.
   - Cleaner multiplayer/server-authoritative migration path.
   - Easier multi-board rendering with minimal shared mutable state.
-- Scene structure (MVP):
-  - Minimal menu scene.
+- Scene structure:
+  - Main menu scene (mode select, settings, account panel).
   - Core gameplay scene.
-  - Clear/result UI state.
+  - Leaderboard scene.
+  - Replay viewer scene.
 - Key systems:
   - Board model and occupancy map.
   - Arrow model (cells + head direction).
@@ -194,12 +198,14 @@
 ## Production Scope
 
 ### Implemented
-  - Minimal start menu (UI Toolkit: Play/Mode Select/Settings, board-size presets).
+  - Main menu (UI Toolkit: Play/Mode Select/Settings, board-size presets).
   - Procedural arrow generation with solvability guarantee.
   - Core click/tap clear loop with success/fail animations.
   - Timer UI (inspection countdown + solve timer with input-precision final time).
-  - Victory screen (grid fade + victory popup with randomized messages, Play Again / Menu).
+  - Victory screen (grid fade + victory popup with randomized messages, personal best detection, Play Again / Menu / View Leaderboard).
   - WebGL deployment via Cloudflare Pages with CD pipeline.
+  - Server deployment via Docker to VPS with CD pipeline.
+  - Discord release announcements via CD pipeline.
   - Map-coloring arrow tinting (graph coloring for adjacent arrow readability).
   - XLarge preset (100×100) and custom board sizes (2–400).
   - Loading progress bar with percentage for large board generation.
@@ -211,10 +217,15 @@
   - Incremental board display during generation and restore.
   - Local leaderboards and personal best tracking with replay storage.
   - Replay viewer with seek, speed control, and clearable highlighting.
+  - CSS variable theming with runtime theme switching (4 themes).
+  - Shared UI component library (ConfirmModal, EditableLabel, LabeledField, SnapSlider, CustomDropdown, ExternalLinks).
+  - Settings panel as standalone component (reusable across scenes).
+  - Account system: email-based auth (register, login, verify, forgot/reset password, change email/password).
+  - ASP.NET Core server with shared domain code, JWT auth, PostgreSQL.
 
 ### Planned
   - Audio feedback for success/fail/clear.
-  - Online features (see [`docs/OnlineRoadmap.md`](OnlineRoadmap.md)): server, global leaderboards, accounts.
+  - Online features (see [`docs/OnlineRoadmap.md`](OnlineRoadmap.md)): global leaderboards, server-side replay verification.
   - PvP: real-time garbage mechanics, matchmaking.
 
 ### Non-goals (current)
@@ -241,3 +252,4 @@
 - 2026-03-16: Updated platform target to WebGL-first for MVP; mobile gameplay works but UI scaling deferred. Updated controls section accordingly.
 - 2026-03-16: MVP declared complete. Online roadmap documented in `OnlineRoadmap.md`.
 - 2026-03-19: Replaced version-based production scope with implemented/planned lists. Added save/resume, autosave, cancel generation modal, trajectory highlights, incremental board display to implemented list.
+- 2026-04-01: Updated implemented list with account system, server deployment, theme system, shared UI components, settings panel extraction, Discord announcements. Updated game states and scene structure to reflect current 4-scene layout. Updated planned list (accounts moved to implemented).
