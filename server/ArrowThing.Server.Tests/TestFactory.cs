@@ -1,22 +1,33 @@
 using ArrowThing.Server.Auth;
 using ArrowThing.Server.Data;
+using DotNet.Testcontainers.Builders;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Testcontainers.PostgreSql;
 
 namespace ArrowThing.Server.Tests;
 
-public class TestFactory : WebApplicationFactory<Program>
+public class TestFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private SqliteConnection? _connection;
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
+        .WithImage("postgres:16-alpine")
+        .Build();
 
     /// <summary>
     /// Emails captured by the fake EmailService during tests.
     /// </summary>
     public FakeEmailService FakeEmail { get; } = new();
+
+    public async Task InitializeAsync() => await _postgres.StartAsync();
+
+    public new async Task DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await _postgres.DisposeAsync();
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -26,6 +37,7 @@ public class TestFactory : WebApplicationFactory<Program>
                 config.AddInMemoryCollection(
                     new Dictionary<string, string?>
                     {
+                        ["ConnectionStrings:Default"] = _postgres.GetConnectionString(),
                         ["Jwt:Secret"] = "test-secret-that-is-at-least-32-bytes-long-for-hmac256!",
                         ["Resend:ApiKey"] = "re_test_fake_key",
                         ["Resend:FromAddress"] = "test@arrow-thing.com",
@@ -46,11 +58,9 @@ public class TestFactory : WebApplicationFactory<Program>
             if (descriptor != null)
                 services.Remove(descriptor);
 
-            // Use a shared SQLite in-memory database
-            _connection = new SqliteConnection("DataSource=:memory:");
-            _connection.Open();
-
-            services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(_postgres.GetConnectionString())
+            );
 
             // Replace IEmailService with fake
             var emailDescriptor = services.SingleOrDefault(d =>
@@ -61,12 +71,6 @@ public class TestFactory : WebApplicationFactory<Program>
 
             services.AddSingleton<IEmailService>(fakeEmail);
         });
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        _connection?.Dispose();
     }
 }
 

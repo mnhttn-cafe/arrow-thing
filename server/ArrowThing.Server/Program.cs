@@ -7,18 +7,10 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
+// connectionString may be null in test environments where TestFactory replaces the
+// DbContext registration entirely. In production, docker-compose always provides it.
 var connectionString = builder.Configuration.GetConnectionString("Default");
-if (connectionString != null)
-{
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
-}
-else
-{
-    // Dev/test fallback: SQLite
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlite("Data Source=arrowthing.db")
-    );
-}
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
 // HTTP client for Resend
 builder.Services.AddHttpClient();
