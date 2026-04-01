@@ -10,7 +10,7 @@ Describe what changed and why.
 ## Design and Docs
 
 - [ ] If architecture or class structure changed, I updated `docs/TechnicalDesign.md`.
-- [ ] If generator behavior changed, I updated `docs/BoardGenerationPlan.md` (high-level notes).
+- [ ] If generator behavior changed, I updated `docs/BoardGeneration.md`.
 - [ ] If I noticed a docs inconsistency I did not fix here, I called it out and opened/linked an issue.
 
 ## Scope
