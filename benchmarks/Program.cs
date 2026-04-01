@@ -68,7 +68,14 @@ class Program
         RunSolvabilityStress(50, 50, 20, 20);
     }
 
-    static void RunBenchmark(int w, int h, int maxLen, int iterations, string label, bool verbose = true)
+    static void RunBenchmark(
+        int w,
+        int h,
+        int maxLen,
+        int iterations,
+        string label,
+        bool verbose = true
+    )
     {
         var sw = Stopwatch.StartNew();
         int totalArrows = 0;
@@ -87,7 +94,9 @@ class Program
             double avgArrows = (double)totalArrows / iterations;
             double avgCells = (double)totalCells / iterations;
             double fillRate = avgCells / (w * h) * 100;
-            Console.WriteLine($"  {label}: {sw.ElapsedMilliseconds}ms total, {avgMs:F1}ms/board, {avgArrows:F0} arrows, {fillRate:F0}% fill");
+            Console.WriteLine(
+                $"  {label}: {sw.ElapsedMilliseconds}ms total, {avgMs:F1}ms/board, {avgArrows:F0} arrows, {fillRate:F0}% fill"
+            );
         }
     }
 
@@ -103,7 +112,9 @@ class Program
                 failures++;
         }
         sw.Stop();
-        Console.WriteLine($"  {seeds}x {w}x{h} maxLen={maxLen}: {(failures == 0 ? "ALL SOLVABLE" : $"{failures} FAILURES")}, {sw.ElapsedMilliseconds}ms");
+        Console.WriteLine(
+            $"  {seeds}x {w}x{h} maxLen={maxLen}: {(failures == 0 ? "ALL SOLVABLE" : $"{failures} FAILURES")}, {sw.ElapsedMilliseconds}ms"
+        );
     }
 
     static void FillBoard(Board board, int maxLen, Random random)
@@ -114,7 +125,8 @@ class Program
 
     static bool IsFullySolvable(Board board)
     {
-        if (board.Arrows.Count == 0) return false;
+        if (board.Arrows.Count == 0)
+            return false;
         // Make a copy to test solvability
         var testBoard = new Board(board.Width, board.Height);
         foreach (var arrow in board.Arrows)
@@ -131,7 +143,8 @@ class Program
                     break;
                 }
             }
-            if (toClear == null) return false;
+            if (toClear == null)
+                return false;
             testBoard.RemoveArrow(toClear);
         }
         return true;
