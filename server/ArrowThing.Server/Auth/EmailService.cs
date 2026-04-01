@@ -8,15 +8,13 @@ public class EmailService : IEmailService
 {
     private readonly HttpClient _http;
     private readonly string? _apiKey;
-    private readonly string _fromAddress;
+    private readonly string? _fromAddress;
 
     public EmailService(IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
         _http = httpClientFactory.CreateClient("Resend");
         _apiKey = configuration["Resend:ApiKey"];
-        _fromAddress =
-            configuration["Resend:FromAddress"]
-            ?? throw new InvalidOperationException("Resend:FromAddress is not configured.");
+        _fromAddress = configuration["Resend:FromAddress"];
     }
 
     public async Task SendVerificationCodeAsync(string toEmail, string code)
@@ -85,8 +83,10 @@ public class EmailService : IEmailService
 
     private async Task SendAsync(string to, string subject, string html)
     {
-        if (_apiKey == null)
-            throw new InvalidOperationException("Resend:ApiKey is not configured.");
+        if (_apiKey == null || _fromAddress == null)
+            throw new InvalidOperationException(
+                "Resend:ApiKey and Resend:FromAddress are not configured."
+            );
 
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
