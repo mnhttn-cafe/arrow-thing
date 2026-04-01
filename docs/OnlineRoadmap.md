@@ -21,7 +21,7 @@ Versions are tagged when a coherent chunk of work lands, not on a fixed schedule
 ### Server Foundation
 
 - **ASP.NET Core 9 Minimal API** — lightweight (~30-50 MB idle RAM in Docker), C#, shares domain code. Use Workstation GC in container (`<ServerGarbageCollection>false</ServerGarbageCollection>`) for lower memory on small VPS.
-- **Entity Framework Core** — ORM. PostgreSQL for production, SQLite for dev/testing.
+- **Entity Framework Core** — ORM. PostgreSQL everywhere (production and integration tests via Testcontainers). SQLite dropped.
 - **BCrypt** — password hashing.
 - **JWT** — stateless auth tokens.
 
@@ -65,7 +65,8 @@ Docker bypasses UFW for published ports — this is why only nginx has `ports:` 
 
 | Setting | Value |
 |---------|-------|
-| **DNS**: `api` AAAA | `2a01:4ff:f0:4178::1`, proxied |
+| **DNS**: `api` AAAA | `<vps-ipv6>`, proxied |
+| **DNS**: `api` A | `<vps-ipv4>`, proxied |
 | **DNS**: `@`, `www` | Cloudflare Pages (automatic) |
 | **Pages project** | `arrow-thing`, deployed via `cloudflare/wrangler-action@v3` |
 | **Pages custom domains** | `arrow-thing.com`, `www.arrow-thing.com` |
@@ -76,12 +77,14 @@ Docker bypasses UFW for published ports — this is why only nginx has `ports:` 
 | **Cache Rule** | `api.arrow-thing.com` → bypass cache |
 | **Rate Limiting Rule** | `/api/*` → block 10s after 60 req/10s per IP |
 
-**Hetzner Cloud Firewall**: inbound TCP 22, 80, 443 from any; default-allow outbound.
+**Hetzner Cloud Firewall**: inbound TCP 22, 80, 443 from any; default-allow outbound. Actual IPs are stored in `VPS_HOST` GitHub secret, not committed to the repo.
+
+Both an A (IPv4) and AAAA (IPv6) record point to the server. The A record is required because GitHub Actions runners are IPv4-only and need to reach the server for the post-deploy health check.
 
 #### CI/CD Deployment
 
 - **WebGL**: GitHub Actions builds Unity, deploys to Cloudflare Pages via Wrangler. Split into build + deploy jobs.
-- **API**: GitHub Actions workflow (to be created with server project). Build Docker image → push to `ghcr.io` → SSH to VPS → pull + `docker compose up -d api` → health check.
+- **API**: GitHub Actions workflow builds Docker image → pushes to `ghcr.io/vicplusplus/arrow-thing-api` → SSH to VPS → `docker compose up -d api` → health check with 6 retries.
 - **GitHub secrets**: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `DISCORD_WEBHOOK_URL`, `UNITY_EMAIL`, `UNITY_LICENSE`, `UNITY_PASSWORD`, `VPS_HOST`, `VPS_SSH_KEY`.
 
 #### Backups & Monitoring
@@ -135,7 +138,7 @@ Email-based authentication with verification, password reset, and email change f
 
 ### Server-Side Verification & Global Leaderboards
 
-Online flow: request game from server → play locally (recording events) → submit replay for verification → score appears on global leaderboard.
+Online flow: generate board locally (client always owns generation) → play, recording events → submit completed replay to server for verification → score appears on global leaderboard if verified. No server round-trip before play.
 
 **Known limitations** (acceptable for initial release, deferred to later):
 - **Bots/automation**: a bot could solve boards optimally. Mitigation deferred — statistical outlier detection is a future concern. The leaderboard is friendly competition, not a ranked ladder.
@@ -154,26 +157,22 @@ Real-time garbage mechanics, matchmaking. The replay viewer is essentially a liv
 ```
 Client                              Server
 ──────                              ──────
-1. Request board         ────────►  Generate seed, store pending game
-   (size preset)         ◄────────  Return { gameId, seed, width, height }
-   OR: server unreachable →
-       generate seed locally,
-       mark game as offline
+1. Generate board locally           (always local — no server round-trip)
+   from random seed
 
-2. Generate board locally           (deterministic — same seed = same board)
-   from seed
+2. Play game, record input
+   events: [{ seq, t, posX, posY }]
 
-3. Play game, record input
-   events: [{ seq, t, cell }]
+3. [online only, if logged in
+   and email verified]
+   Submit replay         ────────►  Regenerate board from seed + params
+   { replayJson }                   Simulate all clears in order
+                                    Verify: all clears valid, board empty,
+                                    timing within tolerance
+                         ◄────────  { verified, rank, isPersonalBest }
 
-4. [online only]
-   Submit replay         ────────►  Regenerate board from seed
-   { gameId, events }               Simulate all clears in order
-                                    Verify: all clears valid, board empty
-                         ◄────────  Accept/reject score
-
-5. View leaderboards    ────────►   Query by board config
-                         ◄────────  Return ranked entries
+4. View leaderboards    ────────►   Query by board config
+                         ◄────────  Return ranked entries (live display names)
 ```
 
 ### Why This Works
@@ -253,9 +252,8 @@ server/
 │   │   ├── JwtHelper.cs         # HMAC-SHA256 token generation + validation (SecurityStamp claim)
 │   │   ├── IEmailService.cs     # Email service interface
 │   │   └── EmailService.cs      # Resend HTTP API wrapper
-│   ├── Games/                   # (planned)
-│   │   ├── GameService.cs       # Create game, verify replay, submit score
-│   │   └── GameSession.cs       # Pending game tracking
+│   ├── Scores/                  # (planned)
+│   │   └── ScoreService.cs      # Verify replay, upsert personal best, manage snapshot strategy
 │   ├── Leaderboards/            # (planned)
 │   │   └── LeaderboardService.cs
 │   ├── Data/                    # (implemented)
@@ -263,8 +261,7 @@ server/
 │   │   └── Migrations/          # CreateUsers, AddEmailAndTokens, AddPendingEmailChange, RemoveUsername
 │   └── Models/                  # (implemented for User, planned for Score)
 │       ├── User.cs              # Id, Email, DisplayName, PasswordHash, SecurityStamp, verification/reset/email-change code fields, lock fields
-│       ├── Score.cs             # Id, UserId, GameId, Time, Seed, BoardConfig, Verified, CreatedAt (planned)
-│       └── BoardConfig.cs       # Width, Height (value object for partitioning) (planned)
+│       └── Score.cs             # Id, UserId, GameId, Seed, BoardWidth, BoardHeight, MaxArrowLength, DeadEndLimit, Time, ReplayJson (planned)
 ├── ArrowThing.Domain/           # Shared domain code (netstandard2.1, C# 9)
 └── ArrowThing.Server.Tests/     # xUnit integration tests (37 auth + 1 health check)
 ```
@@ -290,13 +287,14 @@ POST   /api/auth/confirm-email-change [auth] { email, code }         → { messa
 POST   /api/admin/lock-account   [admin] { email }                   → { message }                                     [implemented]
 POST   /api/admin/unlock-account [admin] { email }                   → { message }                                     [implemented]
 
-POST   /api/games                [auth] { width, height }           → { gameId, seed, maxArrowLength }                [planned]
-POST   /api/games/{id}/submit    [auth] { events, finalTime }       → { verified, rank, isPersonalBest }              [planned]
+POST   /api/scores               [auth] { replayJson }              → { verified, rank, isPersonalBest, reason? }     [planned]
 
-GET    /api/leaderboards/{w}x{h}?limit=50                           → { entries: [{ rank, displayName, time, gameId }] } [planned]
-GET    /api/leaderboards/{w}x{h}/me                [auth]           → { rank, time, personalBest }                    [planned]
+GET    /api/leaderboards/{w}x{h} ?limit=50                          → { entries: [{ rank, displayName, time, gameId }] } [planned]
+GET    /api/leaderboards/all     ?limit=50                          → { entries: [{ rank, displayName, time, gameId, boardWidth, boardHeight }] } [planned]
+GET    /api/leaderboards/{w}x{h}/me [auth]                          → { rank, time, gameId } | 404                    [planned]
+GET    /api/leaderboards/all/me     [auth]                          → { rank, time, gameId, boardWidth, boardHeight } | 404 [planned]
 
-GET    /api/replays/{gameId}                                         → { seed, width, height, events, finalTime }      [planned]
+GET    /api/replays/{gameId}                                         → { replayJson } | 404 (verified top-50 only have snapshot) [planned]
 ```
 
 ### Domain Code Sharing
@@ -333,6 +331,8 @@ One leaderboard per board configuration:
 
 Future board sizes automatically create new partitions (no code change needed — partitioning is by `(width, height)` tuple).
 
+An **"All"** tab ranks players globally across all sizes: biggest board cleared first (area DESC), then fastest time within that size. Each player's representative score is their best time on their largest completed board.
+
 ### Display
 
 Two contexts: dedicated leaderboard scene and victory screen inline.
@@ -350,14 +350,15 @@ Accessed via a button in the **top-right of the mode select screen**.
 
 #### Victory Screen Leaderboard
 
-Shown inline within the victory modal.
+Shown inline within the victory modal. **Local only** — no global toggle here; global leaderboard is always the player's express navigation choice.
 
-- **Top 10** (compact), same local/global toggle.
-- If the score is a **new personal best**:
+- **Top 10** (compact), local scores only.
+- If the score is a **new personal best** (compared against local scores):
   - Timer text turns **bright gold** during the board-clear sequence (before the modal appears).
   - Personal best entry is **highlighted gold** in the leaderboard.
   - Text indicator: "New Best!" next to the time.
-- Player's own entry is always visible (scrolled to if outside top 10).
+- Player's own entry is always visible (appended at bottom if outside top 10).
+- Score submission to the server happens silently in the background during the victory animation. No global rank is shown in the victory modal.
 
 ### Score Model
 
@@ -382,19 +383,19 @@ User:
   LockedAt                    DateTime? (non-null = locked, blocks login)
 
 Score:
-  Id          GUID
-  UserId      FK → User
-  GameId      GUID (matches the game session)
-  Seed        int
-  BoardWidth  int
-  BoardHeight int
-  Time        double (seconds, millisecond precision)
-  Verified    bool
-  ReplayData  JSON (stored for replay playback)
-  CreatedAt   DateTime
+  Id              GUID
+  UserId          FK → User
+  GameId          GUID (client-generated, identifies the game that produced this PB)
+  Seed            int
+  BoardWidth      int
+  BoardHeight     int
+  MaxArrowLength  int
+  DeadEndLimit    int   (stored so future default changes don't desync old replays)
+  Time            double (seconds, server-verified)
+  ReplayJson      TEXT  (full ReplayData; boardSnapshot gzip-base64 encoded if top-50, stripped otherwise)
 ```
 
-Only `Verified = true` scores appear on leaderboards. Verification runs on submission (synchronous for initial release — board regeneration + replay simulation is fast enough).
+One row per `(UserId, BoardWidth, BoardHeight)` — the player's personal best for that size. Updated in-place when a better verified time is submitted. Top-50 scores carry a compressed board snapshot for instant replay loading; scores outside top-50 have the snapshot stripped (board is regenerated from seed+params on replay view). Scores displaced from top-50 have their snapshot immediately removed.
 
 ---
 
@@ -415,7 +416,7 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 | `ApiClient` | View | Done | HTTP client, JWT attachment, all auth endpoints (register/login/me/display name/forgot password/reset password/resend verification/change email/confirm email change/change password), token storage in PlayerPrefs |
 | `AccountManager` | View | Done | Account panel with 10 forms (login/register/verify code/forgot password/reset password/account info/change email/confirm email code/change password/change display name) |
 | `ConfirmModal` | View | Done | Reusable confirm modal wrapper (configures ConfirmModal.uxml template) |
-| `OnlineController` | View | Planned | Coordinates online flow (request game → play → submit) |
+| `OnlineController` | View | Planned | Coordinates online flow (play → submit completed replay) |
 | `ServerHealthCheck` | Editor | Done | Editor menu item (Tools > Arrow Thing) to test server connectivity |
 
 ## Modified Scripts
@@ -445,9 +446,13 @@ Only `Verified = true` scores appear on leaderboards. Verification runs on submi
 - Email change: request, confirm, wrong password, same email, invalid token, race condition (email taken)
 - Account lock/unlock: lock invalidates sessions + blocks login, unlock sends reset email + allows recovery
 - Admin: valid/invalid/missing X-Admin-Key
-- Game sessions: create, submit valid replay (with `isPersonalBest` check), reject invalid replay (planned)
-- Leaderboards: ranking correctness, partitioning by board size, personal best query (planned)
-- Replays: fetch stored replay by gameId (planned)
+- Score submission: valid replay accepted, personal best upserted, rank returned (planned)
+- Score submission: invalid replay rejected with reason (planned)
+- Score submission: slower time leaves existing record unchanged (planned)
+- Score submission: same gameId idempotent (planned)
+- Score submission: rate limit (10 updates/hour) enforced (planned)
+- Leaderboards: ranking correctness, partitioning by board size, "all" area-first ordering, personal best query (planned)
+- Replays: top-50 returns snapshot, non-top-50 returns without snapshot, 404 for unknown (planned)
 
 ### Manual
 - **Full online flow**: register → play → submit → see score on leaderboard → play replay
