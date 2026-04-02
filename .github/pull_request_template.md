@@ -16,3 +16,7 @@ Describe what changed and why.
 ## Scope
 
 - [ ] This PR is focused and does not include unrelated changes.
+
+## Release
+
+- [ ] If this PR ships user-facing changes, I drafted release notes using `.github/release_template.md`.

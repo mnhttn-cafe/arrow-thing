@@ -1,0 +1,6 @@
+# Default owner for everything
+* @vicplusplus
+
+# Server and deployment changes require owner review
+server/ @vicplusplus
+.github/workflows/ @vicplusplus

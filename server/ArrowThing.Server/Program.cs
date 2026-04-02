@@ -4,6 +4,16 @@ using ArrowThing.Server.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
+static bool VerifyAdminKey(IConfiguration config, HttpContext ctx)
+{
+    var adminKey = config["Admin:ApiKey"];
+    if (string.IsNullOrEmpty(adminKey))
+        return false;
+
+    var provided = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault() ?? "";
+    return PasswordHasher.FixedTimeEquals(provided, adminKey);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -214,12 +224,7 @@ app.MapPost(
     "/api/admin/lock-account",
     async (LockAccountRequest request, AuthService auth, IConfiguration config, HttpContext ctx) =>
     {
-        var adminKey = config["Admin:ApiKey"];
-        if (string.IsNullOrEmpty(adminKey))
-            return Results.Json(new { error = "Admin API key not configured." }, statusCode: 500);
-
-        var provided = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        if (provided != adminKey)
+        if (!VerifyAdminKey(config, ctx))
             return Results.Json(new { error = "Unauthorized." }, statusCode: 401);
 
         var (response, status, error) = await auth.LockAccountAsync(request);
@@ -233,12 +238,7 @@ app.MapPost(
     "/api/admin/unlock-account",
     async (LockAccountRequest request, AuthService auth, IConfiguration config, HttpContext ctx) =>
     {
-        var adminKey = config["Admin:ApiKey"];
-        if (string.IsNullOrEmpty(adminKey))
-            return Results.Json(new { error = "Admin API key not configured." }, statusCode: 500);
-
-        var provided = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        if (provided != adminKey)
+        if (!VerifyAdminKey(config, ctx))
             return Results.Json(new { error = "Unauthorized." }, statusCode: 401);
 
         var (response, status, error) = await auth.UnlockAccountAsync(request);
