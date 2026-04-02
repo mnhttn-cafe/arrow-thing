@@ -193,7 +193,7 @@ public class AuthService
             return (null, 401, "User not found.");
 
         if (!PasswordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            return (null, 401, "Incorrect password.");
+            return (null, 401, "Invalid email or password.");
 
         if (PasswordHasher.Verify(request.NewPassword, user.PasswordHash))
             return (null, 400, "New password must be different from current password.");
@@ -381,7 +381,7 @@ public class AuthService
             return (null, 401, "User not found.");
 
         if (!PasswordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            return (null, 401, "Incorrect password.");
+            return (null, 401, "Invalid email or password.");
 
         var normalizedNewEmail = request.NewEmail.Trim().ToLowerInvariant();
 
@@ -543,6 +543,8 @@ public class AuthService
             return (null, 400, "Account is not locked.");
 
         user.LockedAt = null;
+        // Invalidate all pre-lock sessions
+        user.SecurityStamp = Guid.NewGuid().ToString();
 
         // Generate a password reset code so the user can set a new password
         var code = PasswordHasher.GenerateSecureCode();
