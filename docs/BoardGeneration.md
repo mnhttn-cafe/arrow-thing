@@ -37,11 +37,12 @@ All are updated atomically in `AddArrow` and `RemoveArrow`.
 
 ### Maintenance in `AddArrow`
 
-1. Update occupancy.
-2. Walk the new arrow's forward ray — every existing arrow hit is a forward dependency.
-3. Use the spatial ray index to find existing arrows whose rays cross the new arrow's cells — these are reverse dependencies. O(crossing) instead of O(N).
-4. Add the new arrow to the ray index.
-5. Prune stale generation candidates whose head or next cell is now occupied (via `_candidateLookup`).
+1. Assign a generation index if generation is active (for bitset-based cycle detection).
+2. Update occupancy.
+3. Walk the new arrow's forward ray — every existing arrow hit is a forward dependency.
+4. Use the spatial ray index to find existing arrows whose rays cross the new arrow's cells — these are reverse dependencies. O(crossing) instead of O(N).
+5. Update bitset dependency storage (`_depsBitsFlat`) for both forward and reverse deps.
+6. Add the new arrow to the ray index.
 
 ### Maintenance in `RemoveArrow`
 
@@ -64,12 +65,13 @@ O(1). An arrow is clearable when nothing blocks its forward ray.
 
 ### Initialization
 
-`Board.InitializeForGeneration()` creates the candidate pool. Called by `FillBoardIncremental`/`FillBoard` or lazily by `GenerateArrows` if not yet initialized. The lookup matrix is initialized first, then `CreateInitialArrowHeads` populates both the candidate list and lookup in a single pass.
+`Board.InitializeForGeneration()` creates the candidate pool and bitset infrastructure. Called by `FillBoardIncremental` or lazily by `GenerateArrows` if not yet initialized. `CreateInitialArrowHeads` populates the candidate list.
 
-- `_availableArrowHeads`: pool of remaining unpruned 2-cell head candidates.
-- `_candidateLookup`: `List<ArrowHeadData>[,]` reverse-lookup — maps each cell to the candidates whose `head` or `next` touches it.
+- `_availableArrowHeads`: pool of 2-cell head candidates. Stale candidates (occupied cells) are pruned lazily via swap-and-pop when encountered during `TryGenerateArrow`.
+- `_depsBitsFlat`: flat `ulong[]` array storing per-arrow dependency bitsets for O(1) BFS during cycle detection.
+- `_bitsetWords`: number of 64-bit words per arrow bitset (`ceil(maxArrows / 64)`).
 
-The candidate pool is only needed during generation. Deserialized/restored boards skip initialization entirely.
+The candidate pool and bitset storage are only needed during generation. Deserialized/restored boards skip initialization entirely.
 
 ### `ArrowHeadData`
 
@@ -85,20 +87,15 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 
 ## Public Entry Points
 
-### `FillBoardIncremental(Board board, int minLength, int maxLength, Random random, int deadEndLimit = 10)`
+### `FillBoardIncremental(Board board, int maxLength, Random random, int deadEndLimit = 10)`
 
 - Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
 - Calls `board.InitializeForGeneration()`.
-- Loops: `TryGenerateArrow` → `board.AddArrow` → `yield return null` until candidates are exhausted or the board is full.
+- Loops: `TryGenerateArrow` → `board.AddArrowForGeneration` → `yield return null` until candidates are exhausted or the board is full.
+- After placement, yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
 - Used by `GameController.GenerateBoard` for incremental board display during generation.
 
-### `FillBoard(Board board, int minLength, int maxLength, Random random, int deadEndLimit = 10)`
-
-- Synchronous wrapper. Calls `board.InitializeForGeneration()`.
-- Computes `maxPossibleArrows = width * height / 2`.
-- Delegates to `GenerateArrows(...)` with that amount. Used by tests.
-
-### `GenerateArrows(Board board, int minLength, int maxLength, int amount, Random random, out int createdArrows, int deadEndLimit = 10)`
+### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows, int deadEndLimit = 10)`
 
 Flow:
 
@@ -107,48 +104,36 @@ Flow:
 3. On each successful arrow, call `board.AddArrow(arrow)` which atomically updates occupancy, dependency graph, and candidate pool.
 4. Return `createdArrows == amount`.
 
+Note: `GenerateArrows` uses `AddArrow` (full path with HashSet deps), not `AddArrowForGeneration`. Used by tests and for adding arrows to an existing board.
+
 ## Single Arrow Construction
 
 ### `TryGenerateArrow(...)`
 
-1. Sample one target length in `[minLength, maxLength]`.
+1. Sample one target length in `[MinArrowLength, maxLength]` (where `MinArrowLength = 2`).
 2. While head candidates remain:
    - pick a random candidate from `_availableArrowHeads`
-   - reject and remove if head or next cell is occupied
-   - compute the reachability set for cycle detection (see below)
-   - reject and remove if head or next cell would cause a cycle
-   - call `CompleteArrowTail(...)` to grow the body
-   - reject and remove candidate if resulting tail is shorter than `minLength`
+   - reject and swap-remove if head or next cell is occupied
+   - compute forward deps; if any exist, run cycle detection (see below)
+   - reject and swap-remove if head or next cell would cause a cycle
+   - call `GreedyWalk(...)` to grow the body
+   - reject and swap-remove candidate if resulting tail is shorter than `MinArrowLength`
    - otherwise return the arrow
 3. Return false if all candidates are exhausted.
 
-### `CompleteArrowTail(...)`
+### `GreedyWalk(...)`
 
-DFS+backtracking from the fixed 2-cell start `[head, next]`.
+Linear-time random walk from the fixed 2-cell start `[head, next]`. No backtracking.
 
-State:
+State (pooled in `GenerationContext` to avoid per-candidate allocation):
 
 - `path`: current arrow cells (ordered)
-- `visited`: `HashSet<Cell>` of cells in `path`
-- `best`: longest cycle-free path found so far
-- `deadEnds`: count of DFS nodes where no valid neighbor could be taken
+- `visited`: `bool[,]` grid — pre-marked with path cells AND the candidate's forward ray cells (eliminates per-step `IsInRay` checks)
+- `dirOrder`: shuffled direction indices for randomized neighbor selection
 
-Neighbor filtering per step:
+Per step: shuffle 4 directions, take the first valid neighbor (in bounds, not visited, not occupied, not cycle-causing), advance. Stop when `targetLength` is reached or no valid neighbor exists.
 
-- already in `visited`
-- out of bounds
-- lies on the candidate's head ray (`Board.IsInRay`)
-- occupied by an existing arrow (`board.GetArrowAt`)
-- would cause a cycle (`WouldCellCauseCycle`)
-
-Early exits:
-
-- `path.Count == targetLength` — exact match found
-- `deadEnds >= deadEndLimit` — search budget exhausted
-
-The dead-end limit (default `10`) prevents exhaustive search in dense boards.
-
-Returns `best`, which may be shorter than `targetLength` if the DFS could not reach it within the budget.
+Returns `path`, which may be shorter than `targetLength` if the walk hits a dead end. Unlike the earlier DFS+backtracking approach, the greedy walk does not search for longer alternatives — it accepts whatever path length results from a single forward pass. This trades fill optimality for dramatically faster generation (O(targetLength) per arrow instead of O(4^d) worst-case DFS).
 
 ## Cycle Detection
 
@@ -161,56 +146,60 @@ A candidate arrow's forward dependencies are fixed by its head position and dire
 
 The algorithm:
 
-1. **`ComputeForwardDeps(board, head, direction)`** — walk the candidate's ray, collect all existing arrows.
-2. **`ComputeReachableSet(board, forwardDeps)`** — BFS from forward deps through `Board._dependsOn`. Returns the full transitive closure.
-3. **`WouldCellCauseCycle(board, cell, reachable)`** — for a single cell, use `Board.AnyArrowWithRayThroughMatches` to check if any arrow whose ray crosses the cell is in the reachable set. Uses the spatial ray index for O(crossing) lookup instead of scanning all arrows.
+1. **`ComputeForwardDeps(board, head, direction, depsBitset)`** — walk the candidate's ray, collect all existing arrows into a `ulong[]` bitset. Returns the count. If count is 0, cycle detection is skipped entirely (no deps = no cycle possible).
+2. **`ComputeReachableSetEarlyAbort(board, startBits, reachable, head, next, ctx)`** — BFS from forward deps through `Board._depsBitsFlat` using bitset operations. Each BFS step processes 64 arrows per word via bitwise OR. Instead of computing the full transitive closure and then checking for cycles, each newly discovered arrow is immediately checked via `IsInRayOf` against the candidate's head and next cells using flat geometry arrays (`_genHeadX`, `_genHeadY`, `_genDir`). Returns `true` (cycle) as soon as any reachable arrow's ray crosses head or next, aborting the BFS early. If the BFS completes without finding a cycle, the full reachable set is available in `reachable` for use during tail construction.
+3. **`IsInRayOf(ax, ay, dir, cx, cy)`** — inline ray geometry check using integer coordinates from the flat arrays. Returns whether cell `(cx, cy)` is in the forward ray of an arrow at `(ax, ay)` facing `dir`. Used by `ComputeReachableSetEarlyAbort` for per-arrow cycle checks during BFS.
 
 ### Key Property: Stateless Per-Cell Checks
 
-The reachability set is fixed for the entire tail DFS — it depends only on the head candidate and the committed graph (which doesn't change during generation of a single arrow). Each cell check is independent: adding a tail cell can only create reverse edges (arrows that depend on the candidate), which point *to* the candidate and don't extend its reachability set. Two cells cannot jointly cause a cycle that neither causes alone.
+The reachability set is fixed for the entire greedy walk — it depends only on the head candidate and the committed graph (which doesn't change during generation of a single arrow). Each cell check is independent: adding a tail cell can only create reverse edges (arrows that depend on the candidate), which point *to* the candidate and don't extend its reachability set. Two cells cannot jointly cause a cycle that neither causes alone.
 
-This means no tentative graph modification, no backtracking state, and no ghost node.
+This means no tentative graph modification, no walk state beyond the current path, and no ghost node.
 
 ### `IsInRay(Cell target, Cell head, Arrow.Direction direction)`
 
 Public static method on `Board`. Returns whether `target` lies strictly forward of `head` along `direction`. Used for both cycle detection (reverse edge lookup) and tail construction (preventing tail cells from falling on the arrow's own ray).
 
-## Supporting Helpers
-
-### `GetNeighbors(Cell cell)`
-
-Returns the 4 orthogonal neighbors in fixed order (right, left, up, down).
-
 ## Performance
 
-Measured in Unity EditMode tests, single-threaded, seed 0.
+Measured via `GenerationProfiler.cs` (PlayMode) and standalone benchmark (`generation-benchmark/`), single-threaded.
 
-| Board | len=[2,5] | len=[5,20] | len=[10,50] |
-|-------|-----------|------------|-------------|
-| 10×10 | <1ms | <1ms | 2ms |
-| 20×20 | 1ms | 1ms | 1ms |
-| 50×50 | ~56ms | ~30ms | ~20ms |
+| Board | Benchmark (.NET 8) | Unity (PlayMode, incl. ArrowView) |
+|-------|-------------------|-----------------------------------|
+| 10×10 | <1ms | — |
+| 50×50 ml=20 | ~8ms | — |
+| 200×200 | ~600ms | ~2.7s |
+| 400×400 | ~15s | ~68s |
+
+Unity overhead is ~3–4x due to ArrowView creation (~38% of work time) and frame yields/rendering (~30% of wall time). The domain algorithm itself accounts for ~62% of work time.
 
 Key optimisations applied (in order of impact):
 
-1. **Spatial ray index** — per-row/per-column lists of arrow heads grouped by direction. Replaces O(N) full-arrow scans in `WouldCellCauseCycle` and `AddArrow` reverse-dep computation with O(crossing) lookups, where crossing is the small number of arrows whose rays actually cross a given cell. On a 400×400 board (~6000 arrows, 400 rows), this reduces per-cell cycle checks from ~6000 comparisons to ~4–8.
-2. **Dead-end limit** — DFS capped at `DefaultDeadEndLimit = 10` dead ends per candidate.
-3. **Eager candidate pruning** — stale candidates are removed immediately on placement via `_candidateLookup`, now inside `Board.AddArrow`.
-4. **Occupancy guard on head/next before cycle check** — avoids computing reachability for candidates whose start cells are already taken.
-5. **Reachability set computed once per head candidate** — the BFS runs once, then each tail cell is checked against the fixed set via the ray index.
-6. **O(1) arrow membership** — `HashSet<Arrow> _arrowSet` alongside the `List<Arrow>` for O(1) `Contains` checks in `AddArrow`/`RemoveArrow` validation.
+1. **Bitset-based reachability with early abort** — dependency graph stored as flat `ulong[]` bitsets (`_depsBitsFlat`). BFS processes 64 arrows per word via bitwise OR, replacing `HashSet<Arrow>` iteration with cache-friendly sequential memory access. Membership tests are single bit-checks instead of hash lookups. Cycle detection is integrated into the BFS via `ComputeReachableSetEarlyAbort`: each newly discovered arrow is immediately checked via flat geometry arrays (`_genHeadX`, `_genHeadY`, `_genDir`), aborting early if a cycle is found rather than computing the full transitive closure first.
+2. **Greedy walk** — linear-time random walk replaces DFS+backtracking for tail construction. O(targetLength) per arrow instead of O(4^d) worst-case. Pre-marks ray cells in `visited` grid to eliminate per-step `IsInRay` checks.
+3. **Spatial ray index** — per-row/per-column lists of arrow heads grouped by direction. Replaces O(N) full-arrow scans in cycle detection and `AddArrow` reverse-dep computation with O(crossing) lookups.
+4. **Allocation pooling** — `GenerationContext` holds reusable bitsets, frontier, visited grid, path list, and direction shuffle array. Eliminates all per-candidate heap allocations.
+5. **Swap-and-pop candidate removal** — O(1) removal from `_availableArrowHeads` instead of O(N) `List.RemoveAt` shift. Stale candidates are pruned lazily when encountered.
+6. **Empty-deps fast path** — when a candidate's forward ray is clear (common for edge-pointing arrows), the entire reachability computation and cycle check is skipped.
+7. **Leaf-deps fast path** — when all forward deps have no deps of their own (`_hasAnyDeps` flag), the BFS is skipped and reachable set is just the forward deps.
+8. **Reachability set computed once per head candidate** — the BFS runs once, then each tail cell is checked against the fixed bitset via the ray index.
+9. **Generation-only fast path** — `AddArrowForGeneration` skips HashSet dependency tracking during generation; `FinalizeGenerationIncremental` builds it in one pass afterward.
+10. **O(1) arrow membership** — `HashSet<Arrow> _arrowSet` alongside the `List<Arrow>` for O(1) `Contains` checks in `AddArrow`/`RemoveArrow` validation.
 
 ## Loading Progress Heuristic
 
-The loading bar during generation uses arrow count as its progress signal. Arrow placement rate is nearly constant with respect to wall time — unlike candidate depletion or cell fill, which are both front-loaded and stall in the tail.
+The loading bar uses arrow count with a power curve to approximate wall-time progress:
 
-The estimated total arrows for a board is `w * h * EstimatedArrowDensity`, where `EstimatedArrowDensity = 0.064`. This was derived as follows:
+```
+rawProgress = Clamp01(arrowCount / (w * h * EstimatedArrowDensity))
+displayProgress = pow(rawProgress, 2.5)
+```
 
-1. **Profiling** (`ProfileDepletionCurve_DumpData` in `PerformanceTests.cs`) sampled arrow count, cell count, and candidate depletion per-arrow across 100×100 and 200×200 boards with multiple seeds.
-2. **Observation**: boards consistently fill ~93% of cells with an average arrow length of ~10, giving a theoretical arrow density of `0.93 / 10 = 0.093` arrows per cell.
-3. **Tuning**: the constant was reduced from 0.093 to 0.064 so the bar reaches ~99% before generation finishes across board sizes from 100×100 to 400×400. The gap between the theoretical 0.093 and the tuned 0.064 exists because arrows placed early in generation tend to be longer than average (the board is less crowded, so DFS finds longer paths). This means the average arrow length measured across the full run (~10) is lower than the effective average during most of generation, and fewer total arrows end up being placed than the theoretical estimate predicts.
+`EstimatedArrowDensity = 0.1`. The power curve compensates for the nonlinear relationship between arrow count and wall time: early arrows are placed quickly (sparse board, few candidate rejections) while late arrows are slow (dense board, many cycle-detection rejections). Profiling shows the per-arrow cost increases ~15x from early to late generation on a 400×400 board. The exponent 2.5 was chosen empirically to produce smooth perceived progress across board sizes.
 
-Progress is displayed as `Clamp01(arrowCount / estimatedArrows)`, so slight overestimates cap at 100%.
+The density constant was derived from profiling (`GenerationProfiler.cs`): the greedy walk produces ~0.10–0.12 arrows per cell across board sizes. The constant is set to 0.1 so `rawProgress` slightly exceeds 1.0 at the end of generation (clamped), ensuring the bar reaches 100%.
+
+`FillBoardIncremental` yields a `FinalizationMarker` sentinel between arrow placement and dependency graph finalization so the caller can detect the phase transition. Finalization (`FinalizeGenerationIncremental`) is incremental and yielding, but fast enough to be negligible in the progress display.
 
 If generation parameters change significantly (e.g. different `minLength` defaults or dead-end limits), re-run the profiling test and re-tune the constant.
 
@@ -223,3 +212,5 @@ The current implementation is a rewrite (`generation-rewrite` branch) of an earl
 - **Static class rewrite**: move to a static class with minimal model classes; restore exhaustive DFS+backtracking (now feasible because expensive legality checks are replaced with direct occupancy lookup).
 - **Dependency graph refactor** (`board-generation-validation-v2` branch): replaced geometric ray-hopping cycle detection (`DoesArrowCandidateCauseCycle`) with an explicit dependency graph on `Board`. The old algorithm only followed the first hit per ray, missing multi-dependency cycles. The new algorithm builds a reachability set from forward deps and checks each cell against it. Generation cache (`boardCacheDict`) was merged into `Board` to eliminate desync fragility.
 - **Spatial ray index** (`optimize-domain-performance` branch): added per-row/per-column arrow head lists grouped by direction. Replaced O(N) scans in `WouldCellCauseCycle` and `AddArrow` reverse-dep computation with O(crossing) lookups. Also added `HashSet<Arrow>` for O(1) membership checks and reduced DFS allocation overhead.
+- **Bitset-based cycle detection** (`optimize-board-generation` branch): replaced `HashSet<Arrow>` reachability with `ulong[]` bitsets for all generation-time set operations. BFS through dependency graph now processes 64 arrows per word via bitwise OR. Added `GenerationContext` to pool all per-candidate allocations (bitsets, BFS queue, DFS path/visited). Switched candidate removal from O(N) `List.RemoveAt`/`RemoveAll` to O(1) swap-and-pop with lazy pruning. Replaced `HashSet<Cell>` DFS visited tracking with `bool[,]` grid. Added empty-forward-deps fast path to skip cycle detection entirely for edge-pointing candidates.
+- **Early-abort BFS** (`optimize-domain-performance` branch): integrated cycle detection into the BFS itself via `ComputeReachableSetEarlyAbort`. Each newly discovered arrow is immediately checked against the candidate's head and next cells using flat geometry arrays (`_genHeadX`, `_genHeadY`, `_genDir`), returning as soon as a cycle is found instead of computing the full transitive closure first. Provides ~2x speedup on large boards where cycles are frequently attempted.
