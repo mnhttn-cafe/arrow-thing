@@ -4,17 +4,18 @@ Keep contributions small, focused, and easy to review.
 
 ## Git Hooks
 
-Install the pre-commit hook after cloning:
+The repository uses `.githooks/` for Git hooks. After cloning, configure Git to use them:
 
 ```bash
-cp scripts/hooks/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+git config core.hookspath .githooks
 ```
 
-The hook enforces:
+The pre-commit hook enforces:
 - No private key headers in staged files
 - No public IPv4 addresses in staged files (use `<vps-ip>` placeholders in docs)
-- C# formatting rules: no tabs, no trailing whitespace, final newline, no fully qualified `System.Collections.Generic` usage
+- C# formatting via CSharpier (run `dotnet csharpier format Assets/Scripts/ Assets/Tests/ server/` to fix)
+- No files >= 100 MB (use Git LFS for large assets)
+- Unity Asset `.meta` file pairing (every added/removed asset must have its `.meta` staged too)
 
 ## Core Expectations
 
