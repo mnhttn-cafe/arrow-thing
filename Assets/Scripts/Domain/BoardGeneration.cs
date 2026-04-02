@@ -51,6 +51,12 @@ public static class BoardGeneration
     /// Incremental version of board filling. Places as many arrows as possible,
     /// yielding after each arrow to let the caller (e.g. a Unity coroutine) process the next frame.
     /// </summary>
+    /// <summary>
+    /// Signals that generation has finished placing arrows and is now building
+    /// the dependency graph. Yielded once before finalization begins.
+    /// </summary>
+    public static readonly object FinalizationMarker = new object();
+
     public static IEnumerator FillBoardIncremental(
         Board board,
         int maxLength,
@@ -77,7 +83,11 @@ public static class BoardGeneration
             yield return null;
         }
 
-        board.FinalizeGeneration();
+        // Signal phase transition, then yield during finalization
+        yield return FinalizationMarker;
+        var finalizer = board.FinalizeGenerationIncremental();
+        while (finalizer.MoveNext())
+            yield return finalizer.Current;
     }
 
     public static bool GenerateArrows(
@@ -166,15 +176,29 @@ public static class BoardGeneration
                     }
                 }
 
+                bool hasCycle;
                 if (needBFS)
-                    ComputeReachableSet(board, ctx.forwardDeps, ctx.reachable, ctx);
+                {
+                    // BFS with integrated per-level cycle check — aborts early
+                    // if any newly reachable arrow's ray crosses head or next.
+                    hasCycle = ComputeReachableSetEarlyAbort(
+                        board,
+                        ctx.forwardDeps,
+                        ctx.reachable,
+                        candidate.head,
+                        candidate.next,
+                        ctx
+                    );
+                }
                 else
+                {
                     Array.Copy(ctx.forwardDeps, ctx.reachable, activeWords);
+                    hasCycle =
+                        board.AnyArrowWithRayThroughBitset(candidate.head, ctx.reachable)
+                        || board.AnyArrowWithRayThroughBitset(candidate.next, ctx.reachable);
+                }
 
-                if (
-                    board.AnyArrowWithRayThroughBitset(candidate.head, ctx.reachable)
-                    || board.AnyArrowWithRayThroughBitset(candidate.next, ctx.reachable)
-                )
+                if (hasCycle)
                 {
                     SwapRemove(candidates, headIndex);
                     continue;
@@ -361,14 +385,17 @@ public static class BoardGeneration
     }
 
     /// <summary>
-    /// Level-based BFS from <paramref name="startBits"/> through committed dependsOn edges.
-    /// Uses sparse nonzero word indices to skip zero words in dep rows, and processes
-    /// arrows in index order per level for cache-friendly memory access.
+    /// BFS transitive closure with inline early cycle detection.
+    /// Checks each newly discovered arrow immediately via direct ray geometry,
+    /// avoiding the need to compute the full closure before checking for cycles.
+    /// Returns true if any reachable arrow's ray crosses head or next (cycle).
     /// </summary>
-    private static void ComputeReachableSet(
+    private static bool ComputeReachableSetEarlyAbort(
         Board board,
         ulong[] startBits,
         ulong[] reachable,
+        Cell head,
+        Cell next,
         GenerationContext ctx
     )
     {
@@ -378,15 +405,27 @@ public static class BoardGeneration
         ulong[] depsBits = board._depsBitsFlat;
         int[] nzWords = board._depsNonZeroWords;
         int[] nzCounts = board._depsNonZeroCount;
+        int[] headX = board._genHeadX;
+        int[] headY = board._genHeadY;
+        Arrow.Direction[] dirs = board._genDir;
+        int hx = head.X,
+            hy = head.Y;
+        int nx = next.X,
+            ny = next.Y;
 
-        // Initialize reachable and frontier with start bits
         for (int w = 0; w < words; w++)
         {
             reachable[w] = startBits[w];
             frontier[w] = startBits[w];
         }
 
-        // Process levels until no new discoveries
+        // Check level 0 (forward deps themselves)
+        if (
+            board.AnyArrowWithRayThroughBitset(head, reachable)
+            || board.AnyArrowWithRayThroughBitset(next, reachable)
+        )
+            return true;
+
         while (true)
         {
             bool hasNext = false;
@@ -405,7 +444,6 @@ public static class BoardGeneration
 
                     if (nzCount >= 0 && nzCount <= Board.MaxNonZeroTracked)
                     {
-                        // Sparse path: only read nonzero words
                         int nzBase = idx * Board.MaxNonZeroTracked;
                         for (int i = 0; i < nzCount; i++)
                         {
@@ -416,12 +454,36 @@ public static class BoardGeneration
                                 reachable[ww] |= newBits;
                                 frontier[ww] |= newBits;
                                 hasNext = true;
+                                // Inline cycle check for each newly discovered arrow
+                                ulong check = newBits;
+                                while (check != 0)
+                                {
+                                    int b = Ctz64(check);
+                                    int newIdx = (ww << 6) | b;
+                                    if (
+                                        IsInRayOf(
+                                            headX[newIdx],
+                                            headY[newIdx],
+                                            dirs[newIdx],
+                                            hx,
+                                            hy
+                                        )
+                                        || IsInRayOf(
+                                            headX[newIdx],
+                                            headY[newIdx],
+                                            dirs[newIdx],
+                                            nx,
+                                            ny
+                                        )
+                                    )
+                                        return true;
+                                    check &= check - 1;
+                                }
                             }
                         }
                     }
                     else
                     {
-                        // Full scan fallback
                         for (int ww = 0; ww < words; ww++)
                         {
                             ulong newBits = depsBits[offset + ww] & ~reachable[ww];
@@ -430,6 +492,30 @@ public static class BoardGeneration
                                 reachable[ww] |= newBits;
                                 frontier[ww] |= newBits;
                                 hasNext = true;
+                                ulong check = newBits;
+                                while (check != 0)
+                                {
+                                    int b = Ctz64(check);
+                                    int newIdx = (ww << 6) | b;
+                                    if (
+                                        IsInRayOf(
+                                            headX[newIdx],
+                                            headY[newIdx],
+                                            dirs[newIdx],
+                                            hx,
+                                            hy
+                                        )
+                                        || IsInRayOf(
+                                            headX[newIdx],
+                                            headY[newIdx],
+                                            dirs[newIdx],
+                                            nx,
+                                            ny
+                                        )
+                                    )
+                                        return true;
+                                    check &= check - 1;
+                                }
                             }
                         }
                     }
@@ -440,6 +526,23 @@ public static class BoardGeneration
             if (!hasNext)
                 break;
         }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns true if cell (cx, cy) is in the forward ray of arrow at (ax, ay) facing dir.
+    /// </summary>
+    private static bool IsInRayOf(int ax, int ay, Arrow.Direction dir, int cx, int cy)
+    {
+        return dir switch
+        {
+            Arrow.Direction.Right => cy == ay && cx > ax,
+            Arrow.Direction.Left => cy == ay && cx < ax,
+            Arrow.Direction.Up => cx == ax && cy > ay,
+            Arrow.Direction.Down => cx == ax && cy < ay,
+            _ => false,
+        };
     }
 
     /// <summary>Swap-and-pop removal: O(1) instead of O(N) list shift.</summary>

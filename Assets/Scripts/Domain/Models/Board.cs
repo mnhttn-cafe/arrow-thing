@@ -32,6 +32,11 @@ public sealed class Board
     internal int[] _depsNonZeroCount; // [idx] = count of tracked nonzero words (-1 = overflow)
     internal int _nextGenIndex;
 
+    // Arrow head/direction flat arrays for fast index→geometry lookup during early-abort cycle detection
+    internal int[] _genHeadX;
+    internal int[] _genHeadY;
+    internal Arrow.Direction[] _genDir;
+
     public IReadOnlyList<Arrow> Arrows => _arrows;
     public int Width { get; }
     public int Height { get; }
@@ -81,6 +86,9 @@ public sealed class Board
         _hasAnyDeps = new bool[maxArrows];
         _depsNonZeroWords = new int[maxArrows * MaxNonZeroTracked];
         _depsNonZeroCount = new int[maxArrows];
+        _genHeadX = new int[maxArrows];
+        _genHeadY = new int[maxArrows];
+        _genDir = new Arrow.Direction[maxArrows];
         _nextGenIndex = 0;
     }
 
@@ -162,7 +170,13 @@ public sealed class Board
 
         // Assign generation index if generation is active
         if (_depsBitsFlat != null && arrow._generationIndex < 0)
+        {
             arrow._generationIndex = _nextGenIndex++;
+            int gIdx = arrow._generationIndex;
+            _genHeadX[gIdx] = arrow.HeadCell.X;
+            _genHeadY[gIdx] = arrow.HeadCell.Y;
+            _genDir[gIdx] = arrow.HeadDirection;
+        }
 
         // Set occupancy
         _arrows.Add(arrow);
@@ -241,7 +255,7 @@ public sealed class Board
 
     /// <summary>
     /// Fast path for generation: updates occupancy, ray index, and bitset deps only.
-    /// Skips HashSet dependency tracking. Call <see cref="FinalizeGeneration"/> when done.
+    /// Skips HashSet dependency tracking. Call <see cref="FinalizeGenerationIncremental"/> (or <see cref="FinalizeGeneration"/>) when done.
     /// </summary>
     internal void AddArrowForGeneration(Arrow arrow)
     {
@@ -249,14 +263,16 @@ public sealed class Board
         if (arrow._generationIndex >= _bitsetWords * 64)
             GrowBitsetCapacity();
 
+        int nIdx = arrow._generationIndex;
+        _genHeadX[nIdx] = arrow.HeadCell.X;
+        _genHeadY[nIdx] = arrow.HeadCell.Y;
+        _genDir[nIdx] = arrow.HeadDirection;
+
         _arrows.Add(arrow);
         _arrowSet.Add(arrow);
         foreach (Cell c in arrow.Cells)
             _occupancy[c.X, c.Y] = arrow;
         OccupiedCellCount += arrow.Cells.Count;
-
-        int nIdx = arrow._generationIndex;
-        int stride = _bitsetWords;
 
         // Forward deps: walk ray, set bits
         bool hasDeps = false;
@@ -332,9 +348,10 @@ public sealed class Board
 
     /// <summary>
     /// Builds the HashSet dependency graph after generation completes.
-    /// Must be called before <see cref="IsClearable"/> or <see cref="RemoveArrow"/>.
+    /// Must be called (and fully exhausted) before <see cref="IsClearable"/> or <see cref="RemoveArrow"/>.
+    /// Yields the number of arrows finalized so far for progress reporting.
     /// </summary>
-    internal void FinalizeGeneration()
+    internal IEnumerator<int> FinalizeGenerationIncremental()
     {
         foreach (Arrow arrow in _arrows)
         {
@@ -342,6 +359,7 @@ public sealed class Board
             _dependedOnBy[arrow] = new HashSet<Arrow>();
         }
 
+        int finalized = 0;
         foreach (Arrow arrow in _arrows)
         {
             (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
@@ -358,13 +376,27 @@ public sealed class Board
                 cx += dx;
                 cy += dy;
             }
+            finalized++;
+            yield return finalized;
         }
 
         _depsBitsFlat = null;
         _hasAnyDeps = null;
         _depsNonZeroWords = null;
         _depsNonZeroCount = null;
+        _genHeadX = null;
+        _genHeadY = null;
+        _genDir = null;
         _availableArrowHeads = null;
+    }
+
+    /// <summary>
+    /// Synchronous version of <see cref="FinalizeGenerationIncremental"/>. Used by tests.
+    /// </summary>
+    internal void FinalizeGeneration()
+    {
+        var iter = FinalizeGenerationIncremental();
+        while (iter.MoveNext()) { }
     }
 
     public void RemoveArrow(Arrow arrow)
