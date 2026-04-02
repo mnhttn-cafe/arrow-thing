@@ -80,6 +80,7 @@ jobs:
         run: dotnet test server/ArrowThing.Server.Tests/ArrowThing.Server.Tests.csproj --logger "console;verbosity=normal"
 
   test:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     steps:
@@ -97,6 +98,7 @@ jobs:
           customParameters: -nographics
 
   test-playmode:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     steps:
