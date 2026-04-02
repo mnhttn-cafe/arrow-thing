@@ -58,8 +58,8 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 - `GetArrowAt(Cell)` returns the arrow occupying a cell, or null.
 - `IsClearable(Arrow)` returns true when the arrow's dependency set is empty (O(1)).
 - `IsInRay(Cell, Cell, Direction)` is a public static helper for ray geometry.
-- `InitializeForGeneration()` creates the candidate pool for arrow generation. The candidate lookup matrix is initialized first, then `CreateInitialArrowHeads` populates both the candidate list and lookup in a single pass. Only needed when generating, not for deserialized boards.
-- `AnyArrowWithRayThroughMatches(Cell, HashSet<Arrow>)` — internal query used by cycle detection during generation. Uses the spatial ray index to find arrows whose forward ray crosses a cell in O(crossing) instead of O(N).
+- `InitializeForGeneration()` creates the candidate pool and bitset dependency storage for arrow generation. Allocates `_depsBitsFlat` (flat `ulong[]` for bitset-based BFS), flat geometry arrays (`_genHeadX`, `_genHeadY`, `_genDir`) for early-abort cycle detection, and populates `_availableArrowHeads`. Only needed when generating, not for deserialized boards.
+- `AnyArrowWithRayThroughBitset(Cell, ulong[])` — internal query used by cycle detection during generation. Uses the spatial ray index to find arrows whose forward ray crosses a cell, testing membership via O(1) bit-check against a `ulong[]` bitset instead of `HashSet.Contains`.
 - `RestoreArrowsIncremental(IReadOnlyList<Arrow>)` — coroutine for restoring a saved board from a snapshot. Phase 1 places arrows into occupancy and ray index (yielding after each for progress reporting). Phase 2 builds the dependency graph in one forward-ray pass (yielding after each arrow). Much faster than calling `AddArrow` individually because it avoids the per-arrow reverse-dependency scan.
 
 ### `GameTimer` (`sealed class`)
@@ -132,9 +132,10 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ### `BoardGeneration` (`static class`)
 
 - Procedurally fills a `Board` with acyclic arrows.
-- Public entry points: `FillBoardIncremental(...)` (coroutine, yields once per arrow for caller-driven frame budgeting), `FillBoard(...)` (synchronous, used by tests), and `GenerateArrows(...)`.
+- Public entry points: `FillBoardIncremental(...)` (coroutine, yields once per arrow for caller-driven frame budgeting, yields `FinalizationMarker` then incremental finalization) and `GenerateArrows(...)`.
 - Stateless — all persistent state (dependency graph, candidate pool) lives on `Board`.
-- Cycle detection uses a reachability set computed from forward deps and checked per-cell against the committed dependency graph.
+- Tail construction uses `GreedyWalk` — a linear-time random walk with no backtracking. Ray cells pre-marked in visited grid.
+- Cycle detection uses an early-abort BFS (`ComputeReachableSetEarlyAbort`) that integrates cycle checks inline: each newly discovered arrow is immediately tested via flat geometry arrays, aborting as soon as a cycle is found rather than computing the full transitive closure first.
 - See [`BoardGeneration.md`](BoardGeneration.md) for full algorithm details.
 
 ## Rule and Data Invariants

@@ -157,13 +157,15 @@ public class BoardTests
     }
 
     [Test]
-    public void RemainingCandidateCount_DecreasesAfterAddArrow()
+    public void RemainingCandidateCount_UnchangedByAddArrow_PrunedLazily()
     {
+        // Candidates are pruned lazily during generation (not eagerly in AddArrow),
+        // so the count stays the same after AddArrow.
         var board = new Board(5, 5);
         board.InitializeForGeneration();
         int before = board.RemainingCandidateCount;
         var arrow = new Arrow(new Cell[] { new(2, 2), new(2, 1) });
         board.AddArrow(arrow);
-        Assert.Less(board.RemainingCandidateCount, before);
+        Assert.AreEqual(before, board.RemainingCandidateCount);
     }
 }

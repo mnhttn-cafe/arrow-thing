@@ -393,9 +393,10 @@ public sealed class GameController : MonoBehaviour
         );
 
         // See docs/BoardGeneration.md § "Loading Progress Heuristic" for derivation.
-        const float estimatedArrowDensity = 0.064f;
+        const float estimatedArrowDensity = 0.1f;
         float estimatedArrows = _w * _h * estimatedArrowDensity;
         int viewedArrows = 0;
+        bool finalizing = false;
         while (true)
         {
             if (_cancelRequested)
@@ -413,10 +414,22 @@ public sealed class GameController : MonoBehaviour
                     done = true;
                     break;
                 }
-                _boardView.AddArrowView(_board.Arrows[viewedArrows++]);
+
+                if (!finalizing)
+                {
+                    if (generator.Current == BoardGeneration.FinalizationMarker)
+                    {
+                        finalizing = true;
+                    }
+                    else
+                    {
+                        _boardView.AddArrowView(_board.Arrows[viewedArrows++]);
+                    }
+                }
             }
 
-            _loadProgress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
+            float rawProgress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
+            _loadProgress = Mathf.Pow(rawProgress, 2.5f);
 
             if (done)
                 break;
