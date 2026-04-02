@@ -855,11 +855,7 @@ public class AuthTests : IClassFixture<TestFactory>, IDisposable
     public async Task ChangeEmail_ToExistingEmail_Returns200NotEnumerable()
     {
         await RegisterAndVerifyAsync("existing@example.com", "password123", "Existing");
-        var auth = await RegisterAndVerifyAsync(
-            "changer2@example.com",
-            "password123",
-            "Changer2"
-        );
+        var auth = await RegisterAndVerifyAsync("changer2@example.com", "password123", "Changer2");
 
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/change-email")
         {

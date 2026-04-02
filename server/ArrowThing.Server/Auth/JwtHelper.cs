@@ -20,9 +20,7 @@ public class JwtHelper
             ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
 
         if (secret.Length < 32)
-            throw new InvalidOperationException(
-                "Jwt:Secret must be at least 32 characters long."
-            );
+            throw new InvalidOperationException("Jwt:Secret must be at least 32 characters long.");
 
         _key = Encoding.UTF8.GetBytes(secret);
     }

@@ -15,10 +15,10 @@ public static class PasswordHasher
     /// beyond the 10-minute code lifetime.
     /// Uses a lower work factor (8) than passwords since the codes are ephemeral.
     /// </summary>
-    public static string HashOtp(string code) => BCrypt.Net.BCrypt.HashPassword(code, workFactor: 8);
+    public static string HashOtp(string code) =>
+        BCrypt.Net.BCrypt.HashPassword(code, workFactor: 8);
 
-    public static bool VerifyOtp(string code, string hash) =>
-        BCrypt.Net.BCrypt.Verify(code, hash);
+    public static bool VerifyOtp(string code, string hash) => BCrypt.Net.BCrypt.Verify(code, hash);
 
     /// <summary>
     /// Generates a cryptographically secure 6-digit verification code.
