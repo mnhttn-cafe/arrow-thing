@@ -4,7 +4,7 @@ public sealed class Board
 {
     private readonly List<Arrow> _arrows = new();
     private readonly HashSet<Arrow> _arrowSet = new();
-    private readonly Arrow[,] _occupancy;
+    internal readonly Arrow[,] _occupancy;
     private readonly Dictionary<Arrow, HashSet<Arrow>> _dependsOn = new();
     private readonly Dictionary<Arrow, HashSet<Arrow>> _dependedOnBy = new();
 
@@ -23,6 +23,13 @@ public sealed class Board
     // Bitset-based dependency storage for generation (null until InitializeForGeneration)
     internal int _bitsetWords;
     internal ulong[] _depsBitsFlat; // [arrowIndex * _bitsetWords + word]
+    internal bool[] _hasAnyDeps; // per-arrow flag: true if dep bitset row is non-empty
+
+    // Sparse nonzero word tracking: for each arrow, which words in its dep row are nonzero.
+    // Allows BFS to skip zero words (huge win when activeWords >> actual dep count).
+    internal const int MaxNonZeroTracked = 16;
+    internal int[] _depsNonZeroWords; // [idx * MaxNonZeroTracked + i] = word index
+    internal int[] _depsNonZeroCount; // [idx] = count of tracked nonzero words (-1 = overflow)
     internal int _nextGenIndex;
 
     public IReadOnlyList<Arrow> Arrows => _arrows;
@@ -66,9 +73,27 @@ public sealed class Board
         InitialCandidateCount = _availableArrowHeads.Count;
 
         int maxArrows = Width * Height / 2;
-        _bitsetWords = (maxArrows + 63) >> 6;
+        // Use a compact stride: typically only ~25% of max arrows are placed.
+        // Start at maxArrows/3 and grow if exceeded.
+        int estimatedCapacity = System.Math.Max(64, maxArrows / 4);
+        _bitsetWords = (estimatedCapacity + 63) >> 6;
         _depsBitsFlat = new ulong[maxArrows * _bitsetWords];
+        _hasAnyDeps = new bool[maxArrows];
+        _depsNonZeroWords = new int[maxArrows * MaxNonZeroTracked];
+        _depsNonZeroCount = new int[maxArrows];
         _nextGenIndex = 0;
+    }
+
+    /// <summary>Doubles bitset stride capacity, reallocating the flat array.</summary>
+    internal void GrowBitsetCapacity()
+    {
+        int oldWords = _bitsetWords;
+        int maxArrows = Width * Height / 2;
+        _bitsetWords = System.Math.Min(oldWords * 2, (maxArrows + 63) >> 6);
+        ulong[] newFlat = new ulong[maxArrows * _bitsetWords];
+        for (int i = 0; i < _nextGenIndex; i++)
+            System.Array.Copy(_depsBitsFlat, i * oldWords, newFlat, i * _bitsetWords, oldWords);
+        _depsBitsFlat = newFlat;
     }
 
     /// <summary>
@@ -212,6 +237,134 @@ public sealed class Board
         AddToRayIndex(arrow);
 
         // Candidate pruning is handled lazily in TryGenerateArrow via occupancy checks
+    }
+
+    /// <summary>
+    /// Fast path for generation: updates occupancy, ray index, and bitset deps only.
+    /// Skips HashSet dependency tracking. Call <see cref="FinalizeGeneration"/> when done.
+    /// </summary>
+    internal void AddArrowForGeneration(Arrow arrow)
+    {
+        arrow._generationIndex = _nextGenIndex++;
+        if (arrow._generationIndex >= _bitsetWords * 64)
+            GrowBitsetCapacity();
+
+        _arrows.Add(arrow);
+        _arrowSet.Add(arrow);
+        foreach (Cell c in arrow.Cells)
+            _occupancy[c.X, c.Y] = arrow;
+        OccupiedCellCount += arrow.Cells.Count;
+
+        int nIdx = arrow._generationIndex;
+        int stride = _bitsetWords;
+
+        // Forward deps: walk ray, set bits
+        bool hasDeps = false;
+        (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+        int cx = arrow.HeadCell.X + dx,
+            cy = arrow.HeadCell.Y + dy;
+        while (cx >= 0 && cx < Width && cy >= 0 && cy < Height)
+        {
+            Arrow hit = _occupancy[cx, cy];
+            if (hit != null)
+            {
+                int dIdx = hit._generationIndex;
+                if (dIdx >= 0)
+                {
+                    int word = dIdx >> 6;
+                    SetDepBit(nIdx, word, 1UL << (dIdx & 63));
+                    hasDeps = true;
+                }
+            }
+            cx += dx;
+            cy += dy;
+        }
+        _hasAnyDeps[nIdx] = hasDeps;
+
+        // Reverse deps: existing arrows whose rays cross this arrow's cells
+        // Must run BEFORE AddToRayIndex so the new arrow doesn't match itself.
+        ulong nBit = 1UL << (nIdx & 63);
+        int nWord = nIdx >> 6;
+        foreach (Cell c in arrow.Cells)
+        {
+            int cellX = c.X,
+                cellY = c.Y;
+            foreach (Arrow a in _rightHeadsByRow[cellY])
+                if (a.HeadCell.X < cellX && a._generationIndex >= 0)
+                    SetDepBit(a._generationIndex, nWord, nBit);
+            foreach (Arrow a in _leftHeadsByRow[cellY])
+                if (a.HeadCell.X > cellX && a._generationIndex >= 0)
+                    SetDepBit(a._generationIndex, nWord, nBit);
+            foreach (Arrow a in _upHeadsByCol[cellX])
+                if (a.HeadCell.Y < cellY && a._generationIndex >= 0)
+                    SetDepBit(a._generationIndex, nWord, nBit);
+            foreach (Arrow a in _downHeadsByCol[cellX])
+                if (a.HeadCell.Y > cellY && a._generationIndex >= 0)
+                    SetDepBit(a._generationIndex, nWord, nBit);
+        }
+
+        AddToRayIndex(arrow);
+    }
+
+    /// <summary>Sets a dep bit and maintains the sparse nonzero word index.</summary>
+    private void SetDepBit(int arrowIdx, int word, ulong bit)
+    {
+        int offset = arrowIdx * _bitsetWords + word;
+        bool wasZero = _depsBitsFlat[offset] == 0;
+        _depsBitsFlat[offset] |= bit;
+        _hasAnyDeps[arrowIdx] = true;
+
+        if (wasZero)
+        {
+            int count = _depsNonZeroCount[arrowIdx];
+            if (count >= 0 && count < MaxNonZeroTracked)
+            {
+                _depsNonZeroWords[arrowIdx * MaxNonZeroTracked + count] = word;
+                _depsNonZeroCount[arrowIdx] = count + 1;
+            }
+            else if (count >= 0)
+            {
+                // Overflow: mark as -1 to signal full scan fallback
+                _depsNonZeroCount[arrowIdx] = -1;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds the HashSet dependency graph after generation completes.
+    /// Must be called before <see cref="IsClearable"/> or <see cref="RemoveArrow"/>.
+    /// </summary>
+    internal void FinalizeGeneration()
+    {
+        foreach (Arrow arrow in _arrows)
+        {
+            _dependsOn[arrow] = new HashSet<Arrow>();
+            _dependedOnBy[arrow] = new HashSet<Arrow>();
+        }
+
+        foreach (Arrow arrow in _arrows)
+        {
+            (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+            int cx = arrow.HeadCell.X + dx,
+                cy = arrow.HeadCell.Y + dy;
+            while (cx >= 0 && cx < Width && cy >= 0 && cy < Height)
+            {
+                Arrow hit = _occupancy[cx, cy];
+                if (hit != null && hit != arrow)
+                {
+                    _dependsOn[arrow].Add(hit);
+                    _dependedOnBy[hit].Add(arrow);
+                }
+                cx += dx;
+                cy += dy;
+            }
+        }
+
+        _depsBitsFlat = null;
+        _hasAnyDeps = null;
+        _depsNonZeroWords = null;
+        _depsNonZeroCount = null;
+        _availableArrowHeads = null;
     }
 
     public void RemoveArrow(Arrow arrow)

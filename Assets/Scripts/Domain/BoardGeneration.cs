@@ -5,8 +5,7 @@ using System.Collections.Generic;
 public static class BoardGeneration
 {
     /// <summary>
-    /// Default cap on DFS dead ends per arrow candidate. Beyond this the DFS returns
-    /// the best path found so far rather than exhausting the search tree.
+    /// Default cap kept for API backward compatibility. The greedy walk does not use it.
     /// </summary>
     private const int DefaultDeadEndLimit = 10;
     private const int MinArrowLength = 2;
@@ -16,33 +15,40 @@ public static class BoardGeneration
     /// </summary>
     private sealed class GenerationContext
     {
-        public readonly int bitsetWords;
-        public readonly ulong[] reachable;
-        public readonly ulong[] forwardDeps;
-        public readonly Queue<int> bfsQueue;
+        public int bitsetStride;
+        public int activeWords;
+        public ulong[] reachable;
+        public ulong[] forwardDeps;
+        public ulong[] frontier; // level-based BFS frontier
         public readonly bool[,] visited;
         public readonly List<Cell> path;
-        public readonly List<Cell> best;
+        public readonly int[] dirOrder;
 
-        public GenerationContext(int maxArrows, int boardWidth, int boardHeight)
+        public GenerationContext(int initialStride, int boardWidth, int boardHeight)
         {
-            bitsetWords = (maxArrows + 63) >> 6;
-            reachable = new ulong[bitsetWords];
-            forwardDeps = new ulong[bitsetWords];
-            bfsQueue = new Queue<int>(Math.Max(maxArrows, 16));
+            bitsetStride = initialStride;
+            activeWords = 0;
+            reachable = new ulong[bitsetStride];
+            forwardDeps = new ulong[bitsetStride];
+            frontier = new ulong[bitsetStride];
             visited = new bool[boardWidth, boardHeight];
-            path = new List<Cell>(32);
-            best = new List<Cell>(32);
+            path = new List<Cell>(64);
+            dirOrder = new int[] { 0, 1, 2, 3 };
         }
 
-        public void ClearBitset(ulong[] bits)
+        public void EnsureCapacity(int requiredWords)
         {
-            Array.Clear(bits, 0, bitsetWords);
+            if (requiredWords <= bitsetStride)
+                return;
+            bitsetStride = requiredWords;
+            reachable = new ulong[bitsetStride];
+            forwardDeps = new ulong[bitsetStride];
+            frontier = new ulong[bitsetStride];
         }
     }
 
     /// <summary>
-    /// Incremental version of <see cref="FillBoard"/>. Places as many arrows as possible,
+    /// Incremental version of board filling. Places as many arrows as possible,
     /// yielding after each arrow to let the caller (e.g. a Unity coroutine) process the next frame.
     /// </summary>
     public static IEnumerator FillBoardIncremental(
@@ -54,20 +60,24 @@ public static class BoardGeneration
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
-        var ctx = new GenerationContext(maxPossibleArrows, board.Width, board.Height);
+        var ctx = new GenerationContext(board._bitsetWords, board.Width, board.Height);
         int created = 0;
 
         while (
             created < maxPossibleArrows
             && board._availableArrowHeads != null
             && board._availableArrowHeads.Count > 0
-            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit, ctx)
+            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, ctx)
         )
         {
-            board.AddArrow(arrow!);
+            board.AddArrowForGeneration(arrow!);
+            ctx.EnsureCapacity(board._bitsetWords);
+            ctx.activeWords = (board._nextGenIndex + 63) >> 6;
             created++;
             yield return null;
         }
+
+        board.FinalizeGeneration();
     }
 
     public static bool GenerateArrows(
@@ -83,15 +93,16 @@ public static class BoardGeneration
         if (board._availableArrowHeads == null)
             board.InitializeForGeneration();
 
-        int maxPossibleArrows = board.Width * board.Height / 2;
-        var ctx = new GenerationContext(maxPossibleArrows, board.Width, board.Height);
+        var ctx = new GenerationContext(board._bitsetWords, board.Width, board.Height);
+        ctx.activeWords = (board._nextGenIndex + 63) >> 6;
 
         while (
             createdArrows < amount
-            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, deadEndLimit, ctx)
+            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, ctx)
         )
         {
             board.AddArrow(arrow!);
+            ctx.activeWords = (board._nextGenIndex + 63) >> 6;
             createdArrows++;
         }
         return createdArrows == amount;
@@ -102,13 +113,13 @@ public static class BoardGeneration
         int maxLength,
         Random random,
         out Arrow arrow,
-        int deadEndLimit,
         GenerationContext ctx
     )
     {
         arrow = null;
         int targetLength = random.Next(MinArrowLength, maxLength + 1);
         var candidates = board._availableArrowHeads!;
+        var occupancy = board._occupancy;
 
         while (candidates.Count > 0)
         {
@@ -116,18 +127,18 @@ public static class BoardGeneration
             ArrowHeadData candidate = candidates[headIndex];
 
             if (
-                board.GetArrowAt(candidate.head) != null
-                || board.GetArrowAt(candidate.next) != null
+                occupancy[candidate.head.X, candidate.head.Y] != null
+                || occupancy[candidate.next.X, candidate.next.Y] != null
             )
             {
-                // Swap-and-pop: O(1) removal instead of O(N) shift
                 SwapRemove(candidates, headIndex);
                 continue;
             }
 
             // Compute forward deps as bitset
-            ctx.ClearBitset(ctx.forwardDeps);
-            ctx.ClearBitset(ctx.reachable);
+            int activeWords = ctx.activeWords;
+            Array.Clear(ctx.forwardDeps, 0, activeWords);
+            Array.Clear(ctx.reachable, 0, activeWords);
             int depCount = ComputeForwardDeps(
                 board,
                 candidate.head,
@@ -135,14 +146,34 @@ public static class BoardGeneration
                 ctx.forwardDeps
             );
 
-            if (depCount > 0)
+            bool hasReachable = depCount > 0;
+            if (hasReachable)
             {
-                // BFS reachability through dependency graph
-                ComputeReachableSet(board, ctx.forwardDeps, ctx.reachable, ctx);
+                // Check if any forward dep has deps — if all are leaves, skip BFS
+                bool needBFS = false;
+                for (int w = 0; w < activeWords && !needBFS; w++)
+                {
+                    ulong bits = ctx.forwardDeps[w];
+                    while (bits != 0)
+                    {
+                        int bit = Ctz64(bits);
+                        if (board._hasAnyDeps[(w << 6) | bit])
+                        {
+                            needBFS = true;
+                            break;
+                        }
+                        bits &= bits - 1;
+                    }
+                }
+
+                if (needBFS)
+                    ComputeReachableSet(board, ctx.forwardDeps, ctx.reachable, ctx);
+                else
+                    Array.Copy(ctx.forwardDeps, ctx.reachable, activeWords);
 
                 if (
-                    WouldCellCauseCycle(board, candidate.head, ctx.reachable)
-                    || WouldCellCauseCycle(board, candidate.next, ctx.reachable)
+                    board.AnyArrowWithRayThroughBitset(candidate.head, ctx.reachable)
+                    || board.AnyArrowWithRayThroughBitset(candidate.next, ctx.reachable)
                 )
                 {
                     SwapRemove(candidates, headIndex);
@@ -150,13 +181,13 @@ public static class BoardGeneration
                 }
             }
 
-            List<Cell> tail = CompleteArrowTail(
+            List<Cell> tail = GreedyWalk(
                 board,
                 targetLength,
                 candidate,
                 random,
-                deadEndLimit,
                 ctx.reachable,
+                hasReachable,
                 ctx
             );
             if (tail.Count < MinArrowLength)
@@ -172,93 +203,122 @@ public static class BoardGeneration
         return false;
     }
 
-    private static List<Cell> CompleteArrowTail(
+    /// <summary>
+    /// Greedy random walk to build an arrow tail. Replaces DFS for speed:
+    /// no backtracking, inline neighbor iteration, ray pre-marked in visited array.
+    /// </summary>
+    private static List<Cell> GreedyWalk(
         Board board,
         int targetLength,
         ArrowHeadData headData,
         Random random,
-        int deadEndLimit,
         ulong[] reachable,
+        bool hasReachable,
         GenerationContext ctx
     )
     {
         var path = ctx.path;
-        var best = ctx.best;
         var visited = ctx.visited;
+        var dirs = ctx.dirOrder;
+        var occupancy = board._occupancy;
+        int w = board.Width,
+            h = board.Height;
 
         path.Clear();
         path.Add(headData.head);
         path.Add(headData.next);
-
-        best.Clear();
-        best.Add(headData.head);
-        best.Add(headData.next);
-
         visited[headData.head.X, headData.head.Y] = true;
         visited[headData.next.X, headData.next.Y] = true;
 
-        int deadEnds = 0;
-
-        void Dfs(Cell current)
+        // Pre-mark ray cells in visited to eliminate per-step IsInRay checks
+        (int rdx, int rdy) = Arrow.GetDirectionStep(headData.direction);
+        int rx = headData.head.X + rdx,
+            ry = headData.head.Y + rdy;
+        while (rx >= 0 && rx < w && ry >= 0 && ry < h)
         {
-            if (deadEnds >= deadEndLimit)
-                return;
-            if (path.Count == targetLength)
-            {
-                best.Clear();
-                best.AddRange(path);
-                return;
-            }
-
-            bool anyValid = false;
-            Cell[] neighbors = GetNeighbors(current);
-            Shuffle(neighbors, random);
-            foreach (Cell neighbor in neighbors)
-            {
-                if (
-                    neighbor.X < 0
-                    || neighbor.X >= board.Width
-                    || neighbor.Y < 0
-                    || neighbor.Y >= board.Height
-                )
-                    continue;
-                if (visited[neighbor.X, neighbor.Y])
-                    continue;
-                if (Board.IsInRay(neighbor, headData.head, headData.direction))
-                    continue;
-                if (board.GetArrowAt(neighbor) != null)
-                    continue;
-                if (WouldCellCauseCycle(board, neighbor, reachable))
-                    continue;
-
-                path.Add(neighbor);
-                visited[neighbor.X, neighbor.Y] = true;
-                if (path.Count > best.Count)
-                {
-                    best.Clear();
-                    best.AddRange(path);
-                }
-                anyValid = true;
-                Dfs(neighbor);
-                if (best.Count == targetLength || deadEnds >= deadEndLimit)
-                    return;
-
-                visited[neighbor.X, neighbor.Y] = false;
-                path.RemoveAt(path.Count - 1);
-            }
-
-            if (!anyValid)
-                deadEnds++;
+            visited[rx, ry] = true;
+            rx += rdx;
+            ry += rdy;
         }
 
-        Dfs(headData.next);
+        Cell current = headData.next;
 
-        // Clean up visited grid (handles both normal backtrack and early exit)
+        while (path.Count < targetLength)
+        {
+            // Fisher-Yates shuffle on 4 directions
+            dirs[0] = 0;
+            dirs[1] = 1;
+            dirs[2] = 2;
+            dirs[3] = 3;
+            for (int i = 3; i > 0; i--)
+            {
+                int j = random.Next(i + 1);
+                int tmp = dirs[i];
+                dirs[i] = dirs[j];
+                dirs[j] = tmp;
+            }
+
+            bool found = false;
+            for (int i = 0; i < 4; i++)
+            {
+                int nx,
+                    ny;
+                switch (dirs[i])
+                {
+                    case 0:
+                        nx = current.X + 1;
+                        ny = current.Y;
+                        break;
+                    case 1:
+                        nx = current.X - 1;
+                        ny = current.Y;
+                        break;
+                    case 2:
+                        nx = current.X;
+                        ny = current.Y + 1;
+                        break;
+                    default:
+                        nx = current.X;
+                        ny = current.Y - 1;
+                        break;
+                }
+
+                if (nx < 0 || nx >= w || ny < 0 || ny >= h)
+                    continue;
+                if (visited[nx, ny])
+                    continue;
+                if (occupancy[nx, ny] != null)
+                    continue;
+                if (hasReachable && board.AnyArrowWithRayThroughBitset(new Cell(nx, ny), reachable))
+                    continue;
+
+                Cell neighbor = new(nx, ny);
+                path.Add(neighbor);
+                visited[nx, ny] = true;
+                current = neighbor;
+                found = true;
+                break;
+            }
+
+            if (!found)
+                break;
+        }
+
+        // Clean up visited: path cells
         foreach (Cell c in path)
             visited[c.X, c.Y] = false;
+        // Clean up visited: ray cells
+        rx = headData.head.X + rdx;
+        ry = headData.head.Y + rdy;
+        while (rx >= 0 && rx < w && ry >= 0 && ry < h)
+        {
+            visited[rx, ry] = false;
+            rx += rdx;
+            ry += rdy;
+        }
 
-        // Return a copy since best is pooled and will be reused
-        return new List<Cell>(best);
+        // Return a copy since path is pooled and will be reused
+        return new List<Cell>(path);
     }
 
     /// <summary>Collects all distinct arrows in the forward ray, storing them in the bitset. Returns the count.</summary>
@@ -271,10 +331,15 @@ public static class BoardGeneration
     {
         int count = 0;
         (int dx, int dy) = Arrow.GetDirectionStep(direction);
-        Cell cursor = new(head.X + dx, head.Y + dy);
-        while (board.Contains(cursor))
+        int cx = head.X + dx,
+            cy = head.Y + dy;
+        int w = board.Width,
+            h = board.Height;
+        var occupancy = board._occupancy;
+
+        while (cx >= 0 && cx < w && cy >= 0 && cy < h)
         {
-            Arrow hit = board.GetArrowAt(cursor);
+            Arrow hit = occupancy[cx, cy];
             if (hit != null)
             {
                 int idx = hit._generationIndex;
@@ -289,12 +354,17 @@ public static class BoardGeneration
                     }
                 }
             }
-            cursor = new(cursor.X + dx, cursor.Y + dy);
+            cx += dx;
+            cy += dy;
         }
         return count;
     }
 
-    /// <summary>BFS from <paramref name="startBits"/> through committed dependsOn edges using bitsets.</summary>
+    /// <summary>
+    /// Level-based BFS from <paramref name="startBits"/> through committed dependsOn edges.
+    /// Uses sparse nonzero word indices to skip zero words in dep rows, and processes
+    /// arrows in index order per level for cache-friendly memory access.
+    /// </summary>
     private static void ComputeReachableSet(
         Board board,
         ulong[] startBits,
@@ -302,75 +372,73 @@ public static class BoardGeneration
         GenerationContext ctx
     )
     {
-        int words = ctx.bitsetWords;
-        var queue = ctx.bfsQueue;
-        queue.Clear();
+        int stride = board._bitsetWords;
+        int words = ctx.activeWords;
+        var frontier = ctx.frontier;
+        ulong[] depsBits = board._depsBitsFlat;
+        int[] nzWords = board._depsNonZeroWords;
+        int[] nzCounts = board._depsNonZeroCount;
 
-        // Initialize reachable with start set and enqueue all set bits
+        // Initialize reachable and frontier with start bits
         for (int w = 0; w < words; w++)
         {
             reachable[w] = startBits[w];
-            ulong bits = startBits[w];
-            while (bits != 0)
-            {
-                int bit = Ctz64(bits);
-                queue.Enqueue((w << 6) | bit);
-                bits &= bits - 1;
-            }
+            frontier[w] = startBits[w];
         }
 
-        // BFS: for each reachable arrow, OR in its deps and enqueue newly discovered arrows
-        while (queue.Count > 0)
+        // Process levels until no new discoveries
+        while (true)
         {
-            int idx = queue.Dequeue();
-            int offset = idx * words;
-            ulong[] depsBits = board._depsBitsFlat;
+            bool hasNext = false;
             for (int w = 0; w < words; w++)
             {
-                ulong newBits = depsBits[offset + w] & ~reachable[w];
-                if (newBits != 0)
+                ulong bits = frontier[w];
+                if (bits == 0)
+                    continue;
+                frontier[w] = 0;
+                while (bits != 0)
                 {
-                    reachable[w] |= newBits;
-                    ulong scan = newBits;
-                    while (scan != 0)
+                    int bit = Ctz64(bits);
+                    int idx = (w << 6) | bit;
+                    int offset = idx * stride;
+                    int nzCount = nzCounts[idx];
+
+                    if (nzCount >= 0 && nzCount <= Board.MaxNonZeroTracked)
                     {
-                        int bit = Ctz64(scan);
-                        queue.Enqueue((w << 6) | bit);
-                        scan &= scan - 1;
+                        // Sparse path: only read nonzero words
+                        int nzBase = idx * Board.MaxNonZeroTracked;
+                        for (int i = 0; i < nzCount; i++)
+                        {
+                            int ww = nzWords[nzBase + i];
+                            ulong newBits = depsBits[offset + ww] & ~reachable[ww];
+                            if (newBits != 0)
+                            {
+                                reachable[ww] |= newBits;
+                                frontier[ww] |= newBits;
+                                hasNext = true;
+                            }
+                        }
                     }
+                    else
+                    {
+                        // Full scan fallback
+                        for (int ww = 0; ww < words; ww++)
+                        {
+                            ulong newBits = depsBits[offset + ww] & ~reachable[ww];
+                            if (newBits != 0)
+                            {
+                                reachable[ww] |= newBits;
+                                frontier[ww] |= newBits;
+                                hasNext = true;
+                            }
+                        }
+                    }
+                    bits &= bits - 1;
                 }
             }
-        }
-    }
 
-    /// <summary>
-    /// Returns true if placing a candidate cell at <paramref name="cell"/> would create a cycle.
-    /// Uses bitset-based reachable set for O(1) per-arrow membership tests.
-    /// </summary>
-    private static bool WouldCellCauseCycle(Board board, Cell cell, ulong[] reachable)
-    {
-        return board.AnyArrowWithRayThroughBitset(cell, reachable);
-    }
-
-    private static Cell[] GetNeighbors(Cell cell)
-    {
-        return new Cell[]
-        {
-            new(cell.X + 1, cell.Y),
-            new(cell.X - 1, cell.Y),
-            new(cell.X, cell.Y + 1),
-            new(cell.X, cell.Y - 1),
-        };
-    }
-
-    private static void Shuffle(Cell[] array, Random random)
-    {
-        int n = array.Length;
-        while (n > 1)
-        {
-            n--;
-            int k = random.Next(n + 1);
-            (array[n], array[k]) = (array[k], array[n]);
+            if (!hasNext)
+                break;
         }
     }
 
@@ -462,7 +530,7 @@ public static class BoardGeneration
     };
 }
 
-sealed class ArrowHeadData
+struct ArrowHeadData
 {
     public Cell head;
     public Cell next;
