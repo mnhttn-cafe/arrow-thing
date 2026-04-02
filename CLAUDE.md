@@ -94,6 +94,7 @@ Before committing or opening a PR, verify changes abide by `CONTRIBUTING.md`:
 - `docs/TechnicalDesign.md` is updated if architecture or class structure changed.
 - `docs/TODO.md` is deleted before the PR is merge-ready.
 - No docs inconsistencies introduced.
+- GitHub releases use the template in `.github/release_template.md`. Title format: `v{x.y} — {Short descriptive title}`. Use section names like "New features", "Bug fixes", "Performance", "Infrastructure". Only include sections that apply.
 
 ## Unity Editor Configuration
 
