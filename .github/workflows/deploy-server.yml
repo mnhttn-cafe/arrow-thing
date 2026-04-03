@@ -81,9 +81,13 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.VPS_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
           ssh -i ~/.ssh/id_ed25519 deploy@${{ secrets.VPS_HOST }} \
-            "cd /home/deploy/arrow-thing && \
-             docker compose pull api && \
-             docker compose up -d"
+            "cd /home/deploy/arrow-thing/repo && \
+             git fetch origin main && \
+             git reset --hard origin/main && \
+             ./server/deploy/setup.sh && \
+             cd /home/deploy/arrow-thing && \
+             docker compose pull && \
+             docker compose up -d --remove-orphans"
 
       - name: Health check
         run: |

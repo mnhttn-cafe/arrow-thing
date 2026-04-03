@@ -40,9 +40,13 @@ jobs:
           mkdir -p Assets/Resources
           git rev-parse --short HEAD > Assets/Resources/git-commit.txt
 
-      - name: Set version from latest tag
+      - name: Set version from release tag
         run: |
-          VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0")
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          else
+            VERSION=$(git tag --sort=-v:refname | head -n1 | sed 's/^v//' || echo "0.0")
+          fi
           echo "Setting bundleVersion to $VERSION"
           sed -i "s/bundleVersion: .*/bundleVersion: $VERSION/" ProjectSettings/ProjectSettings.asset
 
