@@ -4,9 +4,9 @@
 
 Wire up server-side score submission and expose global leaderboards in-client. Players with verified accounts submit scores silently when online; offline games stay local-only. All games are always generated locally — the server only receives completed replays for verification and storage.
 
-**Scope**: `ReplayVerifier` domain class → server score/leaderboard/replay endpoints → client score submission → global leaderboard display (dedicated scene + victory screen inline leaderboard).
+**Scope**: `ReplayVerifier` domain class → server score/leaderboard/replay endpoints → client score submission → global leaderboard display (dedicated scene).
 
-**Out of scope (separate PRs)**: server-assigned seeds / `GameSession` pre-registration; `minArrowLength` parameterisation cleanup.
+**Out of scope (separate PRs)**: server-assigned seeds / `GameSession` pre-registration.
 
 ---
 
@@ -26,8 +26,6 @@ Wire up server-side score submission and expose global leaderboards in-client. P
 - **Display names**: The local `LeaderboardEntry` name is fixed at submission time. The global leaderboard always reads `User.DisplayName` live at query time — renames reflect immediately on global, never on local.
 - **Victory screen philosophy**: Submission is silent; victory modal stays entirely local. "New Best!" / gold timer / "View Leaderboard" all compare against local scores only. Global leaderboard is always the player's express navigation choice. If submission fails or times out, a small low-prominence note appears with a retry button — enough to avoid the score silently disappearing, not prominent enough to affect the post-game mood.
 - **"All" tab global ranking**: Ranked by biggest board cleared first (area DESC), then fastest time within that size. Each player's representative score is their best time on their largest completed board.
-- **`minArrowLength`**: Always 2. Hard-coded in `ReplayVerifier` and server. Parameterisation cleanup is a separate PR.
-- **`deadEndLimit`**: Stored in the replay and sent to the server. Server uses the stored value for verification so future default changes don't desync old replays.
 - **Rate limiting**: Count-based. Cap at 10 verified score updates per user per hour. Empirically, beating your own 10×10 PB more than ~2 times in an hour is already very hard in practice — 10 is a generous ceiling that no legitimate player should hit.
 - **Replay storage format**: PostgreSQL `TEXT` column — TOAST handles large values transparently (up to 1GB). No separate blob storage needed. SQLite likewise.
 
@@ -43,28 +41,22 @@ None. All design decisions are resolved above.
 
 ### Phase 1: Domain — ReplayVerifier
 
-- [ ] **`BoardCoords` dependency check**: Read `BoardCoords.cs`. If `WorldToCell` uses any Unity types (`Vector2`, `Mathf`, etc.), extract the pure arithmetic into `Assets/Scripts/Domain/BoardMath.cs`. The formula is a simple floor-divide — fully Unity-free.
-
-- [ ] **Check `BoardGeneration.Generate` signature**: Confirm whether `deadEndLimit` is a parameter or a constant. If it's a constant, make it a parameter with the existing value as its default — preserves all call sites unchanged.
-
 - [ ] **`ReplayVerifier`** (`Assets/Scripts/Domain/ReplayVerifier.cs`)
   - Static class. Takes `ReplayData` and returns `VerificationResult`.
   - Algorithm:
-    1. Instantiate `Board(width, height)`, call `InitializeForGeneration()`.
-    2. Run `BoardGeneration.Generate(board, seed, maxArrowLength, deadEndLimit)`. `minArrowLength` is hard-coded 2.
-    3. Walk events in `seq` order. Skip `session_start`, `session_leave`, `session_rejoin`, `reject`.
-    4. On `start_solve`: record `solveStart` timestamp.
-    5. On `clear`: convert `posX`/`posY` → cell via `BoardMath.WorldToCell` (or `BoardCoords` if Unity-free). Get arrow via `Board.GetArrowAt(cell)`. Verify `Board.IsClearable(arrow)`. Call `Board.RemoveArrow(arrow)`. No arrow at cell or not clearable → return `Invalid` with reason.
-    6. On `end_solve`: verify `board.Arrows.Count == 0`. Compute server-side solve time, excluding `session_leave`→`session_rejoin` gaps. Compare to `finalTime` within ±100ms tolerance.
+    1. Regenerate board from `seed`, `boardWidth`, `boardHeight`, `maxArrowLength` via `Board` + `BoardGeneration.FillBoardIncremental`. Compare generated arrows against `boardSnapshot` — mismatch → return `Invalid` (detects tampered board state).
+    2. Walk `clear` events in `seq` order. For each: convert `posX`/`posY` → cell via `new Cell((int)Math.Round(posX), (int)Math.Round(posY))`. Get arrow via `Board.GetArrowAt(cell)`. Verify `Board.IsClearable(arrow)`. Call `Board.RemoveArrow(arrow)`. No arrow at cell or not clearable → return `Invalid` with reason.
+    3. Verify `board.Arrows.Count == 0` after all events — board must be fully cleared.
+    4. Compute solve time from event timestamps, excluding `session_leave`→`session_rejoin` gaps. Store as `VerifiedTime`.
   - `VerificationResult`: `bool IsValid`, `string Reason` (null on success), `double VerifiedTime`.
   - Never throw on malformed input — catch everything, return `Invalid` with a reason.
 
 - [ ] **NUnit tests** (`Assets/Tests/EditMode/ReplayVerifierTests.cs`)
-  - Valid replay passes; `VerifiedTime` matches `finalTime`.
+  - Valid replay passes; `VerifiedTime` derived from event timestamps.
+  - Snapshot mismatch (tampered board) → invalid.
   - Clear at a non-clearable arrow → invalid.
   - Tap on empty cell → invalid.
-  - `end_solve` before board empty → invalid.
-  - `finalTime` outside ±100ms of event-derived time → invalid.
+  - Board not empty at end → invalid.
   - Pause/rejoin: solve time excludes the gap correctly.
   - Truncated event stream (missing `end_solve`) → invalid.
 
@@ -83,7 +75,6 @@ None. All design decisions are resolved above.
       public int BoardWidth { get; set; }
       public int BoardHeight { get; set; }
       public int MaxArrowLength { get; set; }
-      public int DeadEndLimit { get; set; }
       public double Time { get; set; }           // server-verified solve time (seconds)
       public string ReplayJson { get; set; }     // events + metadata; boardSnapshot present only if top-50
   }
@@ -136,9 +127,9 @@ None. All design decisions are resolved above.
   POST  /api/scores                  [auth]     { replayJson }
                                                  → { verified, rank?, isPersonalBest?, reason? }
   GET   /api/leaderboards/{w}x{h}    [no auth]  ?limit=50
-                                                 → { entries: [{ rank, displayName, time, gameId }] }
+                                                 → { totalEntries, entries: [{ rank, displayName, time, gameId }] }
   GET   /api/leaderboards/all        [no auth]  ?limit=50
-                                                 → { entries: [{ rank, displayName, time, gameId, boardWidth, boardHeight }] }
+                                                 → { totalEntries, entries: [{ rank, displayName, time, gameId, boardWidth, boardHeight }] }
   GET   /api/leaderboards/{w}x{h}/me [auth]     → { rank, time, gameId } | 404
   GET   /api/leaderboards/all/me     [auth]     → { rank, time, gameId, boardWidth, boardHeight } | 404
   GET   /api/replays/{gameId}        [no auth]  → { replayJson } | 404 (verified scores only)
@@ -167,47 +158,33 @@ None. All design decisions are resolved above.
 
 - [ ] **`ApiClient` additions** (`Assets/Scripts/View/ApiClient.cs`)
   - `SubmitScoreAsync(replayJson)` → `SubmitResultResponse?` (`verified`, `rank`, `isPersonalBest`, `reason`)
-  - `GetLeaderboardAsync(width, height, limit)` → `GlobalLeaderboardResponse?`
-  - `GetLeaderboardAllAsync(limit)` → `GlobalLeaderboardResponse?`
+  - `GetLeaderboardAsync(width, height, limit)` → `GlobalLeaderboardResponse?` (`totalEntries`, `entries`)
+  - `GetLeaderboardAllAsync(limit)` → `GlobalLeaderboardResponse?` (`totalEntries`, `entries`)
   - `GetPlayerEntryAsync(width, height)` → `PlayerEntryResponse?`
   - `GetPlayerEntryAllAsync()` → `PlayerEntryResponse?`
   - `GetReplayAsync(gameId)` → `string?` (raw replayJson; caller handles snapshot presence/absence)
   - All return null on any error. Never throw.
 
-### Phase 6: Client — OnlineController
+### Phase 6: Client — Score Submission
 
-- [ ] **`OnlineController`** (`Assets/Scripts/View/OnlineController.cs`)
-  MonoBehaviour in the Game scene. No session state — just a submission helper.
+- [ ] **`ScoreSubmitter`** (`Assets/Scripts/View/ScoreSubmitter.cs`)
+  Static helper class. No MonoBehaviour, no component wiring.
 
-  **`TrySubmitAsync(ReplayData replay)`** → `SubmitResultResponse?`
+  **`static async Task<SubmitResultResponse?> TrySubmitAsync(ReplayData replay)`**
   - Not logged in or email not verified → return null immediately (no network call).
   - Serialize `ReplayData` to JSON via `JsonConvert.SerializeObject`.
   - Call `ApiClient.SubmitScoreAsync(replayJson)` with a 5-second timeout.
   - Return response or null on failure/timeout.
 
-  No singleton. Created and owned by `GameController`. Passed to `VictoryController.Init(...)`.
-
-### Phase 7: Client — GameController Wiring
-
-- [ ] **`GameController` changes** (`Assets/Scripts/View/GameController.cs`)
-  - Get or add `OnlineController` component.
-  - No change to board generation — always local, as before.
-  - Pass `OnlineController` reference to `VictoryController.Init(...)`.
-
-### Phase 8: Client — VictoryController Submission + Inline Leaderboard
+### Phase 7: Client — VictoryController Submission
 
 - [ ] **`VictoryController` changes** (`Assets/Scripts/View/VictoryController.cs`)
-  - At the start of the victory sequence: fire `OnlineController.TrySubmitAsync(replay)` as a background task. Let it run while the zoom/fade animation plays. Await it just before the modal appears.
+  - At the start of the victory sequence: fire `ScoreSubmitter.TrySubmitAsync(replay)` as a background task. Let it run while the zoom/fade animation plays. Await it just before the modal appears.
   - "New Best!" / gold timer / "View Leaderboard" remain purely local — no global comparison anywhere in the victory flow.
   - If submission returns null (failed/timed out): show a small, low-prominence note below the victory modal content ("Could not submit score") and a "Retry" button. Tapping Retry calls `TrySubmitAsync` again; on success, hide the note and button.
   - If submission succeeds: no visible indication beyond the note/button being absent. The player can check the global leaderboard themselves.
 
-- [ ] **Inline leaderboard in victory popup**
-  - Compact top-10 list inside the victory modal showing the local leaderboard for this board size.
-  - Local only — no global tab here.
-  - Player's entry highlighted. If outside top 10, append at bottom as a separate row.
-
-### Phase 9: Client — Leaderboard Scene Global Tab
+### Phase 8: Client — Leaderboard Scene Global Tab
 
 - [ ] **`LeaderboardScreenController` global tab** (`Assets/Scripts/View/LeaderboardScreenController.cs`)
   - On switch to Global for a specific size tab: call `ApiClient.GetLeaderboardAsync(width, height, 50)` and `ApiClient.GetPlayerEntryAsync(width, height)` in parallel.
@@ -228,27 +205,26 @@ None. All design decisions are resolved above.
   | Not logged in | "Register or log in to appear on the global leaderboard." — "Register or log in" is a tappable link that opens Settings scrolled to Account |
   | Logged in, unverified email | "Verify your email to submit scores to the global leaderboard." |
   | Logged in, verified, no score for this size | "No scores yet for this board size. Play a game to enter the leaderboard." |
-  | Logged in, verified, rank ≤ 50 | "Your best: #N · M:SS.mmm" — corresponding row in top list is highlighted |
-  | Logged in, verified, rank > 50 | "Your best: #N · M:SS.mmm" — outside visible top 50, rank still shown |
+  | Logged in, verified, rank ≤ 50 | "Your best: #N of T · M:SS.mmm" — corresponding row in top list is highlighted |
+  | Logged in, verified, rank > 50 | "Your best: #N of T · M:SS.mmm" — outside visible top 50, rank still shown |
 
 - [ ] **`ReplayViewController` no-snapshot path** (`Assets/Scripts/View/ReplayViewController.cs`)
-  - When launching from a global replay without a snapshot: pass `seed`, `width`, `height`, `maxArrowLength`, `deadEndLimit` to `BoardSetupHelper` for board regeneration instead of snapshot restoration. The rest of playback is unchanged.
+  - When launching from a global replay without a snapshot: pass `seed`, `width`, `height`, `maxArrowLength` to `BoardSetupHelper` for board regeneration instead of snapshot restoration. The rest of playback is unchanged.
   - `GameSettings` or a new `ReplaySource` field will need to carry these params through the scene transition if not already present.
   - After board regeneration completes, write the resulting snapshot back into the player's local replay file (via `LeaderboardManager`) so subsequent views load instantly. This path only occurs when a player views their own non-top-50 score — you can only view someone else's replay if they're in the top 50, which is guaranteed to already have a snapshot.
 
-### Phase 10: Docs & TechnicalDesign Update
+### Phase 9: Docs & TechnicalDesign Update
 
 - [ ] Update `docs/TechnicalDesign.md`:
   - Add `ReplayVerifier` to Domain types.
-  - Add `OnlineController` to View layer scripts.
-  - Update `VictoryController` (background submission, retry note, inline local leaderboard).
+  - Add `ScoreSubmitter` to View layer scripts.
+  - Update `VictoryController` (background submission, retry note).
   - Update `LeaderboardScreenController` (global tab, player panel states, refresh button).
   - Update `ReplayViewController` (no-snapshot seed-restore path).
-  - Update `GameController` (OnlineController wiring).
 
 - [ ] Update `docs/OnlineRoadmap.md`:
   - Mark new server endpoints as implemented.
-  - Mark `ReplayVerifier`, `OnlineController` as done.
+  - Mark `ReplayVerifier`, `ScoreSubmitter` as done.
   - Move global leaderboards from Planned to Current State.
   - Record best-only score model and snapshot storage strategy.
 
@@ -284,7 +260,7 @@ Run after implementation. Record pass/fail.
 | 22 | Global entry → play replay (top-50, has snapshot) | Snapshot decoded; board loads instantly; replay plays correctly |
 | 23 | Global entry → play replay (non-top-50, no snapshot) | Board regenerated from seed; replay plays correctly; snapshot written back to local file |
 | 23b | Play same non-top-50 replay a second time | Board loads from local snapshot; no regeneration |
-| 24 | Tampered replay submitted | Server rejects; `verified: false`; score not stored |
-| 25 | Rate limit: >2MB submitted in 1 hour | 429 returned; client shows failure note + Retry |
-| 26 | Multi-device: no local PB on device B, finish game | Submission always attempted; server updates if better than stored global best |
-| 27 | Victory inline leaderboard | Shows local top-10 for this board size; player's entry highlighted; outside top-10 appended at bottom |
+| 24 | Tampered replay submitted (invalid events) | Server rejects; `verified: false`; score not stored |
+| 25 | Tampered replay submitted (modified board snapshot) | Snapshot mismatch detected; `verified: false`; score not stored |
+| 26 | Rate limit: >10 verified score updates in 1 hour | 429 returned; client shows failure note + Retry |
+| 27 | Multi-device: no local PB on device B, finish game | Submission always attempted; server updates if better than stored global best |
