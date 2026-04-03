@@ -9,6 +9,9 @@ public sealed class Arrow
     public Cell HeadCell => _cells[0];
     public Direction HeadDirection { get; }
 
+    /// <summary>Index assigned during board generation for bitset-based cycle detection. -1 when unset.</summary>
+    internal int _generationIndex = -1;
+
     public Arrow(IEnumerable<Cell> cells)
     {
         _cells =

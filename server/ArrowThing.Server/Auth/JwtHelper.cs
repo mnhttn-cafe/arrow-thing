@@ -10,11 +10,18 @@ public class JwtHelper
 {
     private readonly byte[] _key;
 
+    private const string Issuer = "arrow-thing-api";
+    private const string Audience = "arrow-thing-client";
+
     public JwtHelper(IConfiguration configuration)
     {
         var secret =
             configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
+
+        if (secret.Length < 32)
+            throw new InvalidOperationException("Jwt:Secret must be at least 32 characters long.");
+
         _key = Encoding.UTF8.GetBytes(secret);
     }
 
@@ -33,6 +40,8 @@ public class JwtHelper
         );
 
         var token = new JwtSecurityToken(
+            issuer: Issuer,
+            audience: Audience,
             claims: claims,
             expires: DateTime.UtcNow.AddDays(30),
             signingCredentials: credentials
@@ -44,8 +53,10 @@ public class JwtHelper
     public TokenValidationParameters GetValidationParameters() =>
         new()
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidIssuer = Issuer,
+            ValidateAudience = true,
+            ValidAudience = Audience,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(_key),

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Testcontainers.PostgreSql;
 
 namespace ArrowThing.Server.Tests;

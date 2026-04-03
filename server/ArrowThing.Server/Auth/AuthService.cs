@@ -9,20 +9,33 @@ public class AuthService
     private static readonly TimeSpan VerificationCodeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan PasswordResetCodeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan EmailCooldown = TimeSpan.FromMinutes(5);
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan LoginLockoutDuration = TimeSpan.FromMinutes(15);
 
     private readonly AppDbContext _db;
     private readonly JwtHelper _jwt;
     private readonly IEmailService _email;
+    private readonly AuditLogService _audit;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(AppDbContext db, JwtHelper jwt, IEmailService email)
+    public AuthService(
+        AppDbContext db,
+        JwtHelper jwt,
+        IEmailService email,
+        AuditLogService audit,
+        ILogger<AuthService> logger
+    )
     {
         _db = db;
         _jwt = jwt;
         _email = email;
+        _audit = audit;
+        _logger = logger;
     }
 
     public async Task<(MessageResponse? Response, int StatusCode, string? Error)> RegisterAsync(
-        RegisterRequest request
+        RegisterRequest request,
+        string? ip = null
     )
     {
         // Validate email
@@ -54,14 +67,14 @@ public class AuthService
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Failed to send already-registered email: {ex.Message}");
+                _logger.LogError(ex, "Failed to send already-registered email");
             }
 
             return (new MessageResponse(successMessage), 200, null);
         }
 
         // Generate 6-digit verification code
-        var code = GenerateVerificationCode();
+        var code = PasswordHasher.GenerateSecureCode();
 
         var user = new User
         {
@@ -70,7 +83,7 @@ public class AuthService
             DisplayName = request.DisplayName,
             PasswordHash = PasswordHasher.Hash(request.Password),
             CreatedAt = DateTime.UtcNow,
-            VerificationCode = code,
+            VerificationCode = PasswordHasher.HashOtp(code),
             VerificationCodeExpiresAt = DateTime.UtcNow.Add(VerificationCodeLifetime),
             LastVerificationEmailAt = DateTime.UtcNow,
         };
@@ -78,13 +91,15 @@ public class AuthService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(AuditEvent.Register, user.Id, user.Email, ip);
+
         try
         {
             await _email.SendVerificationCodeAsync(user.Email, code);
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to send verification email: {ex.Message}");
+            _logger.LogError(ex, "Failed to send verification email");
         }
 
         return (new MessageResponse(successMessage), 200, null);
@@ -100,7 +115,8 @@ public class AuthService
     }
 
     public async Task<(AuthResponse? Response, int StatusCode, string? Error)> LoginAsync(
-        LoginRequest request
+        LoginRequest request,
+        string? ip = null
     )
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
@@ -109,15 +125,46 @@ public class AuthService
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
+        // Check temporary lockout from failed attempts
+        if (user != null && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow)
+            return (null, 429, "Too many failed attempts. Please try again later.");
+
         if (
             user == null
             || !PasswordHasher.Verify(request.Password, user.PasswordHash)
             || !user.IsEmailVerified
         )
+        {
+            // Track failed attempts for existing users
+            if (user != null)
+            {
+                // Reset counter if lockout has expired
+                if (user.LockoutEnd.HasValue && user.LockoutEnd.Value <= DateTime.UtcNow)
+                    user.FailedLoginAttempts = 0;
+
+                user.FailedLoginAttempts++;
+                if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
+                    user.LockoutEnd = DateTime.UtcNow.Add(LoginLockoutDuration);
+
+                await _db.SaveChangesAsync();
+            }
+
+            await _audit.LogAsync(AuditEvent.LoginFailed, user?.Id, normalizedEmail, ip);
             return (null, 401, "Invalid email or password.");
+        }
 
         if (user.IsLocked)
             return (null, 403, "Account is locked. Please contact support on Discord.");
+
+        // Reset failed attempts on successful login
+        if (user.FailedLoginAttempts > 0)
+        {
+            user.FailedLoginAttempts = 0;
+            user.LockoutEnd = null;
+            await _db.SaveChangesAsync();
+        }
+
+        await _audit.LogAsync(AuditEvent.Login, user.Id, user.Email, ip);
 
         var token = _jwt.GenerateToken(user);
         return (new AuthResponse(token, user.DisplayName), 200, null);
@@ -127,7 +174,7 @@ public class AuthService
         DisplayNameResponse? Response,
         int StatusCode,
         string? Error
-    )> UpdateDisplayNameAsync(Guid userId, UpdateDisplayNameRequest request)
+    )> UpdateDisplayNameAsync(Guid userId, UpdateDisplayNameRequest request, string? ip = null)
     {
         if (
             request.DisplayName == null
@@ -140,8 +187,17 @@ public class AuthService
         if (user == null)
             return (null, 401, "User not found.");
 
+        var oldName = user.DisplayName;
         user.DisplayName = request.DisplayName;
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(
+            AuditEvent.UpdateDisplayName,
+            user.Id,
+            user.Email,
+            ip,
+            $"{oldName} -> {user.DisplayName}"
+        );
 
         return (new DisplayNameResponse(user.DisplayName), 200, null);
     }
@@ -150,7 +206,7 @@ public class AuthService
         MessageResponse? Response,
         int StatusCode,
         string? Error
-    )> ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
+    )> ChangePasswordAsync(Guid userId, ChangePasswordRequest request, string? ip = null)
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword))
             return (null, 400, "Current password is required.");
@@ -163,7 +219,7 @@ public class AuthService
             return (null, 401, "User not found.");
 
         if (!PasswordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            return (null, 401, "Incorrect password.");
+            return (null, 401, "Invalid email or password.");
 
         if (PasswordHasher.Verify(request.NewPassword, user.PasswordHash))
             return (null, 400, "New password must be different from current password.");
@@ -172,11 +228,14 @@ public class AuthService
         user.SecurityStamp = Guid.NewGuid().ToString();
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(AuditEvent.ChangePassword, user.Id, user.Email, ip);
+
         return (new MessageResponse("Password changed successfully."), 200, null);
     }
 
     public async Task<(AuthResponse? Response, int StatusCode, string? Error)> VerifyCodeAsync(
-        VerifyCodeRequest request
+        VerifyCodeRequest request,
+        string? ip = null
     )
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Code))
@@ -196,13 +255,15 @@ public class AuthService
             return (null, 400, "Verification code has expired. Please request a new one.");
         }
 
-        if (user.VerificationCode != request.Code.Trim())
+        if (!PasswordHasher.VerifyOtp(request.Code.Trim(), user.VerificationCode))
             return (null, 400, "Invalid or expired verification code.");
 
         user.EmailVerifiedAt = DateTime.UtcNow;
         user.VerificationCode = null;
         user.VerificationCodeExpiresAt = null;
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(AuditEvent.VerifyEmail, user.Id, user.Email, ip);
 
         var jwt = _jwt.GenerateToken(user);
         return (new AuthResponse(jwt, user.DisplayName), 200, null);
@@ -212,7 +273,7 @@ public class AuthService
         MessageResponse? Response,
         int StatusCode,
         string? Error
-    )> ResendVerificationAsync(ResendVerificationRequest request)
+    )> ResendVerificationAsync(ResendVerificationRequest request, string? ip = null)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
             return (null, 400, "Email is required.");
@@ -234,11 +295,13 @@ public class AuthService
         )
             return (null, 429, "Please wait a few minutes before requesting another code.");
 
-        var code = GenerateVerificationCode();
-        user.VerificationCode = code;
+        var code = PasswordHasher.GenerateSecureCode();
+        user.VerificationCode = PasswordHasher.HashOtp(code);
         user.VerificationCodeExpiresAt = DateTime.UtcNow.Add(VerificationCodeLifetime);
         user.LastVerificationEmailAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(AuditEvent.ResendVerification, user.Id, user.Email, ip);
 
         try
         {
@@ -246,7 +309,7 @@ public class AuthService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to send verification email: {ex.Message}");
+            _logger.LogError(ex, "Failed to send verification email");
         }
 
         return (new MessageResponse(successMessage), 200, null);
@@ -256,7 +319,7 @@ public class AuthService
         MessageResponse? Response,
         int StatusCode,
         string? Error
-    )> ForgotPasswordAsync(ForgotPasswordRequest request)
+    )> ForgotPasswordAsync(ForgotPasswordRequest request, string? ip = null)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
             return (null, 400, "Email is required.");
@@ -278,11 +341,13 @@ public class AuthService
         )
             return (null, 429, "Please wait a few minutes before requesting another reset.");
 
-        var code = GenerateVerificationCode();
-        user.PasswordResetCode = code;
+        var code = PasswordHasher.GenerateSecureCode();
+        user.PasswordResetCode = PasswordHasher.HashOtp(code);
         user.PasswordResetCodeExpiresAt = DateTime.UtcNow.Add(PasswordResetCodeLifetime);
         user.LastPasswordResetEmailAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(AuditEvent.ForgotPassword, user.Id, user.Email, ip);
 
         try
         {
@@ -290,7 +355,7 @@ public class AuthService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to send password reset email: {ex.Message}");
+            _logger.LogError(ex, "Failed to send password reset email");
         }
 
         return (new MessageResponse(successMessage), 200, null);
@@ -300,7 +365,7 @@ public class AuthService
         MessageResponse? Response,
         int StatusCode,
         string? Error
-    )> ResetPasswordAsync(ResetPasswordRequest request)
+    )> ResetPasswordAsync(ResetPasswordRequest request, string? ip = null)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Code))
             return (null, 400, "Email and reset code are required.");
@@ -322,20 +387,25 @@ public class AuthService
             return (null, 400, "Reset code has expired. Please request a new one.");
         }
 
-        if (user.PasswordResetCode != request.Code.Trim())
+        if (!PasswordHasher.VerifyOtp(request.Code.Trim(), user.PasswordResetCode))
             return (null, 400, "Invalid or expired reset code.");
 
         user.PasswordHash = PasswordHasher.Hash(request.NewPassword);
         user.PasswordResetCode = null;
         user.PasswordResetCodeExpiresAt = null;
+        // Invalidate all existing sessions — critical for security when password is reset
+        user.SecurityStamp = Guid.NewGuid().ToString();
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(AuditEvent.ResetPassword, user.Id, user.Email, ip);
 
         return (new MessageResponse("Password has been reset. You can now log in."), 200, null);
     }
 
     public async Task<(MessageResponse? Response, int StatusCode, string? Error)> ChangeEmailAsync(
         Guid userId,
-        ChangeEmailRequest request
+        ChangeEmailRequest request,
+        string? ip = null
     )
     {
         if (string.IsNullOrWhiteSpace(request.NewEmail) || !IsValidEmail(request.NewEmail))
@@ -349,22 +419,30 @@ public class AuthService
             return (null, 401, "User not found.");
 
         if (!PasswordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            return (null, 401, "Incorrect password.");
+            return (null, 401, "Invalid email or password.");
 
         var normalizedNewEmail = request.NewEmail.Trim().ToLowerInvariant();
 
         if (normalizedNewEmail == user.Email)
             return (null, 400, "New email is the same as current email.");
 
+        // Silently accept even if email is taken — don't reveal existence to the requester.
+        // The confirmation step will catch the race condition anyway.
         if (await _db.Users.AnyAsync(u => u.Email == normalizedNewEmail))
-            return (null, 409, "An account with this email already exists.");
+            return (
+                new MessageResponse("A confirmation code has been sent to your new email address."),
+                200,
+                null
+            );
 
         // Generate confirmation code for the new email
-        var code = GenerateVerificationCode();
+        var code = PasswordHasher.GenerateSecureCode();
         user.PendingEmail = normalizedNewEmail;
-        user.PendingEmailCode = code;
+        user.PendingEmailCode = PasswordHasher.HashOtp(code);
         user.PendingEmailCodeExpiresAt = DateTime.UtcNow.Add(VerificationCodeLifetime);
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(AuditEvent.ChangeEmail, user.Id, user.Email, ip, normalizedNewEmail);
 
         // Send verification code to new email
         try
@@ -373,7 +451,7 @@ public class AuthService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to send email change verification: {ex.Message}");
+            _logger.LogError(ex, "Failed to send email change verification");
         }
 
         // Notify old email
@@ -383,7 +461,7 @@ public class AuthService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to send email change notification: {ex.Message}");
+            _logger.LogError(ex, "Failed to send email change notification");
         }
 
         return (
@@ -397,7 +475,7 @@ public class AuthService
         MessageResponse? Response,
         int StatusCode,
         string? Error
-    )> ConfirmEmailChangeAsync(Guid userId, ConfirmEmailChangeRequest request)
+    )> ConfirmEmailChangeAsync(Guid userId, ConfirmEmailChangeRequest request, string? ip = null)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Code))
             return (null, 400, "Email and confirmation code are required.");
@@ -422,7 +500,7 @@ public class AuthService
             return (null, 400, "Confirmation code has expired. Please request a new email change.");
         }
 
-        if (user.PendingEmailCode != request.Code.Trim())
+        if (!PasswordHasher.VerifyOtp(request.Code.Trim(), user.PendingEmailCode))
             return (null, 400, "Invalid or expired confirmation code.");
 
         // Check the new email hasn't been taken since the change was requested
@@ -435,6 +513,7 @@ public class AuthService
             return (null, 409, "An account with this email already exists.");
         }
 
+        var oldEmail = user.Email;
         user.Email = user.PendingEmail;
         user.EmailVerifiedAt = DateTime.UtcNow;
         user.PendingEmail = null;
@@ -442,11 +521,14 @@ public class AuthService
         user.PendingEmailCodeExpiresAt = null;
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(AuditEvent.ConfirmEmailChange, user.Id, user.Email, ip, oldEmail);
+
         return (new MessageResponse("Email changed successfully."), 200, null);
     }
 
     public async Task<(MessageResponse? Response, int StatusCode, string? Error)> LockAccountAsync(
-        LockAccountRequest request
+        LockAccountRequest request,
+        string? ip = null
     )
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -477,6 +559,8 @@ public class AuthService
 
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(AuditEvent.LockAccount, user.Id, user.Email, ip);
+
         return (
             new MessageResponse(
                 $"Account '{user.Email}' locked. All sessions invalidated. Use unlock-account to restore access."
@@ -490,7 +574,7 @@ public class AuthService
         MessageResponse? Response,
         int StatusCode,
         string? Error
-    )> UnlockAccountAsync(LockAccountRequest request)
+    )> UnlockAccountAsync(LockAccountRequest request, string? ip = null)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
             return (null, 400, "Email is required.");
@@ -505,13 +589,17 @@ public class AuthService
             return (null, 400, "Account is not locked.");
 
         user.LockedAt = null;
+        // Invalidate all pre-lock sessions
+        user.SecurityStamp = Guid.NewGuid().ToString();
 
         // Generate a password reset code so the user can set a new password
-        var code = GenerateVerificationCode();
-        user.PasswordResetCode = code;
+        var code = PasswordHasher.GenerateSecureCode();
+        user.PasswordResetCode = PasswordHasher.HashOtp(code);
         user.PasswordResetCodeExpiresAt = DateTime.UtcNow.Add(PasswordResetCodeLifetime);
 
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(AuditEvent.UnlockAccount, user.Id, user.Email, ip);
 
         // Send password reset email
         try
@@ -520,7 +608,7 @@ public class AuthService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to send password reset email: {ex.Message}");
+            _logger.LogError(ex, "Failed to send password reset email");
         }
 
         return (
@@ -528,11 +616,6 @@ public class AuthService
             200,
             null
         );
-    }
-
-    private static string GenerateVerificationCode()
-    {
-        return Random.Shared.Next(100000, 999999).ToString();
     }
 
     private static bool IsValidEmail(string email)

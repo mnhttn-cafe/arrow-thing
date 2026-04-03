@@ -784,4 +784,197 @@ public class AuthTests : IClassFixture<TestFactory>, IDisposable
         var response = await _client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    // -- Password Reset Invalidates Sessions --
+
+    [Fact]
+    public async Task ResetPassword_InvalidatesExistingSessions()
+    {
+        var auth = await RegisterAndVerifyAsync(
+            "reset-session@example.com",
+            "password123",
+            "Reset Session"
+        );
+
+        // Request password reset
+        await _client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new { email = "reset-session@example.com" }
+        );
+
+        var resetEmail = _factory.FakeEmail.SentEmails.FindLast(e =>
+            e.To == "reset-session@example.com" && e.Type == "reset"
+        );
+
+        // Reset the password
+        await _client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new
+            {
+                email = "reset-session@example.com",
+                code = resetEmail!.Token,
+                newPassword = "newpassword456",
+            }
+        );
+
+        // Old token should now be rejected (security stamp was bumped)
+        var meRequest = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        meRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        var meResponse = await _client.SendAsync(meRequest);
+        Assert.Equal(HttpStatusCode.Unauthorized, meResponse.StatusCode);
+    }
+
+    // -- Login Lockout --
+
+    [Fact]
+    public async Task Login_LocksOutAfterRepeatedFailures()
+    {
+        await RegisterAndVerifyAsync("lockout@example.com", "password123", "Lockout");
+
+        // Fail 5 times
+        for (var i = 0; i < 5; i++)
+        {
+            await _client.PostAsJsonAsync(
+                "/api/auth/login",
+                new { email = "lockout@example.com", password = "wrongpassword" }
+            );
+        }
+
+        // 6th attempt — even with correct password — should be rate-limited
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "lockout@example.com", password = "password123" }
+        );
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+    }
+
+    // -- Email Change Doesn't Leak Email Existence --
+
+    [Fact]
+    public async Task ChangeEmail_ToExistingEmail_Returns200NotEnumerable()
+    {
+        await RegisterAndVerifyAsync("existing@example.com", "password123", "Existing");
+        var auth = await RegisterAndVerifyAsync("changer2@example.com", "password123", "Changer2");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/change-email")
+        {
+            Content = JsonContent.Create(
+                new { newEmail = "existing@example.com", currentPassword = "password123" }
+            ),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        var response = await _client.SendAsync(request);
+
+        // Should return 200 (not 409) to prevent email enumeration
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    // -- Health Check --
+
+    [Fact]
+    public async Task Health_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/health");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    // -- GET /api/auth/me --
+
+    [Fact]
+    public async Task GetMe_WithValidToken_ReturnsUserInfo()
+    {
+        var auth = await RegisterAndVerifyAsync("getme@example.com", "password123", "Get Me");
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<MeResponse>();
+        Assert.NotNull(body);
+        Assert.Equal("Get Me", body.DisplayName);
+        Assert.Equal("getme@example.com", body.Email);
+    }
+
+    [Fact]
+    public async Task GetMe_WithoutToken_Returns401()
+    {
+        var response = await _client.GetAsync("/api/auth/me");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    // -- Admin: Unlock without key --
+
+    [Fact]
+    public async Task UnlockAccount_WithoutAdminKey_Returns401()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/unlock-account")
+        {
+            Content = JsonContent.Create(new { email = "anyone@example.com" }),
+        };
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    // -- Register: display name too long --
+
+    [Fact]
+    public async Task Register_DisplayNameTooLong_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                email = "longname@example.com",
+                password = "password123",
+                displayName = "This display name is way too long for the limit",
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // -- Login lockout resets on successful login --
+
+    [Fact]
+    public async Task Login_LockoutResetsAfterSuccessfulLogin()
+    {
+        await RegisterAndVerifyAsync("lockout-reset@example.com", "password123", "LockReset");
+
+        // Fail 3 times (under the threshold of 5)
+        for (var i = 0; i < 3; i++)
+        {
+            await _client.PostAsJsonAsync(
+                "/api/auth/login",
+                new { email = "lockout-reset@example.com", password = "wrongpassword" }
+            );
+        }
+
+        // Successful login should reset the counter
+        var loginResponse = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "lockout-reset@example.com", password = "password123" }
+        );
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        // Fail 4 more times — should still be under the threshold since counter reset
+        for (var i = 0; i < 4; i++)
+        {
+            await _client.PostAsJsonAsync(
+                "/api/auth/login",
+                new { email = "lockout-reset@example.com", password = "wrongpassword" }
+            );
+        }
+
+        // Should still be able to log in (4 < 5 threshold)
+        var secondLogin = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "lockout-reset@example.com", password = "password123" }
+        );
+        Assert.Equal(HttpStatusCode.OK, secondLogin.StatusCode);
+    }
 }

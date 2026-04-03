@@ -33,10 +33,12 @@ jobs:
       - name: Post to Discord
         run: |
           TAG="${{ steps.notes.outputs.tag }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA="${SHA:0:7}"
 
           # Build message with real newlines, then let jq handle JSON escaping
           {
-            printf '**Arrow Thing %s** is out!\n\n' "$TAG"
+            printf '**Arrow Thing %s** is out! (`%s`)\n\n' "$TAG" "$SHORT_SHA"
             cat /tmp/release_notes.txt
             printf '\nPlay now: https://arrow-thing.com/\n\n<@&1483631517681975406>'
           } > /tmp/discord_message.txt
