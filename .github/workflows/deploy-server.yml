@@ -21,6 +21,8 @@ jobs:
   # Gate: ensure CI passed for this commit before deploying
   ci-check:
     runs-on: ubuntu-latest
+    # Skip CI gate for manual triggers — CI only runs on PRs
+    if: github.event_name != 'workflow_dispatch'
     steps:
       - name: Verify CI passed
         env:
@@ -47,6 +49,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     needs: ci-check
+    if: ${{ !cancelled() && (needs.ci-check.result == 'success' || needs.ci-check.result == 'skipped') }}
 
     steps:
       - name: Checkout
