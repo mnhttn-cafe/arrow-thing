@@ -264,6 +264,73 @@
     -unity-background-image-tint-color: var(--text-secondary);
 }
 
+/* ── Refresh button (in tab bar) ─────────────────────────────────── */
+
+.lb-refresh-btn {
+    width: 30px;
+    height: 30px;
+    padding: 5px;
+    background-color: var(--bg-btn);
+    border-radius: 15px;
+    border-width: 0;
+    flex-shrink: 0;
+    margin-left: 6px;
+}
+
+.lb-refresh-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.lb-refresh-btn:active {
+    background-color: var(--bg-btn-active);
+}
+
+.lb-refresh-icon {
+    flex-grow: 1;
+    background-image: url("/Assets/Art/Icons/refresh.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+/* ── Player panel (global view) ──────────────────────────────────── */
+
+.lb-player-panel {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    margin-top: 8px;
+    background-color: var(--bg-panel);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.lb-player-panel-label {
+    font-size: 15px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-center;
+    white-space: normal;
+    flex-shrink: 1;
+}
+
+.lb-player-play-btn {
+    width: 30px;
+    height: 30px;
+    padding: 6px;
+    background-color: var(--bg-btn);
+    border-radius: 15px;
+    border-width: 0;
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+/* ── Entry highlight (player's own row in global view) ───────────── */
+
+.lb-entry--highlight {
+    border-left-width: 3px;
+    border-left-color: var(--accent-info-btn);
+}
+
 /* ── Coming soon overlay ──────────────────────────────────────────── */
 
 .lb-coming-soon {

@@ -45,12 +45,20 @@ public sealed class ReplayPlayer
         }
 
         if (startTime == DateTime.MinValue && _data.events.Count > 0)
+        {
             startTime = DateTime.Parse(_data.events[0].timestamp).ToUniversalTime();
+        }
 
         // We use the solve elapsed computation approach: track active time excluding pauses
         double activeTime = 0;
         DateTime checkpoint = startTime;
-        bool tracking = false;
+        // If there's no StartSolve event, start tracking from the beginning
+        bool tracking = (
+            startTime != DateTime.MinValue
+            && !_data.events.Exists(e => e.type == ReplayEventType.StartSolve)
+        );
+        bool paused = false; // true between session_leave and session_rejoin
+        DateTime lastEventTime = startTime;
 
         foreach (var evt in _data.events)
         {
@@ -61,13 +69,24 @@ public sealed class ReplayPlayer
                 case ReplayEventType.StartSolve:
                     checkpoint = ts;
                     tracking = true;
+                    paused = false;
                     break;
                 case ReplayEventType.SessionRejoin:
+                    if (!paused && tracking)
+                    {
+                        // Orphan rejoin (no preceding session_leave). The player
+                        // force-quit and resumed. Treat the previous event's time
+                        // as the implicit leave — accumulate active time up to that
+                        // point, excluding the gap between then and this rejoin.
+                        activeTime += (lastEventTime - checkpoint).TotalSeconds;
+                    }
                     checkpoint = ts;
+                    paused = false;
                     break;
                 case ReplayEventType.SessionLeave:
                     if (tracking)
                         activeTime += (ts - checkpoint).TotalSeconds;
+                    paused = true;
                     break;
                 case ReplayEventType.Clear:
                 case ReplayEventType.Reject:
@@ -83,6 +102,7 @@ public sealed class ReplayPlayer
                         activeTime += (ts - checkpoint).TotalSeconds;
                     break;
             }
+            lastEventTime = ts;
         }
 
         _eventTimes = times.ToArray();
@@ -90,12 +110,10 @@ public sealed class ReplayPlayer
         for (int i = 0; i < _eventTimes.Length; i++)
             _eventTimes[i] += LeadInSeconds;
 
+        double lastEventRaw =
+            _eventTimes.Length > 0 ? _eventTimes[_eventTimes.Length - 1] - LeadInSeconds : 0;
         double rawDuration =
-            _data.finalTime >= 0
-                ? _data.finalTime
-                : (
-                    _eventTimes.Length > 0 ? _eventTimes[_eventTimes.Length - 1] - LeadInSeconds : 0
-                );
+            _data.finalTime >= 0 ? Math.Max(_data.finalTime, lastEventRaw) : lastEventRaw;
         _totalDuration = rawDuration + LeadInSeconds + ExitPaddingSeconds;
     }
 

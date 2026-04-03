@@ -55,6 +55,21 @@ public sealed class ReplayRecorder
 
     public void RecordSessionRejoin()
     {
+        // If the previous session didn't end with a session_leave (e.g. force-quit),
+        // inject one using the timestamp of the last recorded event to avoid
+        // orphan rejoins that break time computation.
+        if (_events.Count > 0 && _events[_events.Count - 1].type != ReplayEventType.SessionLeave)
+        {
+            _events.Add(
+                new ReplayEvent
+                {
+                    seq = _nextSeq++,
+                    type = ReplayEventType.SessionLeave,
+                    timestamp = _events[_events.Count - 1].timestamp,
+                }
+            );
+        }
+
         _events.Add(
             new ReplayEvent
             {

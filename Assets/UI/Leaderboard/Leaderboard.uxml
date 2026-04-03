@@ -17,13 +17,16 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- Size tabs -->
+        <!-- Size tabs + refresh -->
         <ui:VisualElement class="tab-bar">
             <ui:Button name="tab-small" class="tab-bar__tab tab-bar__tab--active" text="Small" />
             <ui:Button name="tab-medium" class="tab-bar__tab" text="Medium" />
             <ui:Button name="tab-large" class="tab-bar__tab" text="Large" />
             <ui:Button name="tab-xlarge" class="tab-bar__tab" text="XLarge" />
             <ui:Button name="tab-all" class="tab-bar__tab" text="All" />
+            <ui:Button name="lb-refresh-btn" class="lb-refresh-btn lb--hidden">
+                <ui:VisualElement class="lb-refresh-icon" />
+            </ui:Button>
         </ui:VisualElement>
 
         <!-- Sort controls -->
@@ -44,6 +47,14 @@
         <!-- Coming Soon overlay (global) -->
         <ui:VisualElement name="lb-coming-soon" class="lb-coming-soon lb--hidden">
             <ui:Label class="lb-coming-soon-text" text="Coming Soon" />
+        </ui:VisualElement>
+
+        <!-- Player panel (global view) -->
+        <ui:VisualElement name="lb-player-panel" class="lb-player-panel lb--hidden">
+            <ui:Label name="lb-player-panel-label" class="lb-player-panel-label" />
+            <ui:Button name="lb-player-play-btn" class="lb-player-play-btn lb--hidden">
+                <ui:VisualElement class="lb-play-icon" />
+            </ui:Button>
         </ui:VisualElement>
 
         <!-- Context menu (floating) -->

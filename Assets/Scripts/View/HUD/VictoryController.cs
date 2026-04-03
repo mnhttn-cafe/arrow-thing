@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -5,7 +6,7 @@ using UnityEngine.UIElements;
 /// <summary>
 /// Handles the board-cleared sequence: zoom-to-fit + arrow pull-out run in parallel,
 /// then grid fade-out, then victory popup with a randomized message and Play Again / Menu buttons.
-/// Records the result to the leaderboard and shows a "New Best!" indicator when applicable.
+/// Records the result to the leaderboard; gold timer indicates personal best.
 /// </summary>
 public sealed class VictoryController : MonoBehaviour
 {
@@ -52,9 +53,16 @@ public sealed class VictoryController : MonoBehaviour
     private VisualElement _overlay;
     private Label _messageLabel;
     private Label _timeLabel;
-    private Label _newBestLabel;
     private System.Func<ReplayData> _buildReplayData;
     private string _recordedGameId;
+    private Task<SubmitResultResponse> _submissionTask;
+    private bool _submissionAttempted;
+    private ReplayData _completedReplay;
+
+    // Toast notification (lives in the HUD UIDocument, not the victory popup)
+    private VisualElement _toast;
+    private Label _toastText;
+    private Button _toastActionBtn;
 
     [SerializeField]
     private float zoomOutDuration = 0.6f;
@@ -92,7 +100,6 @@ public sealed class VictoryController : MonoBehaviour
         _overlay = root.Q("victory-overlay");
         _messageLabel = root.Q<Label>("victory-message");
         _timeLabel = root.Q<Label>("victory-time");
-        _newBestLabel = root.Q<Label>("new-best-label");
 
         root.Q<Button>("play-again-btn").clicked += OnPlayAgain;
         root.Q<Button>("menu-btn").clicked += OnMenu;
@@ -100,6 +107,12 @@ public sealed class VictoryController : MonoBehaviour
         var viewLbBtn = root.Q<Button>("view-leaderboard-btn");
         if (viewLbBtn != null)
             viewLbBtn.clicked += OnViewLeaderboard;
+
+        _toast = root.Q("toast");
+        _toastText = root.Q<Label>("toast-text");
+        _toastActionBtn = root.Q<Button>("toast-action-btn");
+        if (_toastActionBtn != null)
+            _toastActionBtn.clicked += OnRetry;
     }
 
     /// <summary>
@@ -110,6 +123,21 @@ public sealed class VictoryController : MonoBehaviour
     {
         _zoomDone = false;
         _pullOutDone = false;
+
+        // Fire score submission in the background while the animation plays.
+        // Only attempt if the player is logged in.
+        var api = new ApiClient();
+        if (api.IsLoggedIn && _buildReplayData != null && _timer != null)
+        {
+            var replay = _buildReplayData.Invoke();
+            if (replay != null)
+            {
+                replay.finalTime = _timer.SolveElapsed;
+                _completedReplay = replay;
+                _submissionAttempted = true;
+                _submissionTask = ScoreSubmitter.TrySubmitAsync(replay);
+            }
+        }
 
         if (_camCtrl != null)
             _camCtrl.ZoomToFit(
@@ -144,7 +172,7 @@ public sealed class VictoryController : MonoBehaviour
         _gridRenderer.FadeOut(gridFadeDuration, ShowPopup);
     }
 
-    private void ShowPopup()
+    private async void ShowPopup()
     {
         double elapsed = _timer != null ? _timer.SolveElapsed : -1.0;
         Debug.Log(
@@ -170,6 +198,14 @@ public sealed class VictoryController : MonoBehaviour
             _hudDocument.rootVisualElement.style.display = DisplayStyle.None;
 
         RecordToLeaderboard();
+
+        // Check submission result and show toast if needed.
+        if (_submissionAttempted && _submissionTask != null)
+        {
+            var result = await _submissionTask;
+            _submissionTask = null;
+            HandleSubmissionResult(result);
+        }
 
         _overlay.RemoveFromClassList("victory--hidden");
     }
@@ -214,13 +250,58 @@ public sealed class VictoryController : MonoBehaviour
             );
         }
 
-        // Show "New Best!" label and gold timer
-        if (isNewBest)
+        if (isNewBest && _timeLabel != null)
+            _timeLabel.AddToClassList("victory-time--gold");
+    }
+
+    private void HandleSubmissionResult(SubmitResultResponse result)
+    {
+        if (result != null && result.verified)
         {
-            if (_newBestLabel != null)
-                _newBestLabel.RemoveFromClassList("victory--hidden");
-            if (_timeLabel != null)
-                _timeLabel.AddToClassList("victory-time--gold");
+            HideToast();
+        }
+        else
+        {
+            ShowToast("Could not submit score");
+        }
+    }
+
+    private void ShowToast(string message)
+    {
+        if (_toast == null)
+            return;
+
+        if (_toastText != null)
+            _toastText.text = message;
+
+        if (_toastActionBtn != null)
+            _toastActionBtn.RemoveFromClassList("victory--hidden");
+
+        _toast.RemoveFromClassList("victory--hidden");
+    }
+
+    private void HideToast()
+    {
+        if (_toast != null)
+            _toast.AddToClassList("victory--hidden");
+    }
+
+    private async void OnRetry()
+    {
+        if (_completedReplay == null || _toastActionBtn == null)
+            return;
+
+        _toastActionBtn.SetEnabled(false);
+        var result = await ScoreSubmitter.TrySubmitAsync(_completedReplay);
+        _toastActionBtn.SetEnabled(true);
+
+        if (result != null && result.verified)
+        {
+            HideToast();
+        }
+        else
+        {
+            ShowToast("Retry failed");
         }
     }
 

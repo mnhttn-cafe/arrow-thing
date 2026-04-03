@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Score> Scores => Set<Score>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,6 +24,39 @@ public class AppDbContext : DbContext
 
             // Email is stored lowercase; app layer normalizes on write.
             entity.HasIndex(u => u.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<Score>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Time).IsRequired();
+            entity.Property(s => s.ReplayJson).IsRequired();
+            entity.Property(s => s.CreatedAt).IsRequired();
+            entity.Property(s => s.UpdatedAt).IsRequired();
+
+            entity
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // One best score per player per board size.
+            entity
+                .HasIndex(s => new
+                {
+                    s.UserId,
+                    s.BoardWidth,
+                    s.BoardHeight,
+                })
+                .IsUnique();
+
+            // Fast top-N leaderboard queries.
+            entity.HasIndex(s => new
+            {
+                s.BoardWidth,
+                s.BoardHeight,
+                s.Time,
+            });
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

@@ -412,11 +412,12 @@ One row per `(UserId, BoardWidth, BoardHeight)` — the player's personal best f
 | `ReplayViewController` | View | Done | Replay viewer scene: playback, seek, controls, highlighting |
 | `TapIndicator` | View | Done | Expanding/fading ring at tap position during replay |
 | `TapIndicatorPool` | View | Done | Object pool for tap indicators with procedural ring sprite |
-| `ReplayVerifier` | Domain | Planned | Simulates replay for server-side verification |
-| `ApiClient` | View | Done | HTTP client, JWT attachment, all auth endpoints (register/login/me/display name/forgot password/reset password/resend verification/change email/confirm email change/change password), token storage in PlayerPrefs |
+| `ReplayVerifier` | Domain | Done | Simulates replay for server-side verification (snapshot comparison, event validation, solve time computation) |
+| `VerificationResult` | Domain | Done | Result type for ReplayVerifier (validity, reason, verified time) |
+| `ApiClient` | View | Done | HTTP client, JWT attachment, all auth + leaderboard endpoints, token storage in PlayerPrefs |
 | `AccountManager` | View | Done | Account panel with 10 forms (login/register/verify code/forgot password/reset password/account info/change email/confirm email code/change password/change display name) |
 | `ConfirmModal` | View | Done | Reusable confirm modal wrapper (configures ConfirmModal.uxml template) |
-| `OnlineController` | View | Planned | Coordinates online flow (play → submit completed replay) |
+| `ScoreSubmitter` | View | Done | Static helper for score submission (checks login state, serializes, calls ApiClient) |
 | `ServerHealthCheck` | Editor | Done | Editor menu item (Tools > Arrow Thing) to test server connectivity |
 
 ## Modified Scripts
@@ -425,8 +426,9 @@ One row per `(UserId, BoardWidth, BoardHeight)` — the player's personal best f
 |--------|---------|
 | `InputHandler` | ~~Record events to `ReplayRecorder` on each tap~~ (done) |
 | `MainMenuController` | Trophy button on mode select (done). Account icon button (done). Reusable ConfirmModal for quit/clear-scores (done) |
-| `VictoryController` | Personal best gold highlight, "New Best!" indicator, "View Leaderboard" button (done). Inline top-10 leaderboard (planned) |
-| `GameController` | Refactored to use `BoardSetupHelper` (done). Wire `OnlineController` (planned) |
+| `VictoryController` | Personal best gold highlight, "New Best!" indicator, "View Leaderboard" button (done). Background score submission with retry note (done) |
+| `LeaderboardScreenController` | Global tab with server fetch, player panel, refresh button (done) |
+| `GameController` | Refactored to use `BoardSetupHelper` (done) |
 | `GameSettings` | `StartReplay`/`ClearReplay` for replay scene transition, `LeaderboardFocusGameId` for auto-scroll (done). Server `Seed` field (planned) |
 | `BoardView` | `ClearArrowAnimated`, `UpdateClearableHighlights`, `ClearAllHighlights` (done) |
 | `ArrowView` | `SetHighlight(bool)` for clearable highlighting (done) |
