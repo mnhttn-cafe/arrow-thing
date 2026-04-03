@@ -318,7 +318,7 @@ public class ApiClient
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
             request.SetRequestHeader("Authorization", $"Bearer {Token}");
-            request.timeout = 10;
+            request.timeout = 120;
 
             var op = request.SendWebRequest();
             while (!op.isDone)
