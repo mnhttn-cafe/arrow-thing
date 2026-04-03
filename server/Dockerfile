@@ -1,16 +1,19 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Restore dependencies layer (cached unless .csproj files change)
-COPY ArrowThing.sln .
-COPY ArrowThing.Domain/ArrowThing.Domain.csproj ArrowThing.Domain/
-COPY ArrowThing.Server/ArrowThing.Server.csproj ArrowThing.Server/
-COPY ArrowThing.Server.Tests/ArrowThing.Server.Tests.csproj ArrowThing.Server.Tests/
-RUN dotnet restore ArrowThing.Server/ArrowThing.Server.csproj
+# Copy Unity domain sources (compiled by ArrowThing.Domain via relative paths)
+COPY Assets/Scripts/Domain/ Assets/Scripts/Domain/
 
-COPY ArrowThing.Domain/ ArrowThing.Domain/
-COPY ArrowThing.Server/ ArrowThing.Server/
-RUN dotnet publish ArrowThing.Server/ArrowThing.Server.csproj \
+# Restore dependencies layer (cached unless .csproj files change)
+COPY server/ArrowThing.sln server/
+COPY server/ArrowThing.Domain/ArrowThing.Domain.csproj server/ArrowThing.Domain/
+COPY server/ArrowThing.Server/ArrowThing.Server.csproj server/ArrowThing.Server/
+COPY server/ArrowThing.Server.Tests/ArrowThing.Server.Tests.csproj server/ArrowThing.Server.Tests/
+RUN dotnet restore server/ArrowThing.Server/ArrowThing.Server.csproj
+
+COPY server/ArrowThing.Domain/ server/ArrowThing.Domain/
+COPY server/ArrowThing.Server/ server/ArrowThing.Server/
+RUN dotnet publish server/ArrowThing.Server/ArrowThing.Server.csproj \
     -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
