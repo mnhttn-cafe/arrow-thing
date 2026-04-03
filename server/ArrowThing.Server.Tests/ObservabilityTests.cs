@@ -54,10 +54,11 @@ public class ObservabilityTests : IClassFixture<TestFactory>, IDisposable
     [Fact]
     public async Task Login_Success_CreatesAuditLogEntry()
     {
-        var auth = await RegisterAndVerifyAsync(
-            "audit-login@example.com",
-            "password123",
-            "Audit Login"
+        await RegisterAndVerifyAsync("audit-login@example.com", "password123", "Audit Login");
+
+        await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "audit-login@example.com", password = "password123" }
         );
 
         var logs = await GetAuditLogs("audit-login@example.com");

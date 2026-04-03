@@ -18,8 +18,6 @@ static bool VerifyAdminKey(IConfiguration config, HttpContext ctx)
     return PasswordHasher.FixedTimeEquals(provided, adminKey);
 }
 
-Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog(
