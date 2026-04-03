@@ -4,8 +4,8 @@ How to run the Arrow Thing server locally for development and testing.
 
 ## Prerequisites
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- PostgreSQL (local instance or Docker)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Docker (for PostgreSQL)
 - `dotnet-ef` CLI tool (for migrations):
   ```
   dotnet tool install --global dotnet-ef
@@ -13,24 +13,27 @@ How to run the Arrow Thing server locally for development and testing.
 
 ## Quick Start
 
-Start a local PostgreSQL instance (Docker is easiest):
+Start PostgreSQL via Docker Compose:
 
 ```bash
-docker run --name arrowthing-dev \
-  -e POSTGRES_PASSWORD=dev \
-  -e POSTGRES_DB=arrowthing \
-  -p 5432:5432 -d postgres:16-alpine
+cd server
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-Set the connection string via user secrets:
+Configure `server/.env` with your local settings:
 
-```bash
-cd server/ArrowThing.Server
-dotnet user-secrets set "ConnectionStrings:Default" \
-  "Host=localhost;Database=arrowthing;Username=postgres;Password=dev"
+```
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=dev
+POSTGRES_DB=arrowthing
+POSTGRES_HOST=localhost
+JWT_SECRET=dev-only-secret-do-not-use-in-production-at-least-32-bytes!
+ADMIN_API_KEY=test-admin-key
+RESEND_API_KEY=
+GRAFANA_ADMIN_PASSWORD=
 ```
 
-Then run from the `server/` directory:
+Then run:
 
 ```bash
 cd server
@@ -41,42 +44,20 @@ The server starts at **http://localhost:5000**. Migrations are applied automatic
 
 ## Configuration
 
-### JWT Secret
+In development mode, the server loads environment variables from `server/.env` and maps them to ASP.NET Core configuration keys (see `Program.cs`). The `.env` file is gitignored.
 
-A dev-only JWT secret is pre-configured in `appsettings.Development.json`. No changes needed for local testing.
+| `.env` variable | Maps to config key | Purpose |
+|---|---|---|
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST` | `ConnectionStrings:Default` | PostgreSQL connection |
+| `JWT_SECRET` | `Jwt:Secret` | JWT signing key |
+| `ADMIN_API_KEY` | `Admin:ApiKey` | Admin endpoint auth |
+| `RESEND_API_KEY` | `Resend:ApiKey` | Email service (Resend) |
 
-### Resend (Email)
+Fallback: `appsettings.Development.json` provides a dev JWT secret and Resend from-address. User secrets (`dotnet user-secrets`) also work and take priority over `.env`.
 
-Email features (verification codes, password reset, email change) require a [Resend](https://resend.com/) API key:
+### Email (Resend)
 
-```bash
-cd server/ArrowThing.Server
-dotnet user-secrets set "Resend:ApiKey" "re_your_api_key_here"
-```
-
-`Resend:FromAddress` is pre-configured in `appsettings.Development.json`. Without a Resend key, registration will still succeed but no verification code email will be sent — check the server console for the error log.
-
-To view all configured secrets:
-
-```bash
-cd server/ArrowThing.Server
-dotnet user-secrets list
-```
-
-### Admin API Key
-
-To test admin endpoints (lock/unlock account), set an admin key:
-
-```bash
-cd server/ArrowThing.Server
-dotnet user-secrets set "Admin:ApiKey" "any-secret-key"
-```
-
-### Database
-
-Both local dev and production use PostgreSQL. Set the connection string via user secrets (see Quick Start) or any other [ASP.NET Core configuration source](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration).
-
-To reset the local database, drop and recreate it in PostgreSQL, then restart the server (migrations re-run on startup).
+Email features (verification codes, password reset) require a [Resend](https://resend.com/) API key in `.env`. Without it, registration succeeds but no verification email is sent — check server logs for the error. Verification codes are BCrypt-hashed in the database and cannot be read directly.
 
 ## Running Tests
 
@@ -91,9 +72,27 @@ Tests use **Testcontainers** to spin up a throwaway `postgres:16-alpine` contain
 
 When running in the **Unity Editor**, `ApiClient` automatically uses `http://localhost:5000`. In builds, it points to `https://api.arrow-thing.com`.
 
-Make sure the server is running before testing account features in the editor.
+Make sure the server is running before testing account or leaderboard features in the editor.
+
+## Seeding Test Data
+
+To populate the leaderboard with dummy scores (e.g., for testing rank > 50):
+
+```bash
+cd server
+node seed-leaderboard.js
+```
+
+Creates 60 dummy users with 10x10 scores. Clean up with:
+
+```bash
+docker exec arrowthing-dev psql -U postgres -d arrowthing -c \
+  "DELETE FROM \"Scores\" WHERE \"UserId\" IN (SELECT \"Id\" FROM \"Users\" WHERE \"Email\" LIKE 'dummy%@test.local'); DELETE FROM \"Users\" WHERE \"Email\" LIKE 'dummy%@test.local';"
+```
 
 ## API Endpoints
+
+### Auth
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
@@ -101,7 +100,7 @@ Make sure the server is running before testing account features in the editor.
 | POST | `/api/auth/register` | No | Create account (sends verification code) |
 | POST | `/api/auth/verify-code` | No | Verify email with 6-digit code |
 | POST | `/api/auth/login` | No | Log in (requires verified email) |
-| GET | `/api/auth/me` | JWT | Get account info (email, display name, verified) |
+| GET | `/api/auth/me` | JWT | Get account info (email, display name) |
 | PATCH | `/api/auth/me` | JWT | Update display name |
 | POST | `/api/auth/change-password` | JWT | Change password (invalidates sessions) |
 | POST | `/api/auth/change-email` | JWT | Request email change (sends 6-digit code) |
@@ -112,7 +111,18 @@ Make sure the server is running before testing account features in the editor.
 | POST | `/api/admin/lock-account` | Admin key | Lock account + invalidate sessions |
 | POST | `/api/admin/unlock-account` | Admin key | Unlock account + send password reset code |
 
-### Register
+### Scores & Leaderboards
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/scores` | JWT | Submit replay for verification and scoring |
+| GET | `/api/leaderboards/{w}x{h}` | No | Top 50 scores for a board size |
+| GET | `/api/leaderboards/all` | No | Top 50 cross-size (biggest board first) |
+| GET | `/api/leaderboards/{w}x{h}/me` | JWT | Player's rank and time for a board size |
+| GET | `/api/leaderboards/all/me` | JWT | Player's cross-size representative score |
+| GET | `/api/replays/{gameId}` | No | Fetch replay JSON (top-50 include snapshot) |
+
+### Example: Register and Verify
 
 ```bash
 curl -X POST http://localhost:5000/api/auth/register \
@@ -120,9 +130,7 @@ curl -X POST http://localhost:5000/api/auth/register \
   -d '{"email":"test@example.com","password":"password123","displayName":"Test"}'
 ```
 
-Returns `{"message":"Check your email for a verification code."}` — check your inbox (or server logs if no Resend key) for the 6-digit code.
-
-### Verify Code
+Returns `{"message":"Check your email for a verification code."}` — check inbox or server logs for the code.
 
 ```bash
 curl -X POST http://localhost:5000/api/auth/verify-code \
@@ -130,94 +138,15 @@ curl -X POST http://localhost:5000/api/auth/verify-code \
   -d '{"email":"test@example.com","code":"123456"}'
 ```
 
-Returns `{"token":"...","displayName":"Test","emailVerified":true}` on success.
-
-### Login
-
-```bash
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
-```
-
-Only works for verified accounts.
-
-### Update Display Name
-
-```bash
-curl -X PATCH http://localhost:5000/api/auth/me \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"displayName":"NewName"}'
-```
-
-### Change Password
-
-```bash
-curl -X POST http://localhost:5000/api/auth/change-password \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"currentPassword":"password123","newPassword":"newpassword456"}'
-```
-
-Bumps SecurityStamp — all existing tokens are invalidated.
-
-### Forgot Password
-
-```bash
-curl -X POST http://localhost:5000/api/auth/forgot-password \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com"}'
-```
-
-Returns a generic message regardless of whether the account exists (prevents email enumeration). Sends a 6-digit reset code if the account exists.
-
-### Reset Password
-
-```bash
-curl -X POST http://localhost:5000/api/auth/reset-password \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","code":"123456","newPassword":"newpassword456"}'
-```
-
-### Change Email
-
-```bash
-curl -X POST http://localhost:5000/api/auth/change-email \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"newEmail":"newemail@example.com","currentPassword":"password123"}'
-```
-
-Sends a 6-digit code to the new email address.
-
-### Confirm Email Change
-
-```bash
-curl -X POST http://localhost:5000/api/auth/confirm-email-change \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"email":"newemail@example.com","code":"123456"}'
-```
-
-Returns a new JWT with the updated email. Old email receives a notification.
-
-### Admin Lock/Unlock
-
-```bash
-curl -X POST http://localhost:5000/api/admin/lock-account \
-  -H "Content-Type: application/json" \
-  -H "X-Admin-Key: your-admin-key" \
-  -d '{"email":"test@example.com"}'
-```
+Returns `{"token":"...","displayName":"Test"}` on success.
 
 ## EF Core Migrations
 
 Migrations live in `server/ArrowThing.Server/Migrations/` and are applied automatically on startup. To create a new migration after changing `AppDbContext` or models:
 
-The connection string must point to PostgreSQL when generating migrations (not the SQLite fallback) so the snapshot reflects the correct column types. With user secrets configured, this works automatically:
-
 ```bash
 cd server
 dotnet ef migrations add <MigrationName> --project ArrowThing.Server
 ```
+
+The connection string must point to PostgreSQL (configured via `.env`) so the snapshot reflects the correct column types.

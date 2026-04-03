@@ -87,7 +87,7 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 
 ## Public Entry Points
 
-### `FillBoardIncremental(Board board, int maxLength, Random random, int deadEndLimit = 10)`
+### `FillBoardIncremental(Board board, int maxLength, Random random)`
 
 - Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
 - Calls `board.InitializeForGeneration()`.
@@ -95,7 +95,7 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 - After placement, yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
 - Used by `GameController.GenerateBoard` for incremental board display during generation.
 
-### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows, int deadEndLimit = 10)`
+### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows)`
 
 Flow:
 
