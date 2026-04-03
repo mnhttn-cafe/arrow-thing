@@ -134,6 +134,7 @@
 
 .rh-playback-spacer {
     flex-grow: 1;
+    flex-basis: 0;
     flex-direction: row;
     align-items: center;
 }

@@ -58,6 +58,8 @@ public sealed class ReplayData
         {
             double elapsed = 0.0;
             DateTime checkpoint = DateTime.MinValue;
+            DateTime lastEventTime = DateTime.MinValue;
+            bool paused = false;
 
             foreach (var evt in events)
             {
@@ -66,14 +68,28 @@ public sealed class ReplayData
                 switch (evt.type)
                 {
                     case ReplayEventType.StartSolve:
-                    case ReplayEventType.SessionRejoin:
                         checkpoint = ts;
+                        paused = false;
+                        break;
+                    case ReplayEventType.SessionRejoin:
+                        if (!paused && checkpoint != DateTime.MinValue)
+                        {
+                            // Orphan rejoin: accumulate up to last event, skip the gap.
+                            elapsed += (lastEventTime - checkpoint).TotalSeconds;
+                        }
+                        checkpoint = ts;
+                        paused = false;
                         break;
                     case ReplayEventType.SessionLeave:
-                    case ReplayEventType.EndSolve:
                         elapsed += (ts - checkpoint).TotalSeconds;
+                        paused = true;
+                        break;
+                    case ReplayEventType.EndSolve:
+                        if (!paused)
+                            elapsed += (ts - checkpoint).TotalSeconds;
                         break;
                 }
+                lastEventTime = ts;
             }
 
             return elapsed;

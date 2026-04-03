@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using ArrowThing.Server.Auth;
 using ArrowThing.Server.Data;
+using ArrowThing.Server.Games;
+using ArrowThing.Server.Leaderboards;
 using ArrowThing.Server.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,50 @@ static bool VerifyAdminKey(IConfiguration config, HttpContext ctx)
 }
 
 var builder = WebApplication.CreateBuilder(args);
+
+// In development, load ../server/.env and map to ASP.NET config keys.
+// This mirrors how docker-compose maps env vars in production.
+if (builder.Environment.IsDevelopment())
+{
+    var envPath = Path.Combine(builder.Environment.ContentRootPath, "..", ".env");
+    if (File.Exists(envPath))
+    {
+        var envVars = new Dictionary<string, string>();
+        foreach (var line in File.ReadAllLines(envPath))
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
+                continue;
+            var eqIdx = trimmed.IndexOf('=');
+            if (eqIdx <= 0)
+                continue;
+            var key = trimmed[..eqIdx];
+            var value = trimmed[(eqIdx + 1)..];
+            if (!string.IsNullOrEmpty(value))
+                envVars[key] = value;
+        }
+
+        // Map to the same config keys docker-compose uses
+        var mapped = new Dictionary<string, string?>();
+        if (envVars.TryGetValue("POSTGRES_PASSWORD", out var pgPass))
+        {
+            var pgUser = envVars.GetValueOrDefault("POSTGRES_USER", "arrowthing");
+            var pgDb = envVars.GetValueOrDefault("POSTGRES_DB", "arrowthing");
+            var pgHost = envVars.GetValueOrDefault("POSTGRES_HOST", "localhost");
+            mapped["ConnectionStrings:Default"] =
+                $"Host={pgHost};Database={pgDb};Username={pgUser};Password={pgPass}";
+        }
+        if (envVars.TryGetValue("JWT_SECRET", out var jwtSecret))
+            mapped["Jwt:Secret"] = jwtSecret;
+        if (envVars.TryGetValue("ADMIN_API_KEY", out var adminKey))
+            mapped["Admin:ApiKey"] = adminKey;
+        if (envVars.TryGetValue("RESEND_API_KEY", out var resendKey))
+            mapped["Resend:ApiKey"] = resendKey;
+
+        if (mapped.Count > 0)
+            builder.Configuration.AddInMemoryCollection(mapped);
+    }
+}
 
 builder.Host.UseSerilog(
     (context, services, configuration) =>
@@ -65,6 +111,8 @@ builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<GameService>();
+builder.Services.AddScoped<LeaderboardService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddAuthorization();
@@ -329,6 +377,74 @@ app.MapPost(
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
+    }
+);
+
+// Score submission
+app.MapPost(
+        "/api/scores",
+        async (SubmitReplayRequest request, GameService games, ClaimsPrincipal user) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var (response, status, error) = await games.SubmitReplayAsync(
+                userId,
+                request.ReplayJson
+            );
+            return response != null
+                ? Results.Ok(response)
+                : Results.Json(new { error }, statusCode: status);
+        }
+    )
+    .RequireAuthorization();
+
+// Leaderboards
+app.MapGet(
+    "/api/leaderboards/{w:int}x{h:int}",
+    async (int w, int h, LeaderboardService leaderboards, int? limit) =>
+    {
+        var result = await leaderboards.GetTopEntriesAsync(w, h, limit ?? 50);
+        return Results.Ok(result);
+    }
+);
+
+app.MapGet(
+    "/api/leaderboards/all",
+    async (LeaderboardService leaderboards, int? limit) =>
+    {
+        var result = await leaderboards.GetTopEntriesAllAsync(limit ?? 50);
+        return Results.Ok(result);
+    }
+);
+
+app.MapGet(
+        "/api/leaderboards/{w:int}x{h:int}/me",
+        async (int w, int h, LeaderboardService leaderboards, ClaimsPrincipal user) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var entry = await leaderboards.GetPlayerEntryAsync(userId, w, h);
+            return entry != null ? Results.Ok(entry) : Results.NotFound();
+        }
+    )
+    .RequireAuthorization();
+
+app.MapGet(
+        "/api/leaderboards/all/me",
+        async (LeaderboardService leaderboards, ClaimsPrincipal user) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var entry = await leaderboards.GetPlayerEntryAllAsync(userId);
+            return entry != null ? Results.Ok(entry) : Results.NotFound();
+        }
+    )
+    .RequireAuthorization();
+
+// Replay fetch
+app.MapGet(
+    "/api/replays/{gameId}",
+    async (string gameId, LeaderboardService leaderboards) =>
+    {
+        var replayJson = await leaderboards.GetReplayAsync(gameId);
+        return replayJson != null ? Results.Ok(new { replayJson }) : Results.NotFound();
     }
 );
 

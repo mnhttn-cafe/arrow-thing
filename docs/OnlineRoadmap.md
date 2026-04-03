@@ -232,7 +232,7 @@ The first arrow clear also starts the solve timer (see `InputHandler` / `GameTim
 
 - **`ReplayEvent`** (domain, implemented) — `int seq`, `string type`, nullable `float? posX`/`posY` (clear/reject only), `string timestamp` (ISO 8601 UTC). Seq is auto-assigned by the recorder. Serialized via Newtonsoft; null fields omitted from JSON.
 - **`ReplayRecorder`** (domain, implemented) — accumulates events during play. `Record(type, posX, posY, timestamp)` auto-increments seq. `ToReplayData()` returns the serializable replay.
-- **`ReplayVerifier`** (domain, planned) — static class. Takes seed + board config + events, regenerates board, derives cells from positions via `BoardCoords`, simulates clears in order, returns `VerificationResult` (valid/invalid + reason).
+- **`ReplayVerifier`** (domain, done) — static class. Takes `ReplayData`, regenerates board from seed, compares to snapshot, simulates clears via `(int)Math.Round(posX/posY)`, returns `VerificationResult` (valid/invalid + reason + verified time).
 - **`InputHandler`** changes (implemented) — calls `ReplayRecorder.Record()` on each tap (clear or reject), passing world-space tap position.
 
 ---
@@ -252,16 +252,16 @@ server/
 │   │   ├── JwtHelper.cs         # HMAC-SHA256 token generation + validation (SecurityStamp claim)
 │   │   ├── IEmailService.cs     # Email service interface
 │   │   └── EmailService.cs      # Resend HTTP API wrapper
-│   ├── Scores/                  # (planned)
+│   ├── Scores/                  # (done)
 │   │   └── ScoreService.cs      # Verify replay, upsert personal best, manage snapshot strategy
-│   ├── Leaderboards/            # (planned)
+│   ├── Leaderboards/            # (done)
 │   │   └── LeaderboardService.cs
 │   ├── Data/                    # (implemented)
 │   │   ├── AppDbContext.cs      # EF Core context with User DbSet (unique email index)
 │   │   └── Migrations/          # CreateUsers, AddEmailAndTokens, AddPendingEmailChange, RemoveUsername
 │   └── Models/                  # (implemented for User, planned for Score)
 │       ├── User.cs              # Id, Email, DisplayName, PasswordHash, SecurityStamp, verification/reset/email-change code fields, lock fields
-│       └── Score.cs             # Id, UserId, GameId, Seed, BoardWidth, BoardHeight, MaxArrowLength, DeadEndLimit, Time, ReplayJson (planned)
+│       └── Score.cs             # Id, UserId, GameId, Seed, BoardWidth, BoardHeight, MaxArrowLength, Time, ReplayJson, CreatedAt, UpdatedAt (done)
 ├── ArrowThing.Domain/           # Shared domain code (netstandard2.1, C# 9)
 └── ArrowThing.Server.Tests/     # xUnit integration tests (37 auth + 1 health check)
 ```
@@ -287,14 +287,14 @@ POST   /api/auth/confirm-email-change [auth] { email, code }         → { messa
 POST   /api/admin/lock-account   [admin] { email }                   → { message }                                     [implemented]
 POST   /api/admin/unlock-account [admin] { email }                   → { message }                                     [implemented]
 
-POST   /api/scores               [auth] { replayJson }              → { verified, rank, isPersonalBest, reason? }     [planned]
+POST   /api/scores               [auth] { replayJson }              → { verified, rank, isPersonalBest, reason? }     [done]
 
-GET    /api/leaderboards/{w}x{h} ?limit=50                          → { entries: [{ rank, displayName, time, gameId }] } [planned]
-GET    /api/leaderboards/all     ?limit=50                          → { entries: [{ rank, displayName, time, gameId, boardWidth, boardHeight }] } [planned]
-GET    /api/leaderboards/{w}x{h}/me [auth]                          → { rank, time, gameId } | 404                    [planned]
-GET    /api/leaderboards/all/me     [auth]                          → { rank, time, gameId, boardWidth, boardHeight } | 404 [planned]
+GET    /api/leaderboards/{w}x{h} ?limit=50                          → { entries: [{ rank, displayName, time, gameId }] } [done]
+GET    /api/leaderboards/all     ?limit=50                          → { entries: [{ rank, displayName, time, gameId, boardWidth, boardHeight }] } [done]
+GET    /api/leaderboards/{w}x{h}/me [auth]                          → { rank, time, gameId } | 404                    [done]
+GET    /api/leaderboards/all/me     [auth]                          → { rank, time, gameId, boardWidth, boardHeight } | 404 [done]
 
-GET    /api/replays/{gameId}                                         → { replayJson } | 404 (verified top-50 only have snapshot) [planned]
+GET    /api/replays/{gameId}                                         → { replayJson } | 404 (verified top-50 only have snapshot) [done]
 ```
 
 ### Domain Code Sharing
@@ -390,7 +390,6 @@ Score:
   BoardWidth      int
   BoardHeight     int
   MaxArrowLength  int
-  DeadEndLimit    int   (stored so future default changes don't desync old replays)
   Time            double (seconds, server-verified)
   ReplayJson      TEXT  (full ReplayData; boardSnapshot gzip-base64 encoded if top-50, stripped otherwise)
 ```
@@ -412,11 +411,12 @@ One row per `(UserId, BoardWidth, BoardHeight)` — the player's personal best f
 | `ReplayViewController` | View | Done | Replay viewer scene: playback, seek, controls, highlighting |
 | `TapIndicator` | View | Done | Expanding/fading ring at tap position during replay |
 | `TapIndicatorPool` | View | Done | Object pool for tap indicators with procedural ring sprite |
-| `ReplayVerifier` | Domain | Planned | Simulates replay for server-side verification |
-| `ApiClient` | View | Done | HTTP client, JWT attachment, all auth endpoints (register/login/me/display name/forgot password/reset password/resend verification/change email/confirm email change/change password), token storage in PlayerPrefs |
+| `ReplayVerifier` | Domain | Done | Simulates replay for server-side verification (snapshot comparison, event validation, solve time computation) |
+| `VerificationResult` | Domain | Done | Result type for ReplayVerifier (validity, reason, verified time) |
+| `ApiClient` | View | Done | HTTP client, JWT attachment, all auth + leaderboard endpoints, token storage in PlayerPrefs |
 | `AccountManager` | View | Done | Account panel with 10 forms (login/register/verify code/forgot password/reset password/account info/change email/confirm email code/change password/change display name) |
 | `ConfirmModal` | View | Done | Reusable confirm modal wrapper (configures ConfirmModal.uxml template) |
-| `OnlineController` | View | Planned | Coordinates online flow (play → submit completed replay) |
+| `ScoreSubmitter` | View | Done | Static helper for score submission (checks login state, serializes, calls ApiClient) |
 | `ServerHealthCheck` | Editor | Done | Editor menu item (Tools > Arrow Thing) to test server connectivity |
 
 ## Modified Scripts
@@ -425,8 +425,9 @@ One row per `(UserId, BoardWidth, BoardHeight)` — the player's personal best f
 |--------|---------|
 | `InputHandler` | ~~Record events to `ReplayRecorder` on each tap~~ (done) |
 | `MainMenuController` | Trophy button on mode select (done). Account icon button (done). Reusable ConfirmModal for quit/clear-scores (done) |
-| `VictoryController` | Personal best gold highlight, "New Best!" indicator, "View Leaderboard" button (done). Inline top-10 leaderboard (planned) |
-| `GameController` | Refactored to use `BoardSetupHelper` (done). Wire `OnlineController` (planned) |
+| `VictoryController` | Personal best gold timer, "View Leaderboard" button (done). Background score submission with toast retry on failure (done) |
+| `LeaderboardScreenController` | Global tab with server fetch, player panel, refresh button (done) |
+| `GameController` | Refactored to use `BoardSetupHelper` (done) |
 | `GameSettings` | `StartReplay`/`ClearReplay` for replay scene transition, `LeaderboardFocusGameId` for auto-scroll (done). Server `Seed` field (planned) |
 | `BoardView` | `ClearArrowAnimated`, `UpdateClearableHighlights`, `ClearAllHighlights` (done) |
 | `ArrowView` | `SetHighlight(bool)` for clearable highlighting (done) |
@@ -438,7 +439,7 @@ One row per `(UserId, BoardWidth, BoardHeight)` — the player's personal best f
 ### Automated (NUnit EditMode)
 - `ReplayVerifier`: valid replays pass, invalid replays (wrong cell, skipped arrow, bad order) fail
 
-### Automated (Server Integration — 38 tests)
+### Automated (Server Integration — 61 tests)
 - Auth: register, login (email-based), duplicate email rejection, validation errors
 - Auth: display name change (`PATCH /api/auth/me`), `GET /api/auth/me`
 - Email verification: verify token, resend with rate limiting
@@ -446,13 +447,14 @@ One row per `(UserId, BoardWidth, BoardHeight)` — the player's personal best f
 - Email change: request, confirm, wrong password, same email, invalid token, race condition (email taken)
 - Account lock/unlock: lock invalidates sessions + blocks login, unlock sends reset email + allows recovery
 - Admin: valid/invalid/missing X-Admin-Key
-- Score submission: valid replay accepted, personal best upserted, rank returned (planned)
-- Score submission: invalid replay rejected with reason (planned)
-- Score submission: slower time leaves existing record unchanged (planned)
-- Score submission: same gameId idempotent (planned)
-- Score submission: rate limit (10 updates/hour) enforced (planned)
-- Leaderboards: ranking correctness, partitioning by board size, "all" area-first ordering, personal best query (planned)
-- Replays: top-50 returns snapshot, non-top-50 returns without snapshot, 404 for unknown (planned)
+- Score submission: valid replay accepted, personal best upserted, rank returned
+- Score submission: invalid replay rejected with reason (tampered events, tampered snapshot)
+- Score submission: slower time leaves existing record unchanged
+- Score submission: same gameId idempotent
+- Score submission: rate limit (10 updates/hour) enforced
+- Leaderboards: ranking correctness, partitioning by board size, personal best query
+- Replays: fetch returns JSON for verified score; 404 for unknown
+- Display name: rename reflected in leaderboard
 
 ### Manual
 - **Full online flow**: register → play → submit → see score on leaderboard → play replay

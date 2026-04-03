@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -30,6 +31,11 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private VisualElement _comingSoon;
     private VisualElement _contextMenu;
     private ConfirmModal _deleteModal;
+    private VisualElement _playerPanel;
+    private Label _playerPanelLabel;
+    private Button _playerPlayBtn;
+    private string _playerGameId;
+    private Button _refreshBtn;
 
     private Button[] _tabButtons;
     private Button[] _sortButtons;
@@ -100,6 +106,16 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         );
         _deleteModal.Confirmed += OnDeleteConfirm;
         _deleteModal.Cancelled += OnDeleteCancel;
+
+        // Player panel (global view)
+        _playerPanel = _root.Q("lb-player-panel");
+        _playerPanelLabel = _root.Q<Label>("lb-player-panel-label");
+        _playerPlayBtn = _root.Q<Button>("lb-player-play-btn");
+        if (_playerPlayBtn != null)
+            _playerPlayBtn.clicked += () => OnPlayGlobalReplay(_playerGameId);
+        _refreshBtn = _root.Q<Button>("lb-refresh-btn");
+        if (_refreshBtn != null)
+            _refreshBtn.clicked += () => RefreshGlobalList();
 
         // Dismiss context menu on click outside or scroll
         _root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
@@ -198,9 +214,13 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
         bool isAllTab = Tabs[index].w == 0 && Tabs[index].h == 0;
 
-        // Fastest is useless on All (small boards always win); Biggest is useless on size tabs
-        ShowElement(_sortButtons[0], !isAllTab); // Fastest
-        ShowElement(_sortButtons[1], isAllTab); // Biggest
+        // Sort buttons are hidden in global view
+        if (!_isGlobalView)
+        {
+            // Fastest is useless on All (small boards always win); Biggest is useless on size tabs
+            ShowElement(_sortButtons[0], !isAllTab); // Fastest
+            ShowElement(_sortButtons[1], isAllTab); // Biggest
+        }
 
         // Fall back when the active sort is hidden on this tab
         if (isAllTab && _activeSortCriterion == SortCriterion.Fastest)
@@ -234,15 +254,30 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         {
             globalBtn.AddToClassList("toggle-group__btn--active");
             localBtn.RemoveFromClassList("toggle-group__btn--active");
-            ShowElement(_comingSoon, true);
-            ShowElement(_scroll, false);
-            ShowElement(_emptyLabel, false);
+            ShowElement(_comingSoon, false);
+            ShowElement(_refreshBtn, true);
+            ShowElement(_playerPanel, true);
+
+            // Hide sort buttons and favorites in global view
+            foreach (var btn in _sortButtons)
+                ShowElement(btn, false);
+
+            RefreshGlobalList();
         }
         else
         {
             localBtn.AddToClassList("toggle-group__btn--active");
             globalBtn.RemoveFromClassList("toggle-group__btn--active");
             ShowElement(_comingSoon, false);
+            ShowElement(_refreshBtn, false);
+            ShowElement(_playerPanel, false);
+
+            // Restore sort buttons
+            bool isAllTab = Tabs[_activeTabIndex].w == 0 && Tabs[_activeTabIndex].h == 0;
+            ShowElement(_sortButtons[0], !isAllTab);
+            ShowElement(_sortButtons[1], isAllTab);
+            ShowElement(_sortButtons[2], true);
+
             RefreshList();
         }
     }
@@ -252,7 +287,10 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private void RefreshList()
     {
         if (_isGlobalView)
+        {
+            RefreshGlobalList();
             return;
+        }
 
         var manager = LeaderboardManager.Instance;
         if (manager == null)
@@ -573,6 +611,247 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         GameSettings.LeaderboardFocusGameId = gameId;
         GameSettings.StartReplay(replay, "Leaderboard");
         SceneManager.LoadScene("ReplayViewer");
+    }
+
+    // --- Global leaderboard ---
+
+    private async void RefreshGlobalList()
+    {
+        _list.Clear();
+        ShowEmpty(false);
+        ShowElement(_scroll, true);
+
+        // Show loading state
+        _emptyLabel.text = "Loading...";
+        ShowElement(_emptyLabel, true);
+
+        var api = new ApiClient();
+        var (w, h) = (Tabs[_activeTabIndex].w, Tabs[_activeTabIndex].h);
+        bool isAllTab = w == 0 && h == 0;
+
+        // Fetch leaderboard and player entry in parallel
+        var lbTask = isAllTab ? api.GetLeaderboardAllAsync(50) : api.GetLeaderboardAsync(w, h, 50);
+        System.Threading.Tasks.Task<ApiResult<PlayerEntryResponse>> meTask = null;
+        if (api.IsLoggedIn)
+            meTask = isAllTab ? api.GetPlayerEntryAllAsync() : api.GetPlayerEntryAsync(w, h);
+
+        var lbResult = await lbTask;
+
+        if (!lbResult.Success)
+        {
+            UpdatePlayerPanel(null, null, api);
+            return;
+        }
+
+        PlayerEntryResponse meResult = null;
+        if (meTask != null)
+        {
+            var meApiResult = await meTask;
+            if (meApiResult.Success)
+                meResult = meApiResult.Data;
+        }
+
+        var lb = lbResult.Data;
+        _list.Clear();
+
+        if (lb.entries == null || lb.entries.Length == 0)
+        {
+            _emptyLabel.text = "No scores yet — be the first!";
+            ShowEmpty(true);
+        }
+        else
+        {
+            ShowElement(_emptyLabel, false);
+            ShowElement(_scroll, true);
+
+            string highlightGameId = meResult?.gameId;
+            foreach (var entry in lb.entries)
+            {
+                var row = CreateGlobalEntryRow(entry, isAllTab, entry.gameId == highlightGameId);
+                _list.Add(row);
+            }
+        }
+
+        UpdatePlayerPanel(lb, meResult, api);
+    }
+
+    private VisualElement CreateGlobalEntryRow(
+        GlobalLeaderboardEntry entry,
+        bool showSize,
+        bool highlight
+    )
+    {
+        var row = new VisualElement();
+        row.AddToClassList("lb-entry");
+        if (highlight)
+            row.AddToClassList("lb-entry--highlight");
+
+        // Medal highlights
+        if (entry.rank == 1)
+            row.AddToClassList("lb-entry--gold");
+        else if (entry.rank == 2)
+            row.AddToClassList("lb-entry--silver");
+        else if (entry.rank == 3)
+            row.AddToClassList("lb-entry--bronze");
+
+        // Rank
+        var rankLabel = new Label($"#{entry.rank}");
+        rankLabel.AddToClassList("lb-rank");
+        if (entry.rank == 1)
+            rankLabel.AddToClassList("lb-rank--gold");
+        else if (entry.rank == 2)
+            rankLabel.AddToClassList("lb-rank--silver");
+        else if (entry.rank == 3)
+            rankLabel.AddToClassList("lb-rank--bronze");
+        row.Add(rankLabel);
+
+        // Size (All tab only)
+        if (showSize)
+        {
+            var sizeLabel = new Label($"{entry.boardWidth}x{entry.boardHeight}");
+            sizeLabel.AddToClassList("lb-size");
+            row.Add(sizeLabel);
+        }
+
+        // Time
+        var timeLabel = new Label(FormatTime(entry.time));
+        timeLabel.AddToClassList("lb-time");
+        row.Add(timeLabel);
+
+        // Display name
+        var nameLabel = new Label(entry.displayName ?? "");
+        nameLabel.AddToClassList("lb-name");
+        row.Add(nameLabel);
+
+        // Play button (replay)
+        string capturedGameId = entry.gameId;
+        var playBtn = new Button(() => OnPlayGlobalReplay(capturedGameId));
+        playBtn.AddToClassList("lb-play-btn");
+        var playIcon = new VisualElement();
+        playIcon.AddToClassList("lb-play-icon");
+        playBtn.Add(playIcon);
+        row.Add(playBtn);
+
+        return row;
+    }
+
+    private void UpdatePlayerPanel(
+        GlobalLeaderboardResponse lb,
+        PlayerEntryResponse me,
+        ApiClient api
+    )
+    {
+        if (_playerPanel == null || _playerPanelLabel == null)
+            return;
+
+        ShowElement(_playerPanel, true);
+
+        if (lb == null)
+        {
+            // Server unreachable — show error in the empty label (which has flex-grow
+            // to push the player panel to the bottom) and hide the player panel.
+            ShowElement(_scroll, false);
+            _emptyLabel.text = "Can't connect to the server.\nScores are only saved locally.";
+            ShowElement(_emptyLabel, true);
+            ShowElement(_playerPanel, false);
+            return;
+        }
+
+        if (!api.IsLoggedIn)
+        {
+            _playerPanelLabel.text = "Register or log in to appear on the global leaderboard.";
+            ShowElement(_playerPlayBtn, false);
+            return;
+        }
+
+        if (me == null)
+        {
+            var (w, h) = (Tabs[_activeTabIndex].w, Tabs[_activeTabIndex].h);
+            bool isAllTab = w == 0 && h == 0;
+            _playerPanelLabel.text = isAllTab
+                ? "No scores yet. Play a game to enter the leaderboard."
+                : "No scores yet for this board size. Play a game to enter the leaderboard.";
+            ShowElement(_playerPlayBtn, false);
+            return;
+        }
+
+        _playerPanelLabel.text =
+            $"Your best: #{me.rank} of {me.totalEntries} \u00B7 {FormatTime(me.time)}";
+        _playerGameId = me.gameId;
+        ShowElement(_playerPlayBtn, true);
+    }
+
+    private async void OnPlayGlobalReplay(string gameId)
+    {
+        if (string.IsNullOrEmpty(gameId))
+            return;
+
+        // Check local storage first — avoids re-fetching and has snapshot for non-top-50
+        var manager = LeaderboardManager.Instance;
+        if (manager != null)
+        {
+            var local = manager.LoadReplay(gameId);
+            if (local != null && local.boardSnapshot != null && local.boardSnapshot.Count > 0)
+            {
+                GameSettings.StartReplay(local, "Leaderboard");
+                SceneManager.LoadScene("ReplayViewer");
+                return;
+            }
+        }
+
+        var api = new ApiClient();
+        var result = await api.GetReplayAsync(gameId);
+        if (!result.Success || result.Data == null)
+        {
+            Debug.LogWarning($"[LeaderboardScreen] Failed to fetch replay for {gameId}");
+            return;
+        }
+
+        // Server stores top-50 snapshots as gzip-base64 strings.
+        // Decompress back to the array before deserializing into ReplayData.
+        var replayJson = DecompressSnapshotIfNeeded(result.Data.replayJson);
+        var replay = Newtonsoft.Json.JsonConvert.DeserializeObject<ReplayData>(replayJson);
+        if (replay == null)
+        {
+            Debug.LogWarning($"[LeaderboardScreen] Failed to deserialize replay for {gameId}");
+            return;
+        }
+
+        GameSettings.StartReplay(replay, "Leaderboard");
+        SceneManager.LoadScene("ReplayViewer");
+    }
+
+    /// <summary>
+    /// If the replay JSON has a gzip-base64 boardSnapshot (string), decompress it
+    /// back to the JSON array so Newtonsoft can deserialize into List&lt;List&lt;Cell&gt;&gt;.
+    /// </summary>
+    private static string DecompressSnapshotIfNeeded(string replayJson)
+    {
+        try
+        {
+            var obj = Newtonsoft.Json.Linq.JObject.Parse(replayJson);
+            var snapshot = obj["boardSnapshot"];
+            if (snapshot == null || snapshot.Type != Newtonsoft.Json.Linq.JTokenType.String)
+                return replayJson;
+
+            var base64 = (string)snapshot;
+            var compressed = System.Convert.FromBase64String(base64);
+            using var ms = new System.IO.MemoryStream(compressed);
+            using var gz = new System.IO.Compression.GZipStream(
+                ms,
+                System.IO.Compression.CompressionMode.Decompress
+            );
+            using var reader = new System.IO.StreamReader(gz);
+            var snapshotJson = reader.ReadToEnd();
+
+            obj["boardSnapshot"] = Newtonsoft.Json.Linq.JToken.Parse(snapshotJson);
+            return obj.ToString(Newtonsoft.Json.Formatting.None);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[LeaderboardScreen] Snapshot decompression failed: {e.Message}");
+            return replayJson;
+        }
     }
 
     // --- Navigation ---

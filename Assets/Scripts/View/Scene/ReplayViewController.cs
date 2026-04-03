@@ -83,6 +83,7 @@ public sealed class ReplayViewController : MonoBehaviour
     private bool _isDragging;
     private float _dragThreshold = 15f;
     private bool _inputEnabled = true;
+    private bool _pointerOverUI;
 
     private void Awake()
     {
@@ -167,30 +168,61 @@ public sealed class ReplayViewController : MonoBehaviour
 
         _camCtrl = BoardSetupHelper.SetupCamera(mainCamera, _board);
 
-        // Restore board from snapshot
+        // Restore board from snapshot, or regenerate from seed if snapshot is absent
         _boardSnapshot = _replayData.boardSnapshot;
         if (_boardSnapshot == null || _boardSnapshot.Count == 0)
         {
-            Debug.LogError("ReplayViewController: Replay has no board snapshot.");
-            GameSettings.ClearReplay();
-            SceneManager.LoadScene(_returnScene);
-            yield break;
+            Debug.Log(
+                $"[ReplayViewController] No snapshot — regenerating board from seed={_replayData.seed}"
+            );
+
+            var rng = new System.Random(_replayData.seed);
+            var gen = BoardGeneration.FillBoardIncremental(_board, _replayData.maxArrowLength, rng);
+
+            while (gen.MoveNext())
+            {
+                if (gen.Current == BoardGeneration.FinalizationMarker)
+                    continue;
+                yield return null;
+            }
+
+            // Build snapshot from the generated board for seek support (backward seek)
+            _boardSnapshot = new List<List<Cell>>();
+            foreach (var arrow in _board.Arrows)
+                _boardSnapshot.Add(new List<Cell>(arrow.Cells));
+
+            // Persist the replay with snapshot locally so subsequent views load instantly
+            _replayData.boardSnapshot = _boardSnapshot;
+            var lbManager = LeaderboardManager.Instance;
+            if (lbManager != null)
+            {
+                lbManager.RecordResult(_replayData);
+                Debug.Log(
+                    $"[ReplayViewController] Saved replay with snapshot locally: {_replayData.gameId}"
+                );
+            }
+
+            // Spawn arrow views
+            foreach (var arrow in _board.Arrows)
+                _boardView.AddArrowView(arrow);
         }
-
-        int totalArrows = _boardSnapshot.Count;
-        int totalSteps = totalArrows * 2;
-        var restorer = BoardSetupHelper.RestoreBoardFromSnapshot(
-            _board,
-            _boardView,
-            _boardSnapshot,
-            FrameBudgetMs
-        );
-
-        while (restorer.MoveNext())
+        else
         {
-            float progress = (float)restorer.Current / totalSteps;
-            UpdateLoadingProgress(progress);
-            yield return null;
+            int totalArrows = _boardSnapshot.Count;
+            int totalSteps = totalArrows * 2;
+            var restorer = BoardSetupHelper.RestoreBoardFromSnapshot(
+                _board,
+                _boardView,
+                _boardSnapshot,
+                FrameBudgetMs
+            );
+
+            while (restorer.MoveNext())
+            {
+                float progress = (float)restorer.Current / totalSteps;
+                UpdateLoadingProgress(progress);
+                yield return null;
+            }
         }
 
         _boardView.ApplyColoring();
@@ -229,8 +261,8 @@ public sealed class ReplayViewController : MonoBehaviour
         if (_player == null)
             return;
 
-        // Camera input
-        if (_inputEnabled)
+        // Camera input (suppress while interacting with UI)
+        if (_inputEnabled && !_isSeeking && !_pointerOverUI)
             HandleCameraInput();
 
         // Advance playback (skip while seeking)
@@ -312,6 +344,23 @@ public sealed class ReplayViewController : MonoBehaviour
             _seekTrack.RegisterCallback<PointerMoveEvent>(OnSeekPointerMove);
             _seekTrack.RegisterCallback<PointerUpEvent>(OnSeekPointerUp);
             _seekTrack.RegisterCallback<PointerCaptureOutEvent>(OnSeekCaptureOut);
+        }
+
+        // Suppress camera pan when interacting with any HUD element
+        if (_controlsBar != null)
+        {
+            _controlsBar.RegisterCallback<PointerDownEvent>(_ => _pointerOverUI = true);
+            _controlsBar.RegisterCallback<PointerUpEvent>(_ => _pointerOverUI = false);
+        }
+        if (_controlsToggleBtn != null)
+        {
+            _controlsToggleBtn.RegisterCallback<PointerDownEvent>(_ => _pointerOverUI = true);
+            _controlsToggleBtn.RegisterCallback<PointerUpEvent>(_ => _pointerOverUI = false);
+        }
+        if (_exitBtn != null)
+        {
+            _exitBtn.RegisterCallback<PointerDownEvent>(_ => _pointerOverUI = true);
+            _exitBtn.RegisterCallback<PointerUpEvent>(_ => _pointerOverUI = false);
         }
 
         if (_timeTotal != null)

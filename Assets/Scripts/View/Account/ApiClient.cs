@@ -308,6 +308,207 @@ public class ApiClient
         }
     }
 
+    public async Task<ApiResult<SubmitResultResponse>> SubmitScoreAsync(string replayJson)
+    {
+        var body = JsonUtility.ToJson(new SubmitScoreRequestDto { replayJson = replayJson });
+        try
+        {
+            using var request = new UnityWebRequest($"{_baseUrl}/api/scores", "POST");
+            request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader("Authorization", $"Bearer {Token}");
+            request.timeout = 10;
+
+            var op = request.SendWebRequest();
+            while (!op.isDone)
+                await Task.Yield();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonUtility.FromJson<SubmitResultResponse>(
+                    request.downloadHandler.text
+                );
+                return ApiResult<SubmitResultResponse>.Ok(response);
+            }
+
+            var error = TryParseError(request.downloadHandler.text);
+            return ApiResult<SubmitResultResponse>.Fail(request.responseCode, error);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ApiClient] SubmitScore failed: {e.Message}");
+            return ApiResult<SubmitResultResponse>.Fail(0, "Network error");
+        }
+    }
+
+    public async Task<ApiResult<GlobalLeaderboardResponse>> GetLeaderboardAsync(
+        int width,
+        int height,
+        int limit = 50
+    )
+    {
+        try
+        {
+            using var request = UnityWebRequest.Get(
+                $"{_baseUrl}/api/leaderboards/{width}x{height}?limit={limit}"
+            );
+            request.timeout = 10;
+
+            var op = request.SendWebRequest();
+            while (!op.isDone)
+                await Task.Yield();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonUtility.FromJson<GlobalLeaderboardResponse>(
+                    request.downloadHandler.text
+                );
+                return ApiResult<GlobalLeaderboardResponse>.Ok(response);
+            }
+
+            var error = TryParseError(request.downloadHandler.text);
+            return ApiResult<GlobalLeaderboardResponse>.Fail(request.responseCode, error);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ApiClient] GetLeaderboard failed: {e.Message}");
+            return ApiResult<GlobalLeaderboardResponse>.Fail(0, "Network error");
+        }
+    }
+
+    public async Task<ApiResult<GlobalLeaderboardResponse>> GetLeaderboardAllAsync(int limit = 50)
+    {
+        try
+        {
+            using var request = UnityWebRequest.Get(
+                $"{_baseUrl}/api/leaderboards/all?limit={limit}"
+            );
+            request.timeout = 10;
+
+            var op = request.SendWebRequest();
+            while (!op.isDone)
+                await Task.Yield();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonUtility.FromJson<GlobalLeaderboardResponse>(
+                    request.downloadHandler.text
+                );
+                return ApiResult<GlobalLeaderboardResponse>.Ok(response);
+            }
+
+            var error = TryParseError(request.downloadHandler.text);
+            return ApiResult<GlobalLeaderboardResponse>.Fail(request.responseCode, error);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ApiClient] GetLeaderboardAll failed: {e.Message}");
+            return ApiResult<GlobalLeaderboardResponse>.Fail(0, "Network error");
+        }
+    }
+
+    public async Task<ApiResult<PlayerEntryResponse>> GetPlayerEntryAsync(int width, int height)
+    {
+        try
+        {
+            using var request = UnityWebRequest.Get(
+                $"{_baseUrl}/api/leaderboards/{width}x{height}/me"
+            );
+            request.SetRequestHeader("Authorization", $"Bearer {Token}");
+            request.timeout = 10;
+
+            var op = request.SendWebRequest();
+            while (!op.isDone)
+                await Task.Yield();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonUtility.FromJson<PlayerEntryResponse>(
+                    request.downloadHandler.text
+                );
+                return ApiResult<PlayerEntryResponse>.Ok(response);
+            }
+
+            // 404 = no score, not an error
+            if (request.responseCode == 404)
+                return ApiResult<PlayerEntryResponse>.Fail(404, null);
+
+            var error = TryParseError(request.downloadHandler.text);
+            return ApiResult<PlayerEntryResponse>.Fail(request.responseCode, error);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ApiClient] GetPlayerEntry failed: {e.Message}");
+            return ApiResult<PlayerEntryResponse>.Fail(0, "Network error");
+        }
+    }
+
+    public async Task<ApiResult<PlayerEntryResponse>> GetPlayerEntryAllAsync()
+    {
+        try
+        {
+            using var request = UnityWebRequest.Get($"{_baseUrl}/api/leaderboards/all/me");
+            request.SetRequestHeader("Authorization", $"Bearer {Token}");
+            request.timeout = 10;
+
+            var op = request.SendWebRequest();
+            while (!op.isDone)
+                await Task.Yield();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonUtility.FromJson<PlayerEntryResponse>(
+                    request.downloadHandler.text
+                );
+                return ApiResult<PlayerEntryResponse>.Ok(response);
+            }
+
+            if (request.responseCode == 404)
+                return ApiResult<PlayerEntryResponse>.Fail(404, null);
+
+            var error = TryParseError(request.downloadHandler.text);
+            return ApiResult<PlayerEntryResponse>.Fail(request.responseCode, error);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ApiClient] GetPlayerEntryAll failed: {e.Message}");
+            return ApiResult<PlayerEntryResponse>.Fail(0, "Network error");
+        }
+    }
+
+    public async Task<ApiResult<ReplayFetchResponse>> GetReplayAsync(string gameId)
+    {
+        try
+        {
+            using var request = UnityWebRequest.Get($"{_baseUrl}/api/replays/{gameId}");
+            request.timeout = 10;
+
+            var op = request.SendWebRequest();
+            while (!op.isDone)
+                await Task.Yield();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonUtility.FromJson<ReplayFetchResponse>(
+                    request.downloadHandler.text
+                );
+                return ApiResult<ReplayFetchResponse>.Ok(response);
+            }
+
+            if (request.responseCode == 404)
+                return ApiResult<ReplayFetchResponse>.Fail(404, null);
+
+            var error = TryParseError(request.downloadHandler.text);
+            return ApiResult<ReplayFetchResponse>.Fail(request.responseCode, error);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ApiClient] GetReplay failed: {e.Message}");
+            return ApiResult<ReplayFetchResponse>.Fail(0, "Network error");
+        }
+    }
+
     public void Logout()
     {
         Token = "";
@@ -475,6 +676,12 @@ public class ApiClient
     }
 
     [Serializable]
+    private class SubmitScoreRequestDto
+    {
+        public string replayJson;
+    }
+
+    [Serializable]
     private class ErrorResponse
     {
         public string error;
@@ -505,6 +712,50 @@ public class MeResponse
 {
     public string email;
     public string displayName;
+}
+
+[Serializable]
+public class SubmitResultResponse
+{
+    public bool verified;
+    public int rank;
+    public bool isPersonalBest;
+    public string reason;
+}
+
+[Serializable]
+public class GlobalLeaderboardResponse
+{
+    public int totalEntries;
+    public GlobalLeaderboardEntry[] entries;
+}
+
+[Serializable]
+public class GlobalLeaderboardEntry
+{
+    public int rank;
+    public string displayName;
+    public double time;
+    public string gameId;
+    public int boardWidth;
+    public int boardHeight;
+}
+
+[Serializable]
+public class PlayerEntryResponse
+{
+    public int rank;
+    public int totalEntries;
+    public double time;
+    public string gameId;
+    public int boardWidth;
+    public int boardHeight;
+}
+
+[Serializable]
+public class ReplayFetchResponse
+{
+    public string replayJson;
 }
 
 public class ApiResult<T>

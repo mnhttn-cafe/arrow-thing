@@ -268,6 +268,97 @@ public class ReplayPlayerTests
         Assert.AreEqual(6.0 + L + E, player.TotalDuration, 0.01);
     }
 
+    // ── Missing start_solve ────────────────────────────────────────────────
+
+    [Test]
+    public void Advance_NoStartSolve_StillFiresEvents()
+    {
+        // Replays from older versions may lack a start_solve event.
+        var events = new List<ReplayEvent>
+        {
+            new ReplayEvent
+            {
+                seq = 0,
+                type = ReplayEventType.SessionStart,
+                timestamp = "2026-01-01T00:00:00.000Z",
+            },
+            new ReplayEvent
+            {
+                seq = 1,
+                type = ReplayEventType.Clear,
+                posX = 1f,
+                posY = 1f,
+                timestamp = "2026-01-01T00:00:02.000Z",
+            },
+            new ReplayEvent
+            {
+                seq = 2,
+                type = ReplayEventType.Clear,
+                posX = 2f,
+                posY = 2f,
+                timestamp = "2026-01-01T00:00:03.000Z",
+            },
+            new ReplayEvent
+            {
+                seq = 3,
+                type = ReplayEventType.EndSolve,
+                timestamp = "2026-01-01T00:00:04.000Z",
+            },
+        };
+        var data = new ReplayData { events = events, finalTime = 4.0 };
+        var player = new ReplayPlayer(data);
+
+        Assert.AreEqual(
+            2,
+            player.TimedEventCount,
+            "Should have 2 timed events even without start_solve"
+        );
+        Assert.IsFalse(player.IsFinished);
+
+        var fired = player.Advance(100.0);
+        Assert.AreEqual(2, fired.Count);
+        Assert.IsTrue(player.IsFinished);
+    }
+
+    [Test]
+    public void Advance_NoStartSolve_TimingRelativeToFirstEvent()
+    {
+        var events = new List<ReplayEvent>
+        {
+            new ReplayEvent
+            {
+                seq = 0,
+                type = ReplayEventType.SessionStart,
+                timestamp = "2026-01-01T00:00:00.000Z",
+            },
+            new ReplayEvent
+            {
+                seq = 1,
+                type = ReplayEventType.Clear,
+                posX = 1f,
+                posY = 1f,
+                timestamp = "2026-01-01T00:00:05.000Z",
+            },
+            new ReplayEvent
+            {
+                seq = 2,
+                type = ReplayEventType.EndSolve,
+                timestamp = "2026-01-01T00:00:06.000Z",
+            },
+        };
+        var data = new ReplayData { events = events, finalTime = 6.0 };
+        var player = new ReplayPlayer(data);
+
+        // Event is at t=5 relative to session_start, plus lead-in
+        // Advancing just past lead-in should not fire it yet
+        var fired1 = player.Advance(L + 1.0);
+        Assert.AreEqual(0, fired1.Count);
+
+        // Advancing past t=5+L should fire it
+        var fired2 = player.Advance(5.0);
+        Assert.AreEqual(1, fired2.Count);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>
