@@ -264,9 +264,12 @@ public class ReplayRecorderTests
         var rec = new ReplayRecorder(prior, nextSeq: 2);
         rec.RecordSessionRejoin();
 
-        Assert.AreEqual(3, rec.Events.Count);
+        // Orphan rejoin injects a session_leave before the rejoin
+        Assert.AreEqual(4, rec.Events.Count);
         Assert.AreEqual(2, rec.Events[2].seq);
-        Assert.AreEqual(ReplayEventType.SessionRejoin, rec.Events[2].type);
+        Assert.AreEqual(ReplayEventType.SessionLeave, rec.Events[2].type);
+        Assert.AreEqual(3, rec.Events[3].seq);
+        Assert.AreEqual(ReplayEventType.SessionRejoin, rec.Events[3].type);
     }
 
     [Test]

@@ -76,7 +76,7 @@ public class VictoryLayoutTests : UILayoutTestBase
     }
 
     [UnityTest]
-    public IEnumerator Victory_NewBestAndLeaderboard_AllElementsVisible(
+    public IEnumerator Victory_GoldTimerAndLeaderboard_AllElementsVisible(
         [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
             UILayoutTestHelper.AspectRatio ratio
     )
@@ -92,14 +92,12 @@ public class VictoryLayoutTests : UILayoutTestBase
 
         var timeLabel = root.Q<Label>("victory-time");
         timeLabel.text = "1:23.456";
-
-        var newBest = root.Q<Label>("new-best-label");
-        newBest.RemoveFromClassList("victory--hidden");
+        timeLabel.AddToClassList("victory-time--gold");
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
         var panelBounds = root.worldBound;
-        string ctx = $"Victory_NewBest @ {ratio.Name}";
+        string ctx = $"Victory_GoldTimer @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
         AssertElements(
@@ -109,7 +107,6 @@ public class VictoryLayoutTests : UILayoutTestBase
             warn,
             msgLabel,
             timeLabel,
-            newBest,
             root.Q<Button>("view-leaderboard-btn"),
             root.Q<Button>("play-again-btn"),
             root.Q<Button>("menu-btn")
