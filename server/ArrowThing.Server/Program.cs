@@ -1,8 +1,12 @@
 using System.Security.Claims;
 using ArrowThing.Server.Auth;
 using ArrowThing.Server.Data;
+using ArrowThing.Server.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using Serilog;
+using Serilog.Sinks.Grafana.Loki;
 
 static bool VerifyAdminKey(IConfiguration config, HttpContext ctx)
 {
@@ -16,6 +20,37 @@ static bool VerifyAdminKey(IConfiguration config, HttpContext ctx)
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSerilog(
+    (context, services, configuration) =>
+    {
+        configuration
+            .ReadFrom.Configuration(context.Configuration)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("Application", "ArrowThing")
+            .WriteTo.Console();
+
+        var lokiUrl = context.Configuration["Loki:Url"];
+        if (!string.IsNullOrEmpty(lokiUrl))
+        {
+            configuration.WriteTo.GrafanaLoki(
+                lokiUrl,
+                labels: new List<LokiLabel>
+                {
+                    new LokiLabel { Key = "app", Value = "arrow-thing" },
+                }
+            );
+        }
+    }
+);
+
+// OpenTelemetry metrics
+builder
+    .Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddAspNetCoreInstrumentation().AddRuntimeInstrumentation().AddPrometheusExporter();
+    });
+
 // Database
 // connectionString may be null in test environments where TestFactory replaces the
 // DbContext registration entirely. In production, docker-compose always provides it.
@@ -28,6 +63,7 @@ builder.Services.AddHttpClient();
 // Auth services
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -52,6 +88,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+app.UseSerilogRequestLogging();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -72,6 +109,14 @@ app.Use(
 
                 if (dbUser == null || dbUser.SecurityStamp != stampClaim)
                 {
+                    var audit = context.RequestServices.GetRequiredService<AuditLogService>();
+                    await audit.LogAsync(
+                        AuditEvent.SessionInvalidated,
+                        Guid.Parse(userIdClaim),
+                        dbUser?.Email,
+                        GetClientIp(context)
+                    );
+
                     context.Response.StatusCode = 401;
                     await context.Response.WriteAsJsonAsync(
                         new { error = "Session invalidated. Please log in again." }
@@ -90,9 +135,9 @@ app.MapGet("/health", () => Results.Ok());
 
 app.MapPost(
     "/api/auth/register",
-    async (RegisterRequest request, AuthService auth) =>
+    async (RegisterRequest request, AuthService auth, HttpContext ctx) =>
     {
-        var (response, status, error) = await auth.RegisterAsync(request);
+        var (response, status, error) = await auth.RegisterAsync(request, GetClientIp(ctx));
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
@@ -101,9 +146,9 @@ app.MapPost(
 
 app.MapPost(
     "/api/auth/login",
-    async (LoginRequest request, AuthService auth) =>
+    async (LoginRequest request, AuthService auth, HttpContext ctx) =>
     {
-        var (response, status, error) = await auth.LoginAsync(request);
+        var (response, status, error) = await auth.LoginAsync(request, GetClientIp(ctx));
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
@@ -125,10 +170,19 @@ app.MapGet(
 
 app.MapPatch(
         "/api/auth/me",
-        async (UpdateDisplayNameRequest request, AuthService auth, ClaimsPrincipal user) =>
+        async (
+            UpdateDisplayNameRequest request,
+            AuthService auth,
+            ClaimsPrincipal user,
+            HttpContext ctx
+        ) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var (response, status, error) = await auth.UpdateDisplayNameAsync(userId, request);
+            var (response, status, error) = await auth.UpdateDisplayNameAsync(
+                userId,
+                request,
+                GetClientIp(ctx)
+            );
             return response != null
                 ? Results.Ok(response)
                 : Results.Json(new { error }, statusCode: status);
@@ -138,9 +192,9 @@ app.MapPatch(
 
 app.MapPost(
     "/api/auth/verify-code",
-    async (VerifyCodeRequest request, AuthService auth) =>
+    async (VerifyCodeRequest request, AuthService auth, HttpContext ctx) =>
     {
-        var (response, status, error) = await auth.VerifyCodeAsync(request);
+        var (response, status, error) = await auth.VerifyCodeAsync(request, GetClientIp(ctx));
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
@@ -149,9 +203,12 @@ app.MapPost(
 
 app.MapPost(
     "/api/auth/resend-verification",
-    async (ResendVerificationRequest request, AuthService auth) =>
+    async (ResendVerificationRequest request, AuthService auth, HttpContext ctx) =>
     {
-        var (response, status, error) = await auth.ResendVerificationAsync(request);
+        var (response, status, error) = await auth.ResendVerificationAsync(
+            request,
+            GetClientIp(ctx)
+        );
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
@@ -160,9 +217,9 @@ app.MapPost(
 
 app.MapPost(
     "/api/auth/forgot-password",
-    async (ForgotPasswordRequest request, AuthService auth) =>
+    async (ForgotPasswordRequest request, AuthService auth, HttpContext ctx) =>
     {
-        var (response, status, error) = await auth.ForgotPasswordAsync(request);
+        var (response, status, error) = await auth.ForgotPasswordAsync(request, GetClientIp(ctx));
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
@@ -171,9 +228,9 @@ app.MapPost(
 
 app.MapPost(
     "/api/auth/reset-password",
-    async (ResetPasswordRequest request, AuthService auth) =>
+    async (ResetPasswordRequest request, AuthService auth, HttpContext ctx) =>
     {
-        var (response, status, error) = await auth.ResetPasswordAsync(request);
+        var (response, status, error) = await auth.ResetPasswordAsync(request, GetClientIp(ctx));
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
@@ -182,10 +239,19 @@ app.MapPost(
 
 app.MapPost(
         "/api/auth/change-email",
-        async (ChangeEmailRequest request, AuthService auth, ClaimsPrincipal user) =>
+        async (
+            ChangeEmailRequest request,
+            AuthService auth,
+            ClaimsPrincipal user,
+            HttpContext ctx
+        ) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var (response, status, error) = await auth.ChangeEmailAsync(userId, request);
+            var (response, status, error) = await auth.ChangeEmailAsync(
+                userId,
+                request,
+                GetClientIp(ctx)
+            );
             return response != null
                 ? Results.Ok(response)
                 : Results.Json(new { error }, statusCode: status);
@@ -195,10 +261,19 @@ app.MapPost(
 
 app.MapPost(
         "/api/auth/change-password",
-        async (ChangePasswordRequest request, AuthService auth, ClaimsPrincipal user) =>
+        async (
+            ChangePasswordRequest request,
+            AuthService auth,
+            ClaimsPrincipal user,
+            HttpContext ctx
+        ) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var (response, status, error) = await auth.ChangePasswordAsync(userId, request);
+            var (response, status, error) = await auth.ChangePasswordAsync(
+                userId,
+                request,
+                GetClientIp(ctx)
+            );
             return response != null
                 ? Results.Ok(response)
                 : Results.Json(new { error }, statusCode: status);
@@ -208,10 +283,19 @@ app.MapPost(
 
 app.MapPost(
         "/api/auth/confirm-email-change",
-        async (ConfirmEmailChangeRequest request, AuthService auth, ClaimsPrincipal user) =>
+        async (
+            ConfirmEmailChangeRequest request,
+            AuthService auth,
+            ClaimsPrincipal user,
+            HttpContext ctx
+        ) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var (response, status, error) = await auth.ConfirmEmailChangeAsync(userId, request);
+            var (response, status, error) = await auth.ConfirmEmailChangeAsync(
+                userId,
+                request,
+                GetClientIp(ctx)
+            );
             return response != null
                 ? Results.Ok(response)
                 : Results.Json(new { error }, statusCode: status);
@@ -227,7 +311,7 @@ app.MapPost(
         if (!VerifyAdminKey(config, ctx))
             return Results.Json(new { error = "Unauthorized." }, statusCode: 401);
 
-        var (response, status, error) = await auth.LockAccountAsync(request);
+        var (response, status, error) = await auth.LockAccountAsync(request, GetClientIp(ctx));
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
@@ -241,14 +325,24 @@ app.MapPost(
         if (!VerifyAdminKey(config, ctx))
             return Results.Json(new { error = "Unauthorized." }, statusCode: 401);
 
-        var (response, status, error) = await auth.UnlockAccountAsync(request);
+        var (response, status, error) = await auth.UnlockAccountAsync(request, GetClientIp(ctx));
         return response != null
             ? Results.Ok(response)
             : Results.Json(new { error }, statusCode: status);
     }
 );
 
+app.MapPrometheusScrapingEndpoint("/metrics");
+
 app.Run();
+
+static string? GetClientIp(HttpContext ctx)
+{
+    // Nginx forwards the real client IP from Cloudflare's CF-Connecting-IP header
+    // as X-Forwarded-For. Fall back to connection remote IP for direct access.
+    return ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+        ?? ctx.Connection.RemoteIpAddress?.ToString();
+}
 
 // Make the implicit Program class accessible to integration tests.
 public partial class Program { }
