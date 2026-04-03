@@ -4,10 +4,6 @@ using System.Collections.Generic;
 
 public static class BoardGeneration
 {
-    /// <summary>
-    /// Default cap kept for API backward compatibility. The greedy walk does not use it.
-    /// </summary>
-    private const int DefaultDeadEndLimit = 10;
     private const int MinArrowLength = 2;
 
     /// <summary>
@@ -57,12 +53,7 @@ public static class BoardGeneration
     /// </summary>
     public static readonly object FinalizationMarker = new object();
 
-    public static IEnumerator FillBoardIncremental(
-        Board board,
-        int maxLength,
-        Random random,
-        int deadEndLimit = DefaultDeadEndLimit
-    )
+    public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random)
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
@@ -95,8 +86,7 @@ public static class BoardGeneration
         int maxLength,
         int amount,
         Random random,
-        out int createdArrows,
-        int deadEndLimit = DefaultDeadEndLimit
+        out int createdArrows
     )
     {
         createdArrows = 0;
