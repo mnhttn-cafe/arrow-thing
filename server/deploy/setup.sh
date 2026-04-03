@@ -7,15 +7,28 @@ set -euo pipefail
 
 DEPLOY_DIR="/home/deploy/arrow-thing"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# --- Pull latest ---
+
+echo "Pulling latest from origin..."
+git -C "$REPO_DIR" pull
 
 # --- Copy deploy configs ---
 
 mkdir -p "$DEPLOY_DIR/nginx/certs"
+mkdir -p "$DEPLOY_DIR/loki"
+mkdir -p "$DEPLOY_DIR/prometheus"
+mkdir -p "$DEPLOY_DIR/grafana/provisioning/datasources"
 
 cp "$SCRIPT_DIR/docker-compose.yml" "$DEPLOY_DIR/"
 cp "$SCRIPT_DIR/init-db.sh" "$DEPLOY_DIR/"
 chmod +x "$DEPLOY_DIR/init-db.sh"
 cp "$SCRIPT_DIR/nginx/nginx.conf" "$DEPLOY_DIR/nginx/"
+cp "$SCRIPT_DIR/loki/loki-config.yml" "$DEPLOY_DIR/loki/"
+cp "$SCRIPT_DIR/prometheus/prometheus.yml" "$DEPLOY_DIR/prometheus/"
+cp "$SCRIPT_DIR/grafana/provisioning/datasources/datasources.yml" \
+  "$DEPLOY_DIR/grafana/provisioning/datasources/"
 echo "Downloading Cloudflare Authenticated Origin Pull CA certificate..."
 curl -fsSL "https://developers.cloudflare.com/ssl/static/authenticated_origin_pull_ca.pem" \
   -o "$DEPLOY_DIR/nginx/certs/cloudflare-origin-pull.pem"
@@ -70,6 +83,16 @@ MISSING=0
 [ ! -f "$DEPLOY_DIR/.env" ] && echo "MISSING: $DEPLOY_DIR/.env (see server/.env.sample)" && MISSING=1
 [ ! -f "$DEPLOY_DIR/nginx/certs/origin.pem" ] && echo "MISSING: $DEPLOY_DIR/nginx/certs/origin.pem" && MISSING=1
 [ ! -f "$DEPLOY_DIR/nginx/certs/origin-key.pem" ] && echo "MISSING: $DEPLOY_DIR/nginx/certs/origin-key.pem" && MISSING=1
+
+# Check .env has required keys
+if [ -f "$DEPLOY_DIR/.env" ]; then
+  for KEY in POSTGRES_PASSWORD JWT_SECRET ADMIN_API_KEY GRAFANA_ADMIN_PASSWORD; do
+    if ! grep -q "^${KEY}=.\+" "$DEPLOY_DIR/.env" 2>/dev/null; then
+      echo "MISSING: $KEY is not set in $DEPLOY_DIR/.env"
+      MISSING=1
+    fi
+  done
+fi
 
 if [ "$MISSING" -eq 0 ]; then
   echo "All files in place."

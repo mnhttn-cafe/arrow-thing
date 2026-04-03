@@ -83,7 +83,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 deploy@${{ secrets.VPS_HOST }} \
             "cd /home/deploy/arrow-thing && \
              docker compose pull api && \
-             docker compose up -d --no-deps api"
+             docker compose up -d"
 
       - name: Health check
         run: |
