@@ -90,6 +90,13 @@ docker exec arrowthing-dev psql -U postgres -d arrowthing -c \
   "DELETE FROM \"Scores\" WHERE \"UserId\" IN (SELECT \"Id\" FROM \"Users\" WHERE \"Email\" LIKE 'dummy%@test.local'); DELETE FROM \"Users\" WHERE \"Email\" LIKE 'dummy%@test.local';"
 ```
 
+To wipe all scores (without deleting users):
+
+```bash
+docker exec arrowthing-dev psql -U postgres -d arrowthing -c \
+  "DELETE FROM \"Scores\";"
+```
+
 ## API Endpoints
 
 ### Auth
