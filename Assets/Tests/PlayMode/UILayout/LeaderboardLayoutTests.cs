@@ -41,6 +41,38 @@ public class LeaderboardLayoutTests : UILayoutTestBase
     }
 
     [UnityTest]
+    public IEnumerator Leaderboard_GlobalView_TabBarWithRefresh_FitsWithinBounds(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        // Simulate global view: unhide the refresh button
+        root.Q<Button>("lb-refresh-btn").RemoveFromClassList("lb--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var lb = root.Q("leaderboard-root");
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_GlobalTabBar @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            lb,
+            panelBounds,
+            ctx,
+            warn,
+            lb.Q<Button>("tab-small"),
+            lb.Q<Button>("tab-medium"),
+            lb.Q<Button>("tab-large"),
+            lb.Q<Button>("tab-xlarge"),
+            lb.Q<Button>("tab-all"),
+            lb.Q<Button>("lb-refresh-btn")
+        );
+    }
+
+    [UnityTest]
     public IEnumerator Leaderboard_EntryRows_AllTab_FitWithinBounds(
         [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
             UILayoutTestHelper.AspectRatio ratio
