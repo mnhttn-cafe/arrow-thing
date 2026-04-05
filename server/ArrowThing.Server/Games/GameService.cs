@@ -1,4 +1,5 @@
 using ArrowThing.Server.Data;
+using ArrowThing.Server.Leaderboards;
 using ArrowThing.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -10,14 +11,16 @@ public class GameService
 {
     private readonly AppDbContext _db;
     private readonly ILogger<GameService> _logger;
+    private readonly LeaderboardCache _cache;
 
     private const int RateLimitPerHour = 10;
     private const int TopSnapshotCount = 50;
 
-    public GameService(AppDbContext db, ILogger<GameService> logger)
+    public GameService(AppDbContext db, ILogger<GameService> logger, LeaderboardCache cache)
     {
         _db = db;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<(SubmitResultResponse? data, int status, string? error)> SubmitReplayAsync(
@@ -139,6 +142,9 @@ public class GameService
         }
 
         await _db.SaveChangesAsync();
+
+        // Invalidate cached leaderboard for this board size
+        _cache.Invalidate(replay.boardWidth, replay.boardHeight);
 
         // If this entered top-50, strip snapshot from displaced score
         if (newRank <= TopSnapshotCount)

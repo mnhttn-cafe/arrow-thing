@@ -6,14 +6,20 @@ namespace ArrowThing.Server.Leaderboards;
 public class LeaderboardService
 {
     private readonly AppDbContext _db;
+    private readonly LeaderboardCache _cache;
 
-    public LeaderboardService(AppDbContext db)
+    public LeaderboardService(AppDbContext db, LeaderboardCache cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     public async Task<LeaderboardResponse> GetTopEntriesAsync(int width, int height, int limit = 50)
     {
+        var cached = _cache.Get(width, height);
+        if (cached != null)
+            return cached;
+
         var totalEntries = await _db.Scores.CountAsync(s =>
             s.BoardWidth == width && s.BoardHeight == height
         );
@@ -34,11 +40,17 @@ public class LeaderboardService
         for (int i = 0; i < entries.Count; i++)
             entries[i].Rank = i + 1;
 
-        return new LeaderboardResponse { TotalEntries = totalEntries, Entries = entries };
+        var response = new LeaderboardResponse { TotalEntries = totalEntries, Entries = entries };
+        _cache.Set(width, height, response);
+        return response;
     }
 
     public async Task<LeaderboardResponse> GetTopEntriesAllAsync(int limit = 50)
     {
+        var cached = _cache.Get(0, 0);
+        if (cached != null)
+            return cached;
+
         // For each user, find their score with the largest board area, then fastest time.
         // This uses a raw approach: get all scores grouped by user, pick representative.
         var allScores = await _db.Scores.Include(s => s.User).ToListAsync();
@@ -74,7 +86,9 @@ public class LeaderboardService
             )
             .ToList();
 
-        return new LeaderboardResponse { TotalEntries = totalEntries, Entries = entries };
+        var response = new LeaderboardResponse { TotalEntries = totalEntries, Entries = entries };
+        _cache.Set(0, 0, response);
+        return response;
     }
 
     public async Task<PlayerEntryDto?> GetPlayerEntryAsync(Guid userId, int width, int height)
