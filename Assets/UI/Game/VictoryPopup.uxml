@@ -1,10 +1,11 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="../Shared/Shared.uss" />
     <Style src="VictoryPopup.uss" />
 
-    <ui:VisualElement name="victory-overlay" class="victory-overlay victory--hidden">
-        <ui:VisualElement name="toast" class="victory-toast victory--hidden">
-            <ui:Label name="toast-text" class="victory-toast__text" />
-            <ui:Button name="toast-action-btn" class="victory-toast__action-btn victory--hidden" text="Retry" />
+    <ui:VisualElement name="victory-overlay" class="modal-overlay victory--hidden">
+        <ui:VisualElement name="toast" class="toast victory-toast victory--hidden">
+            <ui:Label name="toast-text" class="toast__text" />
+            <ui:Button name="toast-action-btn" class="toast__action-btn victory--hidden" text="Retry" />
         </ui:VisualElement>
         <ui:VisualElement class="victory-box">
             <ui:Label name="victory-message" class="victory-message" text="Nice!" />

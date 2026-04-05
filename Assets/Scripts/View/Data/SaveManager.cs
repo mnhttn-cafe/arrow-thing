@@ -14,10 +14,20 @@ public static class SaveManager
 
     private static string SavePath => Path.Combine(Application.persistentDataPath, FileName);
 
+    /// <summary>Byte threshold above which a save size warning is logged.</summary>
+    private const int LargeSaveThresholdBytes = 5 * 1024 * 1024; // 5 MB
 #if UNITY_WEBGL && !UNITY_EDITOR
     [System.Runtime.InteropServices.DllImport("__Internal")]
     private static extern void SyncFilesystem();
+
+    [System.Runtime.InteropServices.DllImport("__Internal")]
+    private static extern void RequestPersistentStorage();
+
+    [System.Runtime.InteropServices.DllImport("__Internal")]
+    private static extern void LogStorageEstimate();
 #endif
+
+    private static bool _persistenceRequested;
 
     /// <summary>
     /// Flushes the in-memory Emscripten filesystem to IndexedDB on WebGL so saves
@@ -27,6 +37,21 @@ public static class SaveManager
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         SyncFilesystem();
+#endif
+    }
+
+    /// <summary>
+    /// Requests persistent storage from the browser so IndexedDB data is not evicted
+    /// under storage pressure. Called once on first save. No-op on non-WebGL.
+    /// </summary>
+    private static void EnsurePersistentStorage()
+    {
+        if (_persistenceRequested)
+            return;
+        _persistenceRequested = true;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        RequestPersistentStorage();
+        LogStorageEstimate();
 #endif
     }
 
@@ -119,10 +144,26 @@ public static class SaveManager
     /// <summary>Serializes <paramref name="data"/> and writes it to disk.</summary>
     public static void Save(ReplayData data)
     {
+        EnsurePersistentStorage();
+
         string path = SavePath;
         try
         {
             string json = JsonConvert.SerializeObject(data, Formatting.Indented);
+
+            int byteCount = System.Text.Encoding.UTF8.GetByteCount(json);
+            if (byteCount > LargeSaveThresholdBytes)
+            {
+                float mb = byteCount / (1024f * 1024f);
+                Debug.LogWarning(
+                    $"SaveManager: save file is large ({mb:F1} MB). "
+                        + "Very large boards may exceed browser storage limits."
+                );
+#if UNITY_WEBGL && !UNITY_EDITOR
+                LogStorageEstimate();
+#endif
+            }
+
             File.WriteAllText(path, json);
             SyncFS();
         }

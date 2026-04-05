@@ -57,8 +57,15 @@
             </ui:Button>
         </ui:VisualElement>
 
+        <!-- Toast notification -->
+        <ui:VisualElement name="lb-toast" class="toast lb--hidden">
+            <ui:Label name="lb-toast-text" class="toast__text" />
+        </ui:VisualElement>
+
         <!-- Context menu (floating) -->
         <ui:VisualElement name="lb-context-menu" class="context-menu lb--hidden">
+            <ui:Button name="ctx-favorite-btn" class="context-menu__btn lb--hidden" text="Favorite" />
+            <ui:Button name="ctx-play-btn" class="context-menu__btn lb--hidden" text="Play replay" />
             <ui:Button name="ctx-delete-btn" class="context-menu__btn context-menu__btn--danger" text="Delete" />
         </ui:VisualElement>
 

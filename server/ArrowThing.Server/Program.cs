@@ -113,6 +113,7 @@ builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<LeaderboardService>();
+builder.Services.AddSingleton<LeaderboardCache>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddAuthorization();

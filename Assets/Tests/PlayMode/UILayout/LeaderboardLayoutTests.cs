@@ -192,23 +192,27 @@ public class LeaderboardLayoutTests : UILayoutTestBase
         row.Add(dateLabel);
 
         var favBtn = new Button();
+        favBtn.AddToClassList("lb-row-btn");
         favBtn.AddToClassList("lb-fav-btn");
         var favIcon = new VisualElement();
-        favIcon.AddToClassList("lb-fav-icon");
+        favIcon.AddToClassList("lb-row-btn__icon");
         favIcon.AddToClassList("lb-fav-icon--off");
         favBtn.Add(favIcon);
         row.Add(favBtn);
 
         var playBtn = new Button();
-        playBtn.AddToClassList("lb-play-btn");
+        playBtn.AddToClassList("lb-row-btn");
         var playIcon = new VisualElement();
+        playIcon.AddToClassList("lb-row-btn__icon");
         playIcon.AddToClassList("lb-play-icon");
         playBtn.Add(playIcon);
         row.Add(playBtn);
 
         var ctxBtn = new Button();
+        ctxBtn.AddToClassList("lb-row-btn");
         ctxBtn.AddToClassList("lb-ctx-trigger");
         var ctxIcon = new VisualElement();
+        ctxIcon.AddToClassList("lb-row-btn__icon");
         ctxIcon.AddToClassList("lb-ctx-trigger-icon");
         ctxBtn.Add(ctxIcon);
         row.Add(ctxBtn);

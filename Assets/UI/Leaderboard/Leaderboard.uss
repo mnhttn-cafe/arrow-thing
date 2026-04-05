@@ -191,24 +191,49 @@
     margin-right: 4px;
 }
 
-.lb-fav-btn {
+/* ── Compact mode (narrow screens) ───────────────────────────────── */
+/* Hides inline favorite / play buttons — those actions move to the context menu. */
+
+.lb-screen--compact .lb-fav-btn {
+    display: none;
+}
+
+.lb-screen--compact .lb-play-btn {
+    display: none;
+}
+
+/* ── Row icon buttons (26px circular) ────────────────────────────── */
+/* Base for small circular icon buttons in entry rows. */
+
+.lb-row-btn {
     width: 26px;
     height: 26px;
-    padding: 4px;
-    background-color: transparent;
+    padding: 5px;
+    background-color: var(--bg-btn);
+    border-radius: 13px;
     border-width: 0;
     flex-shrink: 0;
     margin-right: 2px;
 }
 
-.lb-fav-btn:hover {
-    background-color: var(--bg-btn);
-    border-radius: 14px;
+.lb-row-btn:hover {
+    background-color: var(--bg-btn-hover);
 }
 
-.lb-fav-icon {
+.lb-row-btn__icon {
     flex-grow: 1;
     -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+/* Favorite — transparent by default, shows bg on hover */
+.lb-fav-btn {
+    padding: 4px;
+    background-color: transparent;
+}
+
+.lb-fav-btn:hover {
+    background-color: var(--bg-btn);
 }
 
 .lb-fav-icon--on {
@@ -221,47 +246,18 @@
     -unity-background-image-tint-color: var(--text-secondary);
 }
 
-.lb-play-btn {
-    width: 26px;
-    height: 26px;
-    padding: 5px;
-    background-color: var(--bg-btn);
-    border-radius: 13px;
-    border-width: 0;
-    flex-shrink: 0;
-    margin-right: 2px;
-}
-
-.lb-play-btn:hover {
-    background-color: var(--bg-btn-hover);
-}
-
+/* Play */
 .lb-play-icon {
-    flex-grow: 1;
     background-image: url("/Assets/Art/Icons/play_icon.png");
-    -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: var(--text-secondary);
 }
 
+/* Context trigger (no right margin — last in row) */
 .lb-ctx-trigger {
-    width: 26px;
-    height: 26px;
-    padding: 5px;
-    background-color: var(--bg-btn);
-    border-radius: 13px;
-    border-width: 0;
-    flex-shrink: 0;
-}
-
-.lb-ctx-trigger:hover {
-    background-color: var(--bg-btn-hover);
+    margin-right: 0;
 }
 
 .lb-ctx-trigger-icon {
-    flex-grow: 1;
     background-image: url("/Assets/Art/Icons/context_menu_icon.png");
-    -unity-background-scale-mode: scale-to-fit;
-    -unity-background-image-tint-color: var(--text-secondary);
 }
 
 /* ── Refresh button (in tab bar) ─────────────────────────────────── */
@@ -292,6 +288,15 @@
     -unity-background-image-tint-color: var(--text-secondary);
 }
 
+/* ── Toast position (bottom-center of leaderboard) ─────────────────── */
+/* Base toast styles live in Shared.uss (.toast, .toast__text) */
+
+.lb-screen .toast {
+    bottom: 16px;
+    left: 50%;
+    translate: -50% 0;
+}
+
 /* ── Player panel (global view) ──────────────────────────────────── */
 
 .lb-player-panel {
@@ -313,6 +318,7 @@
     flex-shrink: 1;
 }
 
+/* Larger variant (30px) for player panel — keep separate from .lb-row-btn (26px) */
 .lb-player-play-btn {
     width: 30px;
     height: 30px;
@@ -322,6 +328,18 @@
     border-width: 0;
     flex-shrink: 0;
     margin-left: 10px;
+}
+
+.lb-player-play-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.lb-player-panel-label--link {
+    color: var(--accent-info);
+}
+
+.lb-player-panel-label--link:hover {
+    color: var(--accent-info-btn-hover);
 }
 
 /* ── Entry highlight (player's own row in global view) ───────────── */

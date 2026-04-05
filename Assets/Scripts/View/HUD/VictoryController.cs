@@ -55,7 +55,7 @@ public sealed class VictoryController : MonoBehaviour
     private Label _timeLabel;
     private System.Func<ReplayData> _buildReplayData;
     private string _recordedGameId;
-    private Task<SubmitResultResponse> _submissionTask;
+    private Task<SubmitResult> _submissionTask;
     private bool _submissionAttempted;
     private ReplayData _completedReplay;
 
@@ -125,7 +125,6 @@ public sealed class VictoryController : MonoBehaviour
         _pullOutDone = false;
 
         // Fire score submission in the background while the animation plays.
-        // Only attempt if the player is logged in.
         var api = new ApiClient();
         if (api.IsLoggedIn && _buildReplayData != null && _timer != null)
         {
@@ -254,15 +253,15 @@ public sealed class VictoryController : MonoBehaviour
             _timeLabel.AddToClassList("victory-time--gold");
     }
 
-    private void HandleSubmissionResult(SubmitResultResponse result)
+    private void HandleSubmissionResult(SubmitResult result)
     {
-        if (result != null && result.verified)
+        if (result.IsSuccess)
         {
             HideToast();
         }
         else
         {
-            ShowToast("Could not submit score");
+            ShowToast(result.Error ?? "Could not submit score");
         }
     }
 
@@ -295,13 +294,13 @@ public sealed class VictoryController : MonoBehaviour
         var result = await ScoreSubmitter.TrySubmitAsync(_completedReplay);
         _toastActionBtn.SetEnabled(true);
 
-        if (result != null && result.verified)
+        if (result.IsSuccess)
         {
             HideToast();
         }
         else
         {
-            ShowToast("Retry failed");
+            ShowToast(result.Error ?? "Retry failed");
         }
     }
 
