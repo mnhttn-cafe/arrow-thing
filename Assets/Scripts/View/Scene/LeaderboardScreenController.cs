@@ -36,6 +36,8 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private Button _playerPlayBtn;
     private string _playerGameId;
     private Button _refreshBtn;
+    private VisualElement _toast;
+    private Label _toastText;
 
     private Button[] _tabButtons;
     private Button[] _sortButtons;
@@ -48,11 +50,22 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private string _contextGameId;
     private bool _contextIsFavorite;
     private string _pendingDeleteGameId;
+    private Button _ctxFavoriteBtn;
+    private Button _ctxPlayBtn;
+
+    // Compact mode — hides inline fav/play buttons on narrow screens
+    private bool _isCompact;
 
     // Drag-to-scroll state
     private bool _isDragScrolling;
     private float _dragScrollStartY;
     private float _dragScrollStartValue;
+
+    // Global leaderboard cache — avoids re-fetching on every tab switch
+    private readonly (GlobalLeaderboardResponse lb, PlayerEntryResponse me)?[] _globalCache = new (
+        GlobalLeaderboardResponse,
+        PlayerEntryResponse
+    )?[5];
 
     // Focus (auto-scroll) state from victory screen
     private string _focusGameId;
@@ -93,8 +106,14 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         _sortButtons[1].clicked += () => SelectSort(SortCriterion.Biggest);
         _sortButtons[2].clicked += () => SelectSort(SortCriterion.Favorites);
 
-        // Context menu buttons (delete only — favorite is a direct icon toggle)
+        // Context menu buttons
+        _ctxFavoriteBtn = _root.Q<Button>("ctx-favorite-btn");
+        _ctxPlayBtn = _root.Q<Button>("ctx-play-btn");
         _root.Q<Button>("ctx-delete-btn").clicked += OnContextDelete;
+        if (_ctxFavoriteBtn != null)
+            _ctxFavoriteBtn.clicked += OnContextFavorite;
+        if (_ctxPlayBtn != null)
+            _ctxPlayBtn.clicked += OnContextPlay;
 
         // Delete confirmation modal (reusable ConfirmModal template)
         _deleteModal = new ConfirmModal(
@@ -115,7 +134,17 @@ public sealed class LeaderboardScreenController : MonoBehaviour
             _playerPlayBtn.clicked += () => OnPlayGlobalReplay(_playerGameId);
         _refreshBtn = _root.Q<Button>("lb-refresh-btn");
         if (_refreshBtn != null)
-            _refreshBtn.clicked += () => RefreshGlobalList();
+            _refreshBtn.clicked += () => FetchGlobalList();
+        _toast = _root.Q("lb-toast");
+        _toastText = _root.Q<Label>("lb-toast-text");
+
+        // Player panel label — open settings when shown as a login link
+        if (_playerPanelLabel != null)
+            _playerPanelLabel.RegisterCallback<PointerDownEvent>(_ =>
+            {
+                if (_playerPanelLabel.ClassListContains("lb-player-panel-label--link"))
+                    SettingsController.Instance?.Open();
+            });
 
         // Dismiss context menu on click outside or scroll
         _root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
@@ -132,10 +161,28 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         _focusGameId = GameSettings.LeaderboardFocusGameId;
         GameSettings.LeaderboardFocusGameId = null;
 
+        // Detect narrow screens — hide inline fav/play buttons, show in context menu instead
+        _root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
+
         if (_focusGameId != null)
             AutoScrollToFocusEntry();
         else
             SelectTab(0);
+    }
+
+    private const float CompactWidthThreshold = 500f;
+
+    private void OnRootGeometryChanged(GeometryChangedEvent evt)
+    {
+        bool compact = evt.newRect.width < CompactWidthThreshold;
+        if (compact != _isCompact)
+        {
+            _isCompact = compact;
+            if (_isCompact)
+                _root.AddToClassList("lb-screen--compact");
+            else
+                _root.RemoveFromClassList("lb-screen--compact");
+        }
     }
 
     private void AutoScrollToFocusEntry()
@@ -312,6 +359,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
         if (entries.Count == 0)
         {
+            _emptyLabel.text = "No scores yet. Play a game to see your times here!";
             ShowEmpty(true);
             return;
         }
@@ -413,25 +461,29 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         string capturedGameId = entry.gameId;
         bool capturedFav = entry.isFavorite;
         var favBtn = new Button(() => OnToggleFavorite(capturedGameId, capturedFav));
+        favBtn.AddToClassList("lb-row-btn");
         favBtn.AddToClassList("lb-fav-btn");
         var favIcon = new VisualElement();
-        favIcon.AddToClassList("lb-fav-icon");
+        favIcon.AddToClassList("lb-row-btn__icon");
         favIcon.AddToClassList(entry.isFavorite ? "lb-fav-icon--on" : "lb-fav-icon--off");
         favBtn.Add(favIcon);
         row.Add(favBtn);
 
         // Play button
         var playBtn = new Button(() => OnPlayReplay(capturedGameId));
-        playBtn.AddToClassList("lb-play-btn");
+        playBtn.AddToClassList("lb-row-btn");
         var playIcon = new VisualElement();
+        playIcon.AddToClassList("lb-row-btn__icon");
         playIcon.AddToClassList("lb-play-icon");
         playBtn.Add(playIcon);
         row.Add(playBtn);
 
-        // Context menu trigger (delete only)
+        // Context menu trigger
         var ctxBtn = new Button(() => ShowContextMenu(capturedGameId, capturedFav, row));
+        ctxBtn.AddToClassList("lb-row-btn");
         ctxBtn.AddToClassList("lb-ctx-trigger");
         var ctxIcon = new VisualElement();
+        ctxIcon.AddToClassList("lb-row-btn__icon");
         ctxIcon.AddToClassList("lb-ctx-trigger-icon");
         ctxBtn.Add(ctxIcon);
         row.Add(ctxBtn);
@@ -451,6 +503,14 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     {
         _contextGameId = gameId;
         _contextIsFavorite = isFavorite;
+
+        // Show favorite/play in compact mode (hidden on wide screens)
+        if (_ctxFavoriteBtn != null)
+        {
+            ShowElement(_ctxFavoriteBtn, _isCompact);
+            _ctxFavoriteBtn.text = isFavorite ? "Unfavorite" : "Favorite";
+        }
+        ShowElement(_ctxPlayBtn, _isCompact);
 
         // Position near the anchor row, flipping above if it would overflow
         var rowBounds = anchorRow.worldBound;
@@ -538,6 +598,22 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         RefreshList();
     }
 
+    private void OnContextFavorite()
+    {
+        if (_contextGameId == null)
+            return;
+        OnToggleFavorite(_contextGameId, _contextIsFavorite);
+        DismissContextMenu();
+    }
+
+    private void OnContextPlay()
+    {
+        if (_contextGameId == null)
+            return;
+        DismissContextMenu();
+        OnPlayReplay(_contextGameId);
+    }
+
     private void OnContextDelete()
     {
         if (_contextGameId == null)
@@ -615,7 +691,26 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
     // --- Global leaderboard ---
 
-    private async void RefreshGlobalList()
+    /// <summary>
+    /// Shows global leaderboard data. Uses cached data if available; fetches from server otherwise.
+    /// Called on tab switch and scope change.
+    /// </summary>
+    private void RefreshGlobalList()
+    {
+        var cached = _globalCache[_activeTabIndex];
+        if (cached.HasValue)
+        {
+            PopulateGlobalList(cached.Value.lb, cached.Value.me);
+            return;
+        }
+
+        FetchGlobalList();
+    }
+
+    /// <summary>
+    /// Forces a fresh fetch from the server, ignoring cache. Called by the refresh button.
+    /// </summary>
+    private async void FetchGlobalList()
     {
         _list.Clear();
         ShowEmpty(false);
@@ -628,6 +723,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         var api = new ApiClient();
         var (w, h) = (Tabs[_activeTabIndex].w, Tabs[_activeTabIndex].h);
         bool isAllTab = w == 0 && h == 0;
+        int tabAtFetch = _activeTabIndex;
 
         // Fetch leaderboard and player entry in parallel
         var lbTask = isAllTab ? api.GetLeaderboardAllAsync(50) : api.GetLeaderboardAsync(w, h, 50);
@@ -637,9 +733,17 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
         var lbResult = await lbTask;
 
+        // User may have switched away from Global while awaiting — discard stale results
+        if (!_isGlobalView)
+            return;
+
         if (!lbResult.Success)
         {
-            UpdatePlayerPanel(null, null, api);
+            string errorMsg = DescribeApiError(lbResult.StatusCode, lbResult.Error);
+            ShowElement(_scroll, false);
+            _emptyLabel.text = errorMsg;
+            ShowElement(_emptyLabel, true);
+            ShowElement(_playerPanel, false);
             return;
         }
 
@@ -647,11 +751,23 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         if (meTask != null)
         {
             var meApiResult = await meTask;
+            if (!_isGlobalView)
+                return;
             if (meApiResult.Success)
                 meResult = meApiResult.Data;
         }
 
-        var lb = lbResult.Data;
+        // Cache the result for this tab
+        _globalCache[tabAtFetch] = (lbResult.Data, meResult);
+
+        PopulateGlobalList(lbResult.Data, meResult);
+    }
+
+    private void PopulateGlobalList(GlobalLeaderboardResponse lb, PlayerEntryResponse me)
+    {
+        var api = new ApiClient();
+        bool isAllTab = Tabs[_activeTabIndex].w == 0 && Tabs[_activeTabIndex].h == 0;
+
         _list.Clear();
 
         if (lb.entries == null || lb.entries.Length == 0)
@@ -664,7 +780,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
             ShowElement(_emptyLabel, false);
             ShowElement(_scroll, true);
 
-            string highlightGameId = meResult?.gameId;
+            string highlightGameId = me?.gameId;
             foreach (var entry in lb.entries)
             {
                 var row = CreateGlobalEntryRow(entry, isAllTab, entry.gameId == highlightGameId);
@@ -672,7 +788,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
             }
         }
 
-        UpdatePlayerPanel(lb, meResult, api);
+        UpdatePlayerPanel(lb, me, api);
     }
 
     private VisualElement CreateGlobalEntryRow(
@@ -726,8 +842,9 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         // Play button (replay)
         string capturedGameId = entry.gameId;
         var playBtn = new Button(() => OnPlayGlobalReplay(capturedGameId));
-        playBtn.AddToClassList("lb-play-btn");
+        playBtn.AddToClassList("lb-row-btn");
         var playIcon = new VisualElement();
+        playIcon.AddToClassList("lb-row-btn__icon");
         playIcon.AddToClassList("lb-play-icon");
         playBtn.Add(playIcon);
         row.Add(playBtn);
@@ -748,11 +865,7 @@ public sealed class LeaderboardScreenController : MonoBehaviour
 
         if (lb == null)
         {
-            // Server unreachable — show error in the empty label (which has flex-grow
-            // to push the player panel to the bottom) and hide the player panel.
-            ShowElement(_scroll, false);
-            _emptyLabel.text = "Can't connect to the server.\nScores are only saved locally.";
-            ShowElement(_emptyLabel, true);
+            // Caller already showed the error in the empty label; hide the player panel.
             ShowElement(_playerPanel, false);
             return;
         }
@@ -760,9 +873,11 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         if (!api.IsLoggedIn)
         {
             _playerPanelLabel.text = "Register or log in to appear on the global leaderboard.";
+            _playerPanelLabel.AddToClassList("lb-player-panel-label--link");
             ShowElement(_playerPlayBtn, false);
             return;
         }
+        _playerPanelLabel.RemoveFromClassList("lb-player-panel-label--link");
 
         if (me == null)
         {
@@ -803,7 +918,12 @@ public sealed class LeaderboardScreenController : MonoBehaviour
         var result = await api.GetReplayAsync(gameId);
         if (!result.Success || result.Data == null)
         {
-            Debug.LogWarning($"[LeaderboardScreen] Failed to fetch replay for {gameId}");
+            string msg =
+                result.StatusCode == 404
+                    ? "Replay not found on server."
+                    : DescribeApiError(result.StatusCode, result.Error);
+            Debug.LogWarning($"[LeaderboardScreen] Failed to fetch replay for {gameId}: {msg}");
+            ShowToast(msg);
             return;
         }
 
@@ -859,6 +979,43 @@ public sealed class LeaderboardScreenController : MonoBehaviour
     private void OnBack()
     {
         SceneManager.LoadScene("MainMenu");
+    }
+
+    // --- Toast ---
+
+    private void ShowToast(string message, float autoHideSeconds = 0f)
+    {
+        if (_toast == null || _toastText == null)
+            return;
+        _toastText.text = message;
+        ShowElement(_toast, true);
+
+        if (autoHideSeconds > 0f)
+            _toast
+                .schedule.Execute(() => ShowElement(_toast, false))
+                .ExecuteLater((long)(autoHideSeconds * 1000));
+    }
+
+    private void HideToast()
+    {
+        ShowElement(_toast, false);
+    }
+
+    // --- Error descriptions ---
+
+    private static string DescribeApiError(long statusCode, string serverError)
+    {
+        if (statusCode == 0)
+            return "Can't connect to the server.\nScores are only saved locally.";
+        if (statusCode == 401)
+            return "Session expired. Please log in again.";
+        if (statusCode == 429)
+            return "Too many requests. Try again later.";
+        if (statusCode >= 500)
+            return "Server error. Try again later.";
+        if (!string.IsNullOrEmpty(serverError) && serverError != "Unknown error")
+            return serverError;
+        return "Something went wrong. Try again later.";
     }
 
     // --- Formatting helpers ---
