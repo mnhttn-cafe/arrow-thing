@@ -76,11 +76,8 @@ public sealed class EditableLabel
         _input.isReadOnly = false;
         Root.AddToClassList("editable-label--editing");
 
-        _input.schedule.Execute(() =>
-        {
-            _input.Focus();
-            _input.SelectAll();
-        });
+        _input.Focus();
+        _input.schedule.Execute(() => _input.SelectAll());
     }
 
     private void Commit()
