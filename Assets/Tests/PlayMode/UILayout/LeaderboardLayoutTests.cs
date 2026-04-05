@@ -199,6 +199,32 @@ public class LeaderboardLayoutTests : UILayoutTestBase
         );
     }
 
+    [UnityTest]
+    public IEnumerator Leaderboard_GlobalView_PlayerPanel_FitsWithinBounds(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        // Simulate global view: unhide player panel with longest text + play button
+        var playerPanel = root.Q("lb-player-panel");
+        playerPanel.RemoveFromClassList("lb--hidden");
+        root.Q<Label>("lb-player-panel-label").text =
+            "No scores yet for this board size. Play a game to enter the leaderboard.";
+        var playBtn = root.Q<Button>("lb-player-play-btn");
+        playBtn.RemoveFromClassList("lb--hidden");
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var lb = root.Q("leaderboard-root");
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_PlayerPanel @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(lb, panelBounds, ctx, warn, playerPanel, playBtn);
+    }
+
     private static VisualElement CreateMockEntryRow(int rank, bool showSize)
     {
         var row = new VisualElement();
