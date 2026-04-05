@@ -183,6 +183,14 @@
     background-image: url("/Assets/Art/Icons/arrow_lane_preview_icon.png");
 }
 
+.icon--upload {
+    background-image: url("/Assets/Art/Icons/upload.png");
+}
+
+.icon--cloud-off {
+    background-image: url("/Assets/Art/Icons/cloud_off.png");
+}
+
 /* ── HUD Icon Button ──────────────────────────────────────────────── */
 /*
    Base: absolute-positioned circular button.
@@ -272,6 +280,45 @@
     flex-grow: 1;
     padding: 40px;
     white-space: normal;
+}
+
+/* ── Toast Notification ──────────────────────────────────────────── */
+/*
+   Floating notification bar. Position with a modifier class per screen
+   (e.g., .victory-toast, .lb-toast). Add .toast__text for the message
+   and optional .toast__action-btn for retry.
+*/
+
+.toast {
+    position: absolute;
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--bg-panel);
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+
+.toast__text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-right: 8px;
+}
+
+.toast__action-btn {
+    font-size: 12px;
+    color: var(--text-primary);
+    background-color: var(--bg-btn);
+    border-radius: 5px;
+    border-width: 0;
+    padding: 4px 10px;
+}
+
+.toast__action-btn:hover {
+    background-color: var(--bg-btn-hover);
+}
+
+.toast__action-btn:active {
+    background-color: var(--bg-btn-active);
 }
 
 /* ── Context Menu ────────────────────────────────────────────────── */

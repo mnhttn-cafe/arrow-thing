@@ -1,15 +1,5 @@
 /* VictoryPopup-specific styles. Shared components live in Shared.uss. */
-
-.victory-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--bg-overlay);
-    align-items: center;
-    justify-content: center;
-}
+/* .victory-overlay reuses .modal-overlay from Shared.uss for base layout. */
 
 .victory--hidden {
     display: none;
@@ -43,40 +33,12 @@
     -unity-text-align: middle-center;
 }
 
-/* ── Toast notification (top-right of victory overlay) ────────────── */
+/* ── Toast position override (top-right of victory overlay) ──────── */
+/* Base toast styles live in Shared.uss (.toast, .toast__text, .toast__action-btn) */
 
 .victory-toast {
-    position: absolute;
     top: 12px;
     right: 12px;
-    flex-direction: row;
-    align-items: center;
-    background-color: var(--bg-panel);
-    border-radius: 8px;
-    padding: 8px 14px;
-}
-
-.victory-toast__text {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-right: 8px;
-}
-
-.victory-toast__action-btn {
-    font-size: 12px;
-    color: var(--text-primary);
-    background-color: var(--bg-btn);
-    border-radius: 5px;
-    border-width: 0;
-    padding: 4px 10px;
-}
-
-.victory-toast__action-btn:hover {
-    background-color: var(--bg-btn-hover);
-}
-
-.victory-toast__action-btn:active {
-    background-color: var(--bg-btn-active);
 }
 
 .victory-time--gold {
