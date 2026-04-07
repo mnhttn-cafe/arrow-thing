@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <!-- Compile Unity domain sources directly — single source of truth -->
+  <ItemGroup>
+    <Compile Remove="**/*.cs" />
+    <Compile Include="../Assets/Scripts/Domain/Models/Cell.cs" />
+    <Compile Include="../Assets/Scripts/Domain/Models/Arrow.cs" />
+    <Compile Include="../Assets/Scripts/Domain/Models/Board.cs" />
+    <Compile Include="../Assets/Scripts/Domain/BoardGeneration.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

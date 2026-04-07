@@ -93,6 +93,9 @@ Assets/Resources/PerformanceTestRunSettings.json.meta
 !server/**/*.csproj
 !server/**/*.sln
 
+# Benchmark project files (override Unity *.csproj ignore)
+!generation-benchmark/**/*.csproj
+
 # SQLite dev database
 server/ArrowThing.Server/arrowthing.db
 server/ArrowThing.Server/arrowthing.db-shm
