@@ -564,16 +564,21 @@ public static class BoardGeneration
             foreach (Arrow dependent in arrows)
             {
                 // Skip arrows merged earlier in this pass
-                if (dependent._generationIndex < 0) continue;
+                if (dependent._generationIndex < 0)
+                    continue;
 
                 (int dx, int dy) = Arrow.GetDirectionStep(dependent.HeadDirection);
-                int cx = dependent.HeadCell.X + dx, cy = dependent.HeadCell.Y + dy;
+                int cx = dependent.HeadCell.X + dx,
+                    cy = dependent.HeadCell.Y + dy;
                 while (cx >= 0 && cx < board.Width && cy >= 0 && cy < board.Height)
                 {
                     Arrow blocker = board._occupancy[cx, cy];
-                    if (blocker != null && blocker != dependent &&
-                        blocker._generationIndex >= 0 &&
-                        CanMergeForCompaction(blocker, dependent))
+                    if (
+                        blocker != null
+                        && blocker != dependent
+                        && blocker._generationIndex >= 0
+                        && CanMergeForCompaction(blocker, dependent)
+                    )
                     {
                         var merged = MergeArrows(blocker, dependent);
                         board.RemoveArrowForGeneration(dependent);
@@ -584,7 +589,8 @@ public static class BoardGeneration
                         yield return mergeCount;
                         break;
                     }
-                    cx += dx; cy += dy;
+                    cx += dx;
+                    cy += dy;
                 }
             }
         }
@@ -596,16 +602,18 @@ public static class BoardGeneration
     /// </summary>
     private static bool CanMergeForCompaction(Arrow blocker, Arrow dependent)
     {
-        if (blocker.HeadDirection != dependent.HeadDirection) return false;
+        if (blocker.HeadDirection != dependent.HeadDirection)
+            return false;
         bool collinear = blocker.HeadDirection switch
         {
-            Arrow.Direction.Right or Arrow.Direction.Left =>
-                blocker.HeadCell.Y == dependent.HeadCell.Y,
-            Arrow.Direction.Up or Arrow.Direction.Down =>
-                blocker.HeadCell.X == dependent.HeadCell.X,
+            Arrow.Direction.Right or Arrow.Direction.Left => blocker.HeadCell.Y
+                == dependent.HeadCell.Y,
+            Arrow.Direction.Up or Arrow.Direction.Down => blocker.HeadCell.X
+                == dependent.HeadCell.X,
             _ => false,
         };
-        if (!collinear) return false;
+        if (!collinear)
+            return false;
 
         Cell blockerTail = blocker.Cells[blocker.Cells.Count - 1];
         Cell dependentHead = dependent.HeadCell;
@@ -618,8 +626,10 @@ public static class BoardGeneration
     private static Arrow MergeArrows(Arrow blocker, Arrow dependent)
     {
         var cells = new List<Cell>(blocker.Cells.Count + dependent.Cells.Count);
-        for (int i = 0; i < blocker.Cells.Count; i++) cells.Add(blocker.Cells[i]);
-        for (int i = 0; i < dependent.Cells.Count; i++) cells.Add(dependent.Cells[i]);
+        for (int i = 0; i < blocker.Cells.Count; i++)
+            cells.Add(blocker.Cells[i]);
+        for (int i = 0; i < dependent.Cells.Count; i++)
+            cells.Add(dependent.Cells[i]);
         return new Arrow(cells);
     }
 

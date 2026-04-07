@@ -477,17 +477,20 @@ public sealed class GameController : MonoBehaviour
             else if (compacting)
             {
                 int mergesCompleted = arrowsBeforeCompaction - _board.Arrows.Count;
-                float compactRatio = arrowsBeforeCompaction > 0
-                    ? Mathf.Clamp01((float)mergesCompleted / (arrowsBeforeCompaction * 0.15f))
-                    : 1f;
-                _loadProgress = genFinalProgress + (compactEndProgress - genFinalProgress) * compactRatio;
+                float compactRatio =
+                    arrowsBeforeCompaction > 0
+                        ? Mathf.Clamp01((float)mergesCompleted / (arrowsBeforeCompaction * 0.15f))
+                        : 1f;
+                _loadProgress =
+                    genFinalProgress + (compactEndProgress - genFinalProgress) * compactRatio;
             }
             else
             {
                 int arrowCount = _board.Arrows.Count;
-                float finalizeRatio = arrowCount > 0 && generator.Current is int finalized
-                    ? Mathf.Clamp01((float)finalized / arrowCount)
-                    : 0f;
+                float finalizeRatio =
+                    arrowCount > 0 && generator.Current is int finalized
+                        ? Mathf.Clamp01((float)finalized / arrowCount)
+                        : 0f;
                 _loadProgress = compactEndProgress + (1f - compactEndProgress) * finalizeRatio;
             }
 
