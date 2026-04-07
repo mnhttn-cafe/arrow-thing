@@ -11,7 +11,7 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "ranked" };
+        string[] algorithms = { "current", "current+compact", "ranked" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -23,6 +23,7 @@ class Program
             string label = algo switch
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
+                "current+compact" => "Current + Trivial Chain Compaction",
                 "ranked" => "Ranked (Topological Ordering, Conservative)",
                 "ranked-hybrid" => "Ranked Hybrid (Rank Fast-Path + BFS Fallback)",
                 "repair-random" => "Random Placement + Flip/Repair (Unbiased)",
@@ -83,6 +84,9 @@ class Program
             case "current":
                 (board, elapsedMs) = RunCurrentAlgorithm(width, height, maxLength, seed);
                 break;
+            case "current+compact":
+                (board, elapsedMs) = RunCurrentWithCompaction(width, height, maxLength, seed);
+                break;
             case "layered":
                 (board, elapsedMs) = RunLayered(width, height, maxLength, seed);
                 break;
@@ -126,6 +130,21 @@ class Program
 
         var enumerator = BoardGeneration.FillBoardIncremental(board, maxLength, random);
         while (enumerator.MoveNext()) { }
+
+        sw.Stop();
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunCurrentWithCompaction(int width, int height, int maxLength, int seed)
+    {
+        var board = new Board(width, height);
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+
+        var enumerator = BoardGeneration.FillBoardIncremental(board, maxLength, random);
+        while (enumerator.MoveNext()) { }
+
+        board = TrivialChainCompactor.Compact(board);
 
         sw.Stop();
         return (board, sw.Elapsed.TotalMilliseconds);

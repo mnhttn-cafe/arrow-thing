@@ -19,5 +19,6 @@
     <Compile Include="RepairGeneration.cs" />
     <Compile Include="RankedGeneration.cs" />
     <Compile Include="RankedHybridGeneration.cs" />
+    <Compile Include="TrivialChainCompactor.cs" />
   </ItemGroup>
 </Project>
