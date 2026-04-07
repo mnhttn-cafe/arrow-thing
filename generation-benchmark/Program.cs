@@ -11,7 +11,7 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "repair-random", "repair-biased" };
+        string[] algorithms = { "current", "ranked" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -23,6 +23,7 @@ class Program
             string label = algo switch
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
+                "ranked" => "Ranked (Topological Ordering + BFS Fallback)",
                 "repair-random" => "Random Placement + Flip/Repair (Unbiased)",
                 "repair-biased" => "Random Placement + Flip/Repair (Edge-Biased)",
                 _ => algo,
@@ -84,6 +85,9 @@ class Program
             case "layered":
                 (board, elapsedMs) = RunLayered(width, height, maxLength, seed);
                 break;
+            case "ranked":
+                (board, elapsedMs) = RunRanked(width, height, maxLength, seed);
+                break;
             case "repair-random":
                 (board, elapsedMs) = RunRepair(width, height, maxLength, seed, biased: false);
                 break;
@@ -120,6 +124,19 @@ class Program
         while (enumerator.MoveNext()) { }
 
         sw.Stop();
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunRanked(int width, int height, int maxLength, int seed)
+    {
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+        var arrows = RankedGeneration.Generate(width, height, maxLength, random);
+        sw.Stop();
+
+        var board = new Board(width, height);
+        foreach (var a in arrows)
+            board.AddArrow(new Arrow(a.Cells));
         return (board, sw.Elapsed.TotalMilliseconds);
     }
 

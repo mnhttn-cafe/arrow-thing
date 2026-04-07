@@ -17,5 +17,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="LayeredGeneration.cs" />
     <Compile Include="RepairGeneration.cs" />
+    <Compile Include="RankedGeneration.cs" />
   </ItemGroup>
 </Project>
