@@ -53,7 +53,13 @@ public static class BoardGeneration
     /// </summary>
     public static readonly object FinalizationMarker = new object();
 
-    public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random, bool compactInline = false)
+    /// <summary>
+    /// Signals that generation has finished placing arrows and is now compacting
+    /// trivial chains. Yielded once before compaction begins.
+    /// </summary>
+    public static readonly object CompactionMarker = new object();
+
+    public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random, bool compact = false)
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
@@ -70,16 +76,17 @@ public static class BoardGeneration
             board.AddArrowForGeneration(arrow!);
             ctx.EnsureCapacity(board._bitsetWords);
             ctx.activeWords = (board._nextGenIndex + 63) >> 6;
-
-            if (compactInline)
-            {
-                TryInlineCompact(board, arrow!, ctx);
-                ctx.EnsureCapacity(board._bitsetWords);
-                ctx.activeWords = (board._nextGenIndex + 63) >> 6;
-            }
-
             created++;
             yield return null;
+        }
+
+        // Compaction phase: merge trivial collinear same-direction chains
+        if (compact)
+        {
+            yield return CompactionMarker;
+            var compactor = CompactBoardInPlace(board);
+            while (compactor.MoveNext())
+                yield return compactor.Current;
         }
 
         // Signal phase transition, then yield during finalization
@@ -544,55 +551,43 @@ public static class BoardGeneration
     }
 
     /// <summary>
-    /// Inline compaction: after placing an arrow, check if it can be merged with
-    /// a collinear same-direction adjacent forward or reverse dependency.
-    /// Merging removes both arrows and places the merged result, which gets a new
-    /// generation index and fresh bitset deps for subsequent cycle detection.
+    /// Post-process compaction: iteratively merges trivial collinear same-direction
+    /// chains in-place on the board using RemoveArrowForGeneration/AddArrowForGeneration.
+    /// Yields the cumulative merge count after each merge for smooth progress tracking.
     /// </summary>
-    private static void TryInlineCompact(Board board, Arrow newArrow, GenerationContext ctx)
+    private static IEnumerator<int> CompactBoardInPlace(Board board)
     {
-        bool merged = true;
-        while (merged)
+        int mergeCount = 0;
+        bool changed = true;
+        while (changed)
         {
-            merged = false;
+            changed = false;
+            var arrows = new List<Arrow>(board.Arrows);
 
-            // Forward deps: arrows in newArrow's ray (newArrow depends on them)
-            (int dx, int dy) = Arrow.GetDirectionStep(newArrow.HeadDirection);
-            int cx = newArrow.HeadCell.X + dx, cy = newArrow.HeadCell.Y + dy;
-            while (cx >= 0 && cx < board.Width && cy >= 0 && cy < board.Height)
+            foreach (Arrow dependent in arrows)
             {
-                Arrow blocker = board._occupancy[cx, cy];
-                if (blocker != null && blocker != newArrow &&
-                    CanMergeForCompaction(blocker, newArrow))
-                {
-                    var mergedArrow = MergeArrows(blocker, newArrow);
-                    board.RemoveArrowForGeneration(newArrow);
-                    board.RemoveArrowForGeneration(blocker);
-                    board.AddArrowForGeneration(mergedArrow);
-                    ctx.EnsureCapacity(board._bitsetWords);
-                    newArrow = mergedArrow;
-                    merged = true;
-                    break;
-                }
-                cx += dx; cy += dy;
-            }
-            if (merged) continue;
+                // Skip arrows merged earlier in this pass
+                if (dependent._generationIndex < 0) continue;
 
-            // Reverse deps: arrows whose rays cross newArrow's cells (they depend on newArrow)
-            for (int i = 0; i < newArrow.Cells.Count; i++)
-            {
-                Cell cell = newArrow.Cells[i];
-                Arrow dep = FindReverseMergeCandidate(board, newArrow, cell);
-                if (dep != null)
+                (int dx, int dy) = Arrow.GetDirectionStep(dependent.HeadDirection);
+                int cx = dependent.HeadCell.X + dx, cy = dependent.HeadCell.Y + dy;
+                while (cx >= 0 && cx < board.Width && cy >= 0 && cy < board.Height)
                 {
-                    var mergedArrow = MergeArrows(newArrow, dep);
-                    board.RemoveArrowForGeneration(dep);
-                    board.RemoveArrowForGeneration(newArrow);
-                    board.AddArrowForGeneration(mergedArrow);
-                    ctx.EnsureCapacity(board._bitsetWords);
-                    newArrow = mergedArrow;
-                    merged = true;
-                    break;
+                    Arrow blocker = board._occupancy[cx, cy];
+                    if (blocker != null && blocker != dependent &&
+                        blocker._generationIndex >= 0 &&
+                        CanMergeForCompaction(blocker, dependent))
+                    {
+                        var merged = MergeArrows(blocker, dependent);
+                        board.RemoveArrowForGeneration(dependent);
+                        board.RemoveArrowForGeneration(blocker);
+                        board.AddArrowForGeneration(merged);
+                        mergeCount++;
+                        changed = true;
+                        yield return mergeCount;
+                        break;
+                    }
+                    cx += dx; cy += dy;
                 }
             }
         }

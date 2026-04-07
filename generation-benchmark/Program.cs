@@ -7,11 +7,19 @@ class Program
 {
     static void Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "progress")
+        {
+            int size = args.Length > 1 ? int.Parse(args[1]) : 100;
+            int seed = args.Length > 2 ? int.Parse(args[2]) : 42;
+            SimulateLoadingProgress(size, size, 20, seed);
+            return;
+        }
+
         int[] sizes = { 40, 100, 200 };
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "current+compact", "current+inline", "current+true-inline", "ranked+inline" };
+        string[] algorithms = { "current", "current+compact" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -153,7 +161,7 @@ class Program
         var random = new Random(seed);
         var sw = Stopwatch.StartNew();
 
-        var enumerator = BoardGeneration.FillBoardIncremental(board, maxLength, random, compactInline: true);
+        var enumerator = BoardGeneration.FillBoardIncremental(board, maxLength, random, compact: true);
         while (enumerator.MoveNext()) { }
 
         sw.Stop();
@@ -537,5 +545,139 @@ class Program
         public int DagDepth;
         public double TrivialChainPct;
         public double CrossDirDepPct;
+    }
+
+    /// <summary>
+    /// Pure .NET simulation of the Unity loading bar logic.
+    /// Runs FillBoardIncremental with compact=true using a simulated frame budget,
+    /// printing the progress value at each "frame" to verify smoothness.
+    /// Usage: dotnet run -- progress [size] [seed]
+    /// </summary>
+    static void SimulateLoadingProgress(int width, int height, int maxLength, int seed)
+    {
+        Console.WriteLine($"=== Loading Progress Simulation ({width}x{height}, seed={seed}) ===");
+        Console.WriteLine();
+
+        var board = new Board(width, height);
+        var random = new Random(seed);
+        var generator = BoardGeneration.FillBoardIncremental(board, maxLength, random, compact: true);
+
+        const double genEndProgress = 0.90;
+        const double compactEndProgress = 0.95;
+        const double estimatedArrowDensity = 0.16;
+        const double progressExponent = 1.5;
+        double estimatedArrows = width * height * estimatedArrowDensity;
+
+        int arrowsBeforeCompaction = 0;
+        double genFinalProgress = 0;
+        bool compacting = false;
+        bool finalizing = false;
+        string phase = "generate";
+        double progress = 0;
+
+        const long frameBudgetMs = 12;
+        int frame = 0;
+        var totalSw = Stopwatch.StartNew();
+
+        int lastPrintedPct = -1;
+
+        while (true)
+        {
+            var sw = Stopwatch.StartNew();
+            bool done = false;
+            int stepsThisFrame = 0;
+
+            while (sw.ElapsedMilliseconds < frameBudgetMs)
+            {
+                if (!generator.MoveNext())
+                {
+                    done = true;
+                    break;
+                }
+                stepsThisFrame++;
+
+                if (!compacting && !finalizing)
+                {
+                    if (generator.Current == BoardGeneration.CompactionMarker)
+                    {
+                        compacting = true;
+                        arrowsBeforeCompaction = board.Arrows.Count;
+                        genFinalProgress = progress;
+                        phase = "compact";
+                    }
+                    else if (generator.Current == BoardGeneration.FinalizationMarker)
+                    {
+                        finalizing = true;
+                        phase = "finalize";
+                    }
+                }
+                else if (compacting)
+                {
+                    if (generator.Current == BoardGeneration.FinalizationMarker)
+                    {
+                        compacting = false;
+                        finalizing = true;
+                        phase = "finalize";
+                    }
+                }
+            }
+
+            // Progress calculation (mirrors GameController)
+            if (!compacting && !finalizing)
+            {
+                double rawProgress = Math.Min(1.0, board.Arrows.Count / estimatedArrows);
+                progress = genEndProgress * Math.Pow(rawProgress, progressExponent);
+            }
+            else if (compacting)
+            {
+                int merges = arrowsBeforeCompaction - board.Arrows.Count;
+                double ratio = arrowsBeforeCompaction > 0
+                    ? Math.Min(1.0, (double)merges / (arrowsBeforeCompaction * 0.15))
+                    : 1.0;
+                progress = genFinalProgress + (compactEndProgress - genFinalProgress) * ratio;
+            }
+            else
+            {
+                int arrowCount = board.Arrows.Count;
+                double ratio = arrowCount > 0 && generator.Current is int finalized
+                    ? Math.Min(1.0, (double)finalized / arrowCount)
+                    : 0.0;
+                progress = compactEndProgress + (1.0 - compactEndProgress) * ratio;
+            }
+
+            int pct = (int)(progress * 100);
+            double elapsed = totalSw.Elapsed.TotalMilliseconds;
+
+            // Print every percentage point change and at phase transitions
+            if (pct != lastPrintedPct)
+            {
+                int barLen = 40;
+                int filled = (int)(progress * barLen);
+                string bar = new string('█', filled) + new string('░', barLen - filled);
+                Console.WriteLine(
+                    $"  [{bar}] {pct,3}%  frame={frame,-4} arrows={board.Arrows.Count,-6} " +
+                    $"steps={stepsThisFrame,-4} phase={phase,-8} elapsed={elapsed:F0}ms"
+                );
+                lastPrintedPct = pct;
+            }
+
+            frame++;
+            if (done) break;
+        }
+
+        progress = 1.0;
+        double totalMs = totalSw.Elapsed.TotalMilliseconds;
+        Console.WriteLine(
+            $"  [{'█', 40}] 100%  frame={frame,-4} arrows={board.Arrows.Count,-6} " +
+            $"                    elapsed={totalMs:F0}ms"
+        );
+        Console.WriteLine();
+        Console.WriteLine($"Total: {frame} frames, {board.Arrows.Count} arrows, {totalMs:F1}ms");
+        Console.WriteLine($"Merges: {arrowsBeforeCompaction - board.Arrows.Count} " +
+            $"({arrowsBeforeCompaction} → {board.Arrows.Count})");
+
+        // Verify solvable
+        bool solvable = VerifySolvable(board);
+        Console.WriteLine($"Solvable: {(solvable ? "YES" : "FAIL")}");
     }
 }
