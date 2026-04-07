@@ -11,7 +11,7 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "current+compact", "ranked" };
+        string[] algorithms = { "current", "current+compact", "ranked", "ranked+inline" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -23,8 +23,9 @@ class Program
             string label = algo switch
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
-                "current+compact" => "Current + Trivial Chain Compaction",
+                "current+compact" => "Current + Post-Process Compaction",
                 "ranked" => "Ranked (Topological Ordering, Conservative)",
+                "ranked+inline" => "Ranked + Inline Compaction",
                 "ranked-hybrid" => "Ranked Hybrid (Rank Fast-Path + BFS Fallback)",
                 "repair-random" => "Random Placement + Flip/Repair (Unbiased)",
                 "repair-biased" => "Random Placement + Flip/Repair (Edge-Biased)",
@@ -93,6 +94,9 @@ class Program
             case "ranked":
                 (board, elapsedMs) = RunRanked(width, height, maxLength, seed);
                 break;
+            case "ranked+inline":
+                (board, elapsedMs) = RunRankedInline(width, height, maxLength, seed);
+                break;
             case "ranked-hybrid":
                 (board, elapsedMs) = RunRankedHybrid(width, height, maxLength, seed);
                 break;
@@ -132,6 +136,19 @@ class Program
         while (enumerator.MoveNext()) { }
 
         sw.Stop();
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunRankedInline(int width, int height, int maxLength, int seed)
+    {
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+        var arrows = InlineCompactGeneration.Generate(width, height, maxLength, random);
+        sw.Stop();
+
+        var board = new Board(width, height);
+        foreach (var a in arrows)
+            board.AddArrow(new Arrow(a.Cells));
         return (board, sw.Elapsed.TotalMilliseconds);
     }
 

@@ -20,5 +20,6 @@
     <Compile Include="RankedGeneration.cs" />
     <Compile Include="RankedHybridGeneration.cs" />
     <Compile Include="TrivialChainCompactor.cs" />
+    <Compile Include="InlineCompactGeneration.cs" />
   </ItemGroup>
 </Project>
