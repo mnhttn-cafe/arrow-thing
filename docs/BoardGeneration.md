@@ -87,12 +87,13 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 
 ## Public Entry Points
 
-### `FillBoardIncremental(Board board, int maxLength, Random random)`
+### `FillBoardIncremental(Board board, int maxLength, Random random, bool compact = false)`
 
 - Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
 - Calls `board.InitializeForGeneration()`.
 - Loops: `TryGenerateArrow` → `board.AddArrowForGeneration` → `yield return null` until candidates are exhausted or the board is full.
-- After placement, yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
+- If `compact` is true: yields `CompactionMarker`, then runs post-process compaction (see below), yielding per merge.
+- After placement (and optional compaction), yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
 - Used by `GameController.GenerateBoard` for incremental board display during generation.
 
 ### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows)`
@@ -160,18 +161,41 @@ This means no tentative graph modification, no walk state beyond the current pat
 
 Public static method on `Board`. Returns whether `target` lies strictly forward of `head` along `direction`. Used for both cycle detection (reverse edge lookup) and tail construction (preventing tail cells from falling on the arrow's own ray).
 
+## Post-Process Compaction
+
+After all arrows are placed and before finalization, an optional compaction pass merges redundant trivial chains to improve board quality. Enabled via the `compact` parameter on `FillBoardIncremental`.
+
+### Problem
+
+The greedy walk produces many short (length-2) arrows that point in the same direction and are collinear and adjacent. These "trivial chains" add visual clutter without adding puzzle depth — the player clears them in a fixed sequence with no choice involved.
+
+### Algorithm (`CompactBoardInPlace`)
+
+Iterative merge passes over the arrow list:
+
+1. For each arrow (the "dependent"), walk its forward ray looking for an adjacent collinear same-direction arrow (the "blocker") whose tail is exactly one cell from the dependent's head.
+2. If found and both arrows are still alive (`_generationIndex >= 0`), merge them: concatenate blocker's cells then dependent's cells into a single arrow.
+3. Remove both originals via `RemoveArrowForGeneration` (zeros bitset row, clears occupancy/ray index, marks generation index dead) and add the merged arrow via `AddArrowForGeneration`.
+4. Repeat passes until no merges are found.
+
+The compactor yields after each merge for smooth loading progress. Arrows marked dead (`_generationIndex < 0`) are skipped within a pass.
+
+### Impact
+
+Compaction typically merges 15–25% of arrows on standard boards, reducing trivial chain count without affecting solvability (merged arrows preserve the same dependency relationships). The DAG depth is unchanged since merged pairs were already in a fixed dependency order.
+
 ## Performance
 
-Measured via `GenerationProfiler.cs` (PlayMode) and standalone benchmark (`generation-benchmark/`), single-threaded.
+Measured via `GenerationProfiler.cs` (PlayMode), single-threaded.
 
-| Board | Benchmark (.NET 8) | Unity (PlayMode, incl. ArrowView) |
-|-------|-------------------|-----------------------------------|
-| 10×10 | <1ms | — |
-| 50×50 ml=20 | ~8ms | — |
-| 200×200 | ~600ms | ~2.7s |
-| 400×400 | ~15s | ~68s |
+| Board | Unity (PlayMode, incl. ArrowView) |
+|-------|-----------------------------------|
+| 10×10 | <1ms |
+| 50×50 ml=20 | ~50ms |
+| 200×200 | ~2.7s |
+| 400×400 | ~68s |
 
-Unity overhead is ~3–4x due to ArrowView creation (~38% of work time) and frame yields/rendering (~30% of wall time). The domain algorithm itself accounts for ~62% of work time.
+Unity overhead is ~3–4x vs. raw .NET due to ArrowView creation (~38% of work time) and frame yields/rendering (~30% of wall time). The domain algorithm itself accounts for ~62% of work time.
 
 Key optimisations applied (in order of impact):
 
@@ -188,20 +212,35 @@ Key optimisations applied (in order of impact):
 
 ## Loading Progress Heuristic
 
-The loading bar uses arrow count with a power curve to approximate wall-time progress:
+The loading bar uses a three-phase model to approximate wall-time progress:
+
+### Phase 1: Generation (0% → ~90%)
 
 ```
 rawProgress = Clamp01(arrowCount / (w * h * EstimatedArrowDensity))
-displayProgress = pow(rawProgress, 2.5)
+displayProgress = genEndProgress * pow(rawProgress, progressExponent)
 ```
 
-`EstimatedArrowDensity = 0.1`. The power curve compensates for the nonlinear relationship between arrow count and wall time: early arrows are placed quickly (sparse board, few candidate rejections) while late arrows are slow (dense board, many cycle-detection rejections). Profiling shows the per-arrow cost increases ~15x from early to late generation on a 400×400 board. The exponent 2.5 was chosen empirically to produce smooth perceived progress across board sizes.
+`EstimatedArrowDensity = 0.16`, `progressExponent = 1.5`, `genEndProgress = 0.90`. The power curve compensates for the nonlinear relationship between arrow count and wall time: early arrows are placed quickly (sparse board, few candidate rejections) while late arrows are slow (dense board, many cycle-detection rejections). The density constant was derived from profiling (`GenerationProfiler.cs`): the greedy walk produces ~0.10–0.12 arrows per cell across board sizes.
 
-The density constant was derived from profiling (`GenerationProfiler.cs`): the greedy walk produces ~0.10–0.12 arrows per cell across board sizes. The constant is set to 0.1 so `rawProgress` slightly exceeds 1.0 at the end of generation (clamped), ensuring the bar reaches 100%.
+### Phase 2: Compaction (~90% → 95%)
 
-`FillBoardIncremental` yields a `FinalizationMarker` sentinel between arrow placement and dependency graph finalization so the caller can detect the phase transition. Finalization (`FinalizeGenerationIncremental`) is incremental and yielding, but fast enough to be negligible in the progress display.
+At `CompactionMarker`, the actual progress is captured as `genFinalProgress` (avoids a visual jump if generation finished below 90%). Compaction progress interpolates linearly from `genFinalProgress` to `compactEndProgress = 0.95` based on the ratio of merges yielded so far.
 
-If generation parameters change significantly (e.g. different `minLength` defaults or dead-end limits), re-run the profiling test and re-tune the constant.
+### Phase 3: Finalization (95% → 100%)
+
+After `FinalizationMarker`, finalization builds the HashSet dependency graph incrementally. Progress interpolates linearly from 95% to 100% based on arrows finalized.
+
+### Sentinel Markers
+
+`FillBoardIncremental` yields two sentinel objects between phases:
+
+- `CompactionMarker` — between generation and compaction (only when `compact = true`)
+- `FinalizationMarker` — between compaction (or generation) and finalization
+
+`GameController` detects these to switch progress phase, rebuild ArrowViews after compaction (compacted arrows replace the originals), and transition the progress bar smoothly.
+
+If generation parameters change significantly (e.g. different `minLength` defaults or dead-end limits), re-run the profiling test and re-tune the constants.
 
 ## Design History
 
