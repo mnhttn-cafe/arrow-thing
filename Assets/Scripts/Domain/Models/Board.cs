@@ -255,7 +255,8 @@ public sealed class Board
 
     /// <summary>
     /// Removes an arrow during generation: clears occupancy, ray index, and bitset deps.
-    /// The generation index becomes dead (wasted slot). Used by inline compaction.
+    /// The generation index becomes dead (wasted slot).
+    /// Internal: called by <see cref="BoardGeneration.CompactBoardInPlace"/> during post-process compaction.
     /// </summary>
     internal void RemoveArrowForGeneration(Arrow arrow)
     {

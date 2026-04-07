@@ -396,9 +396,8 @@ public sealed class GameController : MonoBehaviour
         //   Generation  0% → 90%  (bulk of the work)
         //   Compaction 90% → 95%  (fast merge pass)
         //   Finalize   95% → 100% (dependency graph build)
-        // Density 0.16 ≈ actual arrow-per-cell ratio for maxArrowLength 5–30.
-        // Exponent 1.5 maps arrow count to approximate wall-clock progress
-        // (later arrows take longer due to BFS cycle detection).
+        // Density 0.16 and exponent 1.5 were experimentally derived on boards
+        // 100×100 and up, where loading screens are visible long enough to matter.
         const float genEndProgress = 0.90f;
         const float compactEndProgress = 0.95f;
         const float estimatedArrowDensity = 0.16f;
@@ -408,8 +407,7 @@ public sealed class GameController : MonoBehaviour
         var spawnedArrows = new List<Arrow>();
         int arrowsBeforeCompaction = 0;
         float genFinalProgress = 0f;
-        bool compacting = false;
-        bool finalizing = false;
+        var phase = GenerationPhase.Generating;
 
         while (true)
         {
@@ -429,28 +427,17 @@ public sealed class GameController : MonoBehaviour
                     break;
                 }
 
-                if (!compacting && !finalizing)
+                if (generator.Current is GenerationPhase nextPhase)
                 {
-                    if (generator.Current == BoardGeneration.CompactionMarker)
+                    if (nextPhase == GenerationPhase.Compacting)
                     {
-                        compacting = true;
                         arrowsBeforeCompaction = _board.Arrows.Count;
                         genFinalProgress = _loadProgress;
                     }
-                    else if (generator.Current == BoardGeneration.FinalizationMarker)
-                    {
-                        finalizing = true;
-                    }
-                    else
-                    {
-                        Arrow arrow = _board.Arrows[spawnedArrows.Count];
-                        _boardView.AddArrowView(arrow);
-                        spawnedArrows.Add(arrow);
-                    }
-                }
-                else if (compacting)
-                {
-                    if (generator.Current == BoardGeneration.FinalizationMarker)
+                    else if (
+                        nextPhase == GenerationPhase.Finalizing
+                        && phase == GenerationPhase.Compacting
+                    )
                     {
                         // Compaction done — remove stale views, add new ones
                         foreach (Arrow a in spawnedArrows)
@@ -462,36 +449,49 @@ public sealed class GameController : MonoBehaviour
                             _boardView.AddArrowView(a);
                             spawnedArrows.Add(a);
                         }
-                        compacting = false;
-                        finalizing = true;
                     }
+                    phase = nextPhase;
+                }
+                else if (phase == GenerationPhase.Generating)
+                {
+                    Arrow arrow = _board.Arrows[spawnedArrows.Count];
+                    _boardView.AddArrowView(arrow);
+                    spawnedArrows.Add(arrow);
                 }
             }
 
             // Progress calculation per phase
-            if (!compacting && !finalizing)
+            switch (phase)
             {
-                float rawProgress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
-                _loadProgress = genEndProgress * Mathf.Pow(rawProgress, progressExponent);
-            }
-            else if (compacting)
-            {
-                int mergesCompleted = arrowsBeforeCompaction - _board.Arrows.Count;
-                float compactRatio =
-                    arrowsBeforeCompaction > 0
-                        ? Mathf.Clamp01((float)mergesCompleted / (arrowsBeforeCompaction * 0.15f))
-                        : 1f;
-                _loadProgress =
-                    genFinalProgress + (compactEndProgress - genFinalProgress) * compactRatio;
-            }
-            else
-            {
-                int arrowCount = _board.Arrows.Count;
-                float finalizeRatio =
-                    arrowCount > 0 && generator.Current is int finalized
-                        ? Mathf.Clamp01((float)finalized / arrowCount)
-                        : 0f;
-                _loadProgress = compactEndProgress + (1f - compactEndProgress) * finalizeRatio;
+                case GenerationPhase.Generating:
+                {
+                    float rawProgress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
+                    _loadProgress = genEndProgress * Mathf.Pow(rawProgress, progressExponent);
+                    break;
+                }
+                case GenerationPhase.Compacting:
+                {
+                    int mergesCompleted = arrowsBeforeCompaction - _board.Arrows.Count;
+                    float compactRatio =
+                        arrowsBeforeCompaction > 0
+                            ? Mathf.Clamp01(
+                                (float)mergesCompleted / (arrowsBeforeCompaction * 0.15f)
+                            )
+                            : 1f;
+                    _loadProgress =
+                        genFinalProgress + (compactEndProgress - genFinalProgress) * compactRatio;
+                    break;
+                }
+                case GenerationPhase.Finalizing:
+                {
+                    int arrowCount = _board.Arrows.Count;
+                    float finalizeRatio =
+                        arrowCount > 0 && generator.Current is int finalized
+                            ? Mathf.Clamp01((float)finalized / arrowCount)
+                            : 0f;
+                    _loadProgress = compactEndProgress + (1f - compactEndProgress) * finalizeRatio;
+                    break;
+                }
             }
 
             if (done)

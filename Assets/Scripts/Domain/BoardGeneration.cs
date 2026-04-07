@@ -46,19 +46,8 @@ public static class BoardGeneration
     /// <summary>
     /// Incremental version of board filling. Places as many arrows as possible,
     /// yielding after each arrow to let the caller (e.g. a Unity coroutine) process the next frame.
+    /// Yields <see cref="GenerationPhase"/> values between phases.
     /// </summary>
-    /// <summary>
-    /// Signals that generation has finished placing arrows and is now building
-    /// the dependency graph. Yielded once before finalization begins.
-    /// </summary>
-    public static readonly object FinalizationMarker = new object();
-
-    /// <summary>
-    /// Signals that generation has finished placing arrows and is now compacting
-    /// trivial chains. Yielded once before compaction begins.
-    /// </summary>
-    public static readonly object CompactionMarker = new object();
-
     public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random)
     {
         board.InitializeForGeneration();
@@ -81,13 +70,13 @@ public static class BoardGeneration
         }
 
         // Compaction phase: merge trivial collinear same-direction chains
-        yield return CompactionMarker;
+        yield return GenerationPhase.Compacting;
         var compactor = CompactBoardInPlace(board);
         while (compactor.MoveNext())
             yield return compactor.Current;
 
-        // Signal phase transition, then yield during finalization
-        yield return FinalizationMarker;
+        // Finalization phase: build HashSet dependency graph
+        yield return GenerationPhase.Finalizing;
         var finalizer = board.FinalizeGenerationIncremental();
         while (finalizer.MoveNext())
             yield return finalizer.Current;

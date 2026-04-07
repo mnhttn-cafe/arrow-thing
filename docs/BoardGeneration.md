@@ -190,12 +190,10 @@ Compaction typically merges 15–25% of arrows on standard boards, reducing triv
 
 ## Performance
 
-Measured via `GenerationProfiler.cs` (PlayMode), single-threaded.
+Measured via `GenerationProfiler.cs` (PlayMode), single-threaded. These numbers predate the compaction pass; compaction adds negligible overhead (a few merge iterations on the already-placed arrow set).
 
 | Board | Unity (PlayMode, incl. ArrowView) |
 |-------|-----------------------------------|
-| 10×10 | <1ms |
-| 50×50 ml=20 | ~50ms |
 | 200×200 | ~2.7s |
 | 400×400 | ~68s |
 
@@ -225,7 +223,7 @@ rawProgress = Clamp01(arrowCount / (w * h * EstimatedArrowDensity))
 displayProgress = genEndProgress * pow(rawProgress, progressExponent)
 ```
 
-`EstimatedArrowDensity = 0.16`, `progressExponent = 1.5`, `genEndProgress = 0.90`. The power curve compensates for the nonlinear relationship between arrow count and wall time: early arrows are placed quickly (sparse board, few candidate rejections) while late arrows are slow (dense board, many cycle-detection rejections). The density constant was derived from profiling (`GenerationProfiler.cs`): the greedy walk produces ~0.10–0.12 arrows per cell across board sizes.
+`EstimatedArrowDensity = 0.16`, `progressExponent = 1.5`, `genEndProgress = 0.90`. The power curve compensates for the nonlinear relationship between arrow count and wall time: early arrows are placed quickly (sparse board, few candidate rejections) while late arrows are slow (dense board, many cycle-detection rejections). The density and exponent constants were experimentally derived on boards 100×100 and up (where loading screens are visible long enough to matter) using a standalone .NET benchmark during the optimization pass.
 
 ### Phase 2: Compaction (~90% → 95%)
 
@@ -235,14 +233,14 @@ At `CompactionMarker`, the actual progress is captured as `genFinalProgress` (av
 
 After `FinalizationMarker`, finalization builds the HashSet dependency graph incrementally. Progress interpolates linearly from 95% to 100% based on arrows finalized.
 
-### Sentinel Markers
+### Phase Transitions
 
-`FillBoardIncremental` yields two sentinel objects between phases:
+`FillBoardIncremental` yields `GenerationPhase` enum values between phases:
 
-- `CompactionMarker` — between generation and compaction
-- `FinalizationMarker` — between compaction (or generation) and finalization
+- `GenerationPhase.Compacting` — between generation and compaction
+- `GenerationPhase.Finalizing` — between compaction and finalization
 
-`GameController` detects these to switch progress phase, rebuild ArrowViews after compaction (compacted arrows replace the originals), and transition the progress bar smoothly.
+`GameController` detects these via `is GenerationPhase` pattern matching to switch progress phase, rebuild ArrowViews after compaction (compacted arrows replace the originals), and transition the progress bar smoothly.
 
 If generation parameters change significantly (e.g. different `minLength` defaults or dead-end limits), re-run the profiling test and re-tune the constants.
 
