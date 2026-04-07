@@ -11,7 +11,7 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "layered", "repair-random", "repair-biased" };
+        string[] algorithms = { "current", "repair-random", "repair-biased" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -23,9 +23,8 @@ class Program
             string label = algo switch
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
-                "layered" => "Layered (No-Reverse-Deps, No Cycle Detection)",
-                "repair-random" => "Random Placement + SCC Repair (Unbiased)",
-                "repair-biased" => "Random Placement + SCC Repair (Edge-Biased)",
+                "repair-random" => "Random Placement + Flip/Repair (Unbiased)",
+                "repair-biased" => "Random Placement + Flip/Repair (Edge-Biased)",
                 _ => algo,
             };
             Console.WriteLine();

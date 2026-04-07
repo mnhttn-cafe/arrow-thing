@@ -83,31 +83,17 @@ static class RepairGeneration
             created++;
         }
 
-        // Phase 2: Build dependency graph and repair cycles via Kahn's algorithm
-        // Any node not consumed by topological sort is in a cycle.
+        // Phase 2: Repair cycles via flip-then-remove strategy.
+        // Flipping reverses cell order — same cells, different head/direction/ray.
+        // Preserves density while potentially breaking cycles.
         int iterations = 0;
-        while (iterations < 200)
+        while (iterations < 500)
         {
             iterations++;
             var depGraph = BuildDepGraph(placed, width, height);
-
-            // Kahn's: find all nodes reachable by topological sort
             int n = placed.Count;
-            var inDegree = new int[n];
-            for (int i = 0; i < n; i++)
-                foreach (int dep in depGraph[i])
-                    inDegree[dep]++;  // dep is depended on by i, but inDegree tracks incoming edges
-            // Actually: depGraph[i] = arrows that i depends on.
-            // An edge i→dep means "i depends on dep", i.e. dep must be cleared first.
-            // In Kahn's for topological sort, we process nodes with no incoming edges first.
-            // "Incoming edges to node X" = number of arrows that depend on X = number of i where X in depGraph[i]
-            // So inDegree[dep]++ for each i that has dep in depGraph[i].
-            // Wait, that's reverse. Let me think again.
-            // depGraph[i] lists arrows i depends on. These are forward edges: i → dep (i waits for dep).
-            // Topological order: process leaves first (nodes with no dependencies).
-            // A leaf = node with depGraph[node].Count == 0 (depends on nothing).
-            // After processing a leaf, remove it and reduce dep counts of nodes that depend on it.
-            // We need reverse edges: who depends on each node?
+
+            // Kahn's to find cycle nodes
             var revGraph = new List<int>[n];
             for (int i = 0; i < n; i++) revGraph[i] = new List<int>();
             var depCount = new int[n];
@@ -117,32 +103,25 @@ static class RepairGeneration
                 foreach (int dep in depGraph[i])
                     revGraph[dep].Add(i);
             }
-
             var queue = new Queue<int>();
             for (int i = 0; i < n; i++)
                 if (depCount[i] == 0) queue.Enqueue(i);
-
             var processed = new bool[n];
             while (queue.Count > 0)
             {
-                int node = queue.Dequeue();
-                processed[node] = true;
-                foreach (int dependent in revGraph[node])
-                {
-                    depCount[dependent]--;
-                    if (depCount[dependent] == 0)
+                int nd = queue.Dequeue();
+                processed[nd] = true;
+                foreach (int dependent in revGraph[nd])
+                    if (--depCount[dependent] == 0)
                         queue.Enqueue(dependent);
-                }
             }
 
-            // All unprocessed nodes are in cycles
             var cycleNodes = new List<int>();
             for (int i = 0; i < n; i++)
                 if (!processed[i]) cycleNodes.Add(i);
-
             if (cycleNodes.Count == 0) break;
 
-            // Score each cycle node by total cycle-internal edge count
+            // Score and sort cycle nodes
             var cycleSet = new HashSet<int>(cycleNodes);
             var scores = new List<(int node, int score)>();
             foreach (int node in cycleNodes)
@@ -154,21 +133,50 @@ static class RepairGeneration
                     if (cycleSet.Contains(dependent)) score++;
                 scores.Add((node, score));
             }
-
-            // Remove the top 20% of cycle nodes by score (at least 1)
             scores.Sort((a, b) => b.score.CompareTo(a.score));
-            int removeCount = Math.Max(1, cycleNodes.Count / 5);
 
-            var toRemove = new HashSet<int>();
+            // Batch flip: flip a chunk of top-scoring cycle nodes at once,
+            // then re-evaluate. Much faster than per-flip cycle detection.
+            int batchSize = Math.Max(1, cycleNodes.Count / 5);
+            int flipCount = 0;
+            for (int i = 0; i < batchSize && i < scores.Count; i++)
+            {
+                int nodeIdx = scores[i].node;
+                Arrow original = placed[nodeIdx];
+                var reversed = new List<Cell>(original.Cells);
+                reversed.Reverse();
+                placed[nodeIdx] = new Arrow(reversed);
+                flipCount++;
+            }
+
+            // Check if batch flip helped
+            var newCycleNodes = FindCycleNodes(placed, width, height);
+            if (newCycleNodes.Count < cycleNodes.Count)
+            {
+                // Progress — continue with flips
+                continue;
+            }
+
+            // Flipping didn't help (or made it worse). Revert flips and remove instead.
+            // Revert all flips
+            for (int i = 0; i < flipCount && i < scores.Count; i++)
+            {
+                int nodeIdx = scores[i].node;
+                Arrow flippedBack = placed[nodeIdx];
+                var reReversed = new List<Cell>(flippedBack.Cells);
+                reReversed.Reverse();
+                placed[nodeIdx] = new Arrow(reReversed);
+            }
+
+            // Remove top 20% of cycle nodes
+            int removeCount = Math.Max(1, cycleNodes.Count / 5);
+            var toRemove = new List<int>();
             for (int i = 0; i < removeCount && i < scores.Count; i++)
                 toRemove.Add(scores[i].node);
-
-            // Remove in reverse index order
-            var sortedRemove = new List<int>(toRemove);
-            sortedRemove.Sort();
-            for (int i = sortedRemove.Count - 1; i >= 0; i--)
+            toRemove.Sort();
+            for (int i = toRemove.Count - 1; i >= 0; i--)
             {
-                int ri = sortedRemove[i];
+                int ri = toRemove[i];
                 var arrow = placed[ri];
                 foreach (var c in arrow.Cells)
                     occupancy[c.X, c.Y] = null;
@@ -212,6 +220,48 @@ static class RepairGeneration
             Arrow.Direction.Down => cand.head.Y,
             _ => 0,
         };
+    }
+
+    /// <summary>
+    /// Find all arrow indices that participate in cycles using Kahn's algorithm.
+    /// Any node not consumed by topological sort is in a cycle.
+    /// </summary>
+    private static List<int> FindCycleNodes(List<Arrow> placed, int width, int height)
+    {
+        var depGraph = BuildDepGraph(placed, width, height);
+        int n = placed.Count;
+
+        var revGraph = new List<int>[n];
+        for (int i = 0; i < n; i++) revGraph[i] = new List<int>();
+        var depCount = new int[n];
+        for (int i = 0; i < n; i++)
+        {
+            depCount[i] = depGraph[i].Count;
+            foreach (int dep in depGraph[i])
+                revGraph[dep].Add(i);
+        }
+
+        var queue = new Queue<int>();
+        for (int i = 0; i < n; i++)
+            if (depCount[i] == 0) queue.Enqueue(i);
+
+        var processed = new bool[n];
+        while (queue.Count > 0)
+        {
+            int node = queue.Dequeue();
+            processed[node] = true;
+            foreach (int dependent in revGraph[node])
+            {
+                depCount[dependent]--;
+                if (depCount[dependent] == 0)
+                    queue.Enqueue(dependent);
+            }
+        }
+
+        var result = new List<int>();
+        for (int i = 0; i < n; i++)
+            if (!processed[i]) result.Add(i);
+        return result;
     }
 
     /// <summary>
