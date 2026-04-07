@@ -9,7 +9,7 @@ public static class BoardGeneration
     /// <summary>
     /// Pooled resources reused across candidates to eliminate per-candidate allocations.
     /// </summary>
-    internal sealed class GenerationContext
+    private sealed class GenerationContext
     {
         public int bitsetStride;
         public int activeWords;
@@ -59,7 +59,7 @@ public static class BoardGeneration
     /// </summary>
     public static readonly object CompactionMarker = new object();
 
-    public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random, bool compact = false)
+    public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random)
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
@@ -81,13 +81,10 @@ public static class BoardGeneration
         }
 
         // Compaction phase: merge trivial collinear same-direction chains
-        if (compact)
-        {
-            yield return CompactionMarker;
-            var compactor = CompactBoardInPlace(board);
-            while (compactor.MoveNext())
-                yield return compactor.Current;
-        }
+        yield return CompactionMarker;
+        var compactor = CompactBoardInPlace(board);
+        while (compactor.MoveNext())
+            yield return compactor.Current;
 
         // Signal phase transition, then yield during finalization
         yield return FinalizationMarker;
@@ -134,115 +131,102 @@ public static class BoardGeneration
         arrow = null;
         int targetLength = random.Next(MinArrowLength, maxLength + 1);
         var candidates = board._availableArrowHeads!;
+        var occupancy = board._occupancy;
 
         while (candidates.Count > 0)
         {
             int headIndex = random.Next(candidates.Count);
             ArrowHeadData candidate = candidates[headIndex];
 
-            Arrow result = EvaluateCandidate(board, candidate, targetLength, random, ctx);
-            if (result == null)
+            if (
+                occupancy[candidate.head.X, candidate.head.Y] != null
+                || occupancy[candidate.next.X, candidate.next.Y] != null
+            )
             {
                 SwapRemove(candidates, headIndex);
                 continue;
             }
 
-            arrow = result;
+            // Compute forward deps as bitset
+            int activeWords = ctx.activeWords;
+            Array.Clear(ctx.forwardDeps, 0, activeWords);
+            Array.Clear(ctx.reachable, 0, activeWords);
+            int depCount = ComputeForwardDeps(
+                board,
+                candidate.head,
+                candidate.direction,
+                ctx.forwardDeps
+            );
+
+            bool hasReachable = depCount > 0;
+            if (hasReachable)
+            {
+                // Check if any forward dep has deps — if all are leaves, skip BFS
+                bool needBFS = false;
+                for (int w = 0; w < activeWords && !needBFS; w++)
+                {
+                    ulong bits = ctx.forwardDeps[w];
+                    while (bits != 0)
+                    {
+                        int bit = Ctz64(bits);
+                        if (board._hasAnyDeps[(w << 6) | bit])
+                        {
+                            needBFS = true;
+                            break;
+                        }
+                        bits &= bits - 1;
+                    }
+                }
+
+                bool hasCycle;
+                if (needBFS)
+                {
+                    // BFS with integrated per-level cycle check — aborts early
+                    // if any newly reachable arrow's ray crosses head or next.
+                    hasCycle = ComputeReachableSetEarlyAbort(
+                        board,
+                        ctx.forwardDeps,
+                        ctx.reachable,
+                        candidate.head,
+                        candidate.next,
+                        ctx
+                    );
+                }
+                else
+                {
+                    Array.Copy(ctx.forwardDeps, ctx.reachable, activeWords);
+                    hasCycle =
+                        board.AnyArrowWithRayThroughBitset(candidate.head, ctx.reachable)
+                        || board.AnyArrowWithRayThroughBitset(candidate.next, ctx.reachable);
+                }
+
+                if (hasCycle)
+                {
+                    SwapRemove(candidates, headIndex);
+                    continue;
+                }
+            }
+
+            List<Cell> tail = GreedyWalk(
+                board,
+                targetLength,
+                candidate,
+                random,
+                ctx.reachable,
+                hasReachable,
+                ctx
+            );
+            if (tail.Count < MinArrowLength)
+            {
+                SwapRemove(candidates, headIndex);
+                continue;
+            }
+
+            arrow = new Arrow(tail);
             return true;
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Evaluates a single candidate: occupancy check, forward deps, BFS cycle detection,
-    /// greedy walk. Returns the arrow if valid, null if the candidate should be pruned.
-    /// Thread-safe: only reads board state. Requires a per-thread GenerationContext.
-    /// </summary>
-    internal static Arrow EvaluateCandidate(
-        Board board,
-        ArrowHeadData candidate,
-        int targetLength,
-        Random random,
-        GenerationContext ctx
-    )
-    {
-        var occupancy = board._occupancy;
-
-        if (
-            occupancy[candidate.head.X, candidate.head.Y] != null
-            || occupancy[candidate.next.X, candidate.next.Y] != null
-        )
-            return null;
-
-        // Compute forward deps as bitset
-        int activeWords = ctx.activeWords;
-        Array.Clear(ctx.forwardDeps, 0, activeWords);
-        Array.Clear(ctx.reachable, 0, activeWords);
-        int depCount = ComputeForwardDeps(
-            board,
-            candidate.head,
-            candidate.direction,
-            ctx.forwardDeps
-        );
-
-        bool hasReachable = depCount > 0;
-        if (hasReachable)
-        {
-            // Check if any forward dep has deps — if all are leaves, skip BFS
-            bool needBFS = false;
-            for (int w = 0; w < activeWords && !needBFS; w++)
-            {
-                ulong bits = ctx.forwardDeps[w];
-                while (bits != 0)
-                {
-                    int bit = Ctz64(bits);
-                    if (board._hasAnyDeps[(w << 6) | bit])
-                    {
-                        needBFS = true;
-                        break;
-                    }
-                    bits &= bits - 1;
-                }
-            }
-
-            bool hasCycle;
-            if (needBFS)
-            {
-                hasCycle = ComputeReachableSetEarlyAbort(
-                    board,
-                    ctx.forwardDeps,
-                    ctx.reachable,
-                    candidate.head,
-                    candidate.next,
-                    ctx
-                );
-            }
-            else
-            {
-                Array.Copy(ctx.forwardDeps, ctx.reachable, activeWords);
-                hasCycle =
-                    board.AnyArrowWithRayThroughBitset(candidate.head, ctx.reachable)
-                    || board.AnyArrowWithRayThroughBitset(candidate.next, ctx.reachable);
-            }
-
-            if (hasCycle)
-                return null;
-        }
-
-        List<Cell> tail = GreedyWalk(
-            board,
-            targetLength,
-            candidate,
-            random,
-            ctx.reachable,
-            hasReachable,
-            ctx
-        );
-        if (tail.Count < MinArrowLength)
-            return null;
-
-        return new Arrow(tail);
     }
 
     /// <summary>
@@ -630,24 +614,6 @@ public static class BoardGeneration
         return (adx == 1 && ady == 0) || (adx == 0 && ady == 1);
     }
 
-    /// <summary>
-    /// Finds an arrow whose ray crosses the given cell and that can be merged
-    /// with blocker (blocker is the blocking arrow, the found arrow is the dependent).
-    /// </summary>
-    private static Arrow FindReverseMergeCandidate(Board board, Arrow blocker, Cell cell)
-    {
-        int cx = cell.X, cy = cell.Y;
-        foreach (Arrow a in board._rightHeadsByRow[cy])
-            if (a != blocker && a.HeadCell.X < cx && CanMergeForCompaction(blocker, a)) return a;
-        foreach (Arrow a in board._leftHeadsByRow[cy])
-            if (a != blocker && a.HeadCell.X > cx && CanMergeForCompaction(blocker, a)) return a;
-        foreach (Arrow a in board._upHeadsByCol[cx])
-            if (a != blocker && a.HeadCell.Y < cy && CanMergeForCompaction(blocker, a)) return a;
-        foreach (Arrow a in board._downHeadsByCol[cx])
-            if (a != blocker && a.HeadCell.Y > cy && CanMergeForCompaction(blocker, a)) return a;
-        return null;
-    }
-
     /// <summary>Creates a merged arrow: blocker cells followed by dependent cells.</summary>
     private static Arrow MergeArrows(Arrow blocker, Arrow dependent)
     {
@@ -658,7 +624,7 @@ public static class BoardGeneration
     }
 
     /// <summary>Swap-and-pop removal: O(1) instead of O(N) list shift.</summary>
-    internal static void SwapRemove(List<ArrowHeadData> list, int index)
+    private static void SwapRemove(List<ArrowHeadData> list, int index)
     {
         int last = list.Count - 1;
         if (index != last)

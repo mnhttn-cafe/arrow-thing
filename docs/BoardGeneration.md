@@ -87,13 +87,13 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 
 ## Public Entry Points
 
-### `FillBoardIncremental(Board board, int maxLength, Random random, bool compact = false)`
+### `FillBoardIncremental(Board board, int maxLength, Random random)`
 
 - Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
 - Calls `board.InitializeForGeneration()`.
 - Loops: `TryGenerateArrow` → `board.AddArrowForGeneration` → `yield return null` until candidates are exhausted or the board is full.
-- If `compact` is true: yields `CompactionMarker`, then runs post-process compaction (see below), yielding per merge.
-- After placement (and optional compaction), yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
+- Yields `CompactionMarker`, then runs post-process compaction (see below), yielding per merge.
+- Yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
 - Used by `GameController.GenerateBoard` for incremental board display during generation.
 
 ### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows)`
@@ -163,7 +163,7 @@ Public static method on `Board`. Returns whether `target` lies strictly forward 
 
 ## Post-Process Compaction
 
-After all arrows are placed and before finalization, an optional compaction pass merges redundant trivial chains to improve board quality. Enabled via the `compact` parameter on `FillBoardIncremental`.
+After all arrows are placed and before finalization, a compaction pass merges redundant trivial chains to improve board quality.
 
 ### Problem
 
@@ -239,7 +239,7 @@ After `FinalizationMarker`, finalization builds the HashSet dependency graph inc
 
 `FillBoardIncremental` yields two sentinel objects between phases:
 
-- `CompactionMarker` — between generation and compaction (only when `compact = true`)
+- `CompactionMarker` — between generation and compaction
 - `FinalizationMarker` — between compaction (or generation) and finalization
 
 `GameController` detects these to switch progress phase, rebuild ArrowViews after compaction (compacted arrows replace the originals), and transition the progress bar smoothly.

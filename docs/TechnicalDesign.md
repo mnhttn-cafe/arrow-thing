@@ -144,7 +144,7 @@ This document is the implementation-facing counterpart to [`GDD.md`](GDD.md).
 ### `BoardGeneration` (`static class`)
 
 - Procedurally fills a `Board` with acyclic arrows.
-- Public entry points: `FillBoardIncremental(...)` (coroutine, yields once per arrow for caller-driven frame budgeting; optional post-process compaction merges trivial collinear chains; yields `CompactionMarker` then `FinalizationMarker` between phases) and `GenerateArrows(...)`.
+- Public entry points: `FillBoardIncremental(...)` (coroutine, yields once per arrow for caller-driven frame budgeting; post-process compaction merges trivial collinear chains; yields `CompactionMarker` then `FinalizationMarker` between phases) and `GenerateArrows(...)`.
 - Stateless — all persistent state (dependency graph, candidate pool) lives on `Board`.
 - Tail construction uses `GreedyWalk` — a linear-time random walk with no backtracking. Ray cells pre-marked in visited grid.
 - Cycle detection uses an early-abort BFS (`ComputeReachableSetEarlyAbort`) that integrates cycle checks inline: each newly discovered arrow is immediately tested via flat geometry arrays, aborting as soon as a cycle is found rather than computing the full transitive closure first.

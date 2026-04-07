@@ -389,8 +389,7 @@ public sealed class GameController : MonoBehaviour
         var generator = BoardGeneration.FillBoardIncremental(
             _board,
             _maxLen,
-            new System.Random(_activeSeed),
-            compact: true
+            new System.Random(_activeSeed)
         );
 
         // Progress is split across three phases:

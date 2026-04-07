@@ -12,10 +12,10 @@ public sealed class Board
     // For a cell (cx, cy), arrows whose ray crosses it are:
     //   Right-facing on row cy with head.X < cx, Left-facing on row cy with head.X > cx,
     //   Up-facing on col cx with head.Y < cy, Down-facing on col cx with head.Y > cy.
-    internal readonly List<Arrow>[] _rightHeadsByRow;
-    internal readonly List<Arrow>[] _leftHeadsByRow;
-    internal readonly List<Arrow>[] _upHeadsByCol;
-    internal readonly List<Arrow>[] _downHeadsByCol;
+    private readonly List<Arrow>[] _rightHeadsByRow;
+    private readonly List<Arrow>[] _leftHeadsByRow;
+    private readonly List<Arrow>[] _upHeadsByCol;
+    private readonly List<Arrow>[] _downHeadsByCol;
 
     // Generation candidate pool (null until InitializeForGeneration)
     internal List<ArrowHeadData> _availableArrowHeads;
