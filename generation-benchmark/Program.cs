@@ -19,7 +19,7 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "current+compact" };
+        string[] algorithms = { "current", "current+compact", "parallel", "parallel+compact" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -32,6 +32,8 @@ class Program
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
                 "current+compact" => "Current + Post-Process Compaction",
+                "parallel" => "Parallel Post-Processing (Finalize)",
+                "parallel+compact" => "Parallel Post-Processing (Compact + Finalize)",
                 "current+inline" => "Current + Inline Compaction (Replay)",
                 "current+true-inline" => "Current + True Inline Compaction",
                 "ranked" => "Ranked (Topological Ordering, Conservative)",
@@ -104,6 +106,12 @@ class Program
             case "current+true-inline":
                 (board, elapsedMs) = RunCurrentWithTrueInlineCompaction(width, height, maxLength, seed);
                 break;
+            case "parallel":
+                (board, elapsedMs) = RunParallel(width, height, maxLength, seed, compact: false);
+                break;
+            case "parallel+compact":
+                (board, elapsedMs) = RunParallel(width, height, maxLength, seed, compact: true);
+                break;
             case "layered":
                 (board, elapsedMs) = RunLayered(width, height, maxLength, seed);
                 break;
@@ -151,6 +159,16 @@ class Program
         var enumerator = BoardGeneration.FillBoardIncremental(board, maxLength, random);
         while (enumerator.MoveNext()) { }
 
+        sw.Stop();
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunParallel(int width, int height, int maxLength, int seed, bool compact)
+    {
+        var board = new Board(width, height);
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+        ParallelBoardGeneration.FillBoard(board, maxLength, random, compact: compact);
         sw.Stop();
         return (board, sw.Elapsed.TotalMilliseconds);
     }

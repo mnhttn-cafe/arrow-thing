@@ -21,5 +21,6 @@
     <Compile Include="RankedHybridGeneration.cs" />
     <Compile Include="TrivialChainCompactor.cs" />
     <Compile Include="InlineCompactGeneration.cs" />
+    <Compile Include="ParallelBoardGeneration.cs" />
   </ItemGroup>
 </Project>

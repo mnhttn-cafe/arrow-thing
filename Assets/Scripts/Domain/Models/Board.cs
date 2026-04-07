@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 public sealed class Board
 {
@@ -432,6 +433,62 @@ public sealed class Board
     {
         var iter = FinalizeGenerationIncremental();
         while (iter.MoveNext()) { }
+    }
+
+    /// <summary>
+    /// Parallel version of <see cref="FinalizeGeneration"/>. Uses Parallel.For for ray walking.
+    /// Not available on WebGL (no threading). Forward deps are computed in parallel per arrow,
+    /// then the reverse-dep index is built sequentially.
+    /// </summary>
+    internal void FinalizeGenerationParallel(int threadCount)
+    {
+        int count = _arrows.Count;
+        var forwardDeps = new List<Arrow>[count];
+
+        // Phase 1 (parallel): walk each arrow's forward ray
+        Parallel.For(0, count,
+            new ParallelOptions { MaxDegreeOfParallelism = threadCount },
+            i =>
+            {
+                Arrow arrow = _arrows[i];
+                var deps = new List<Arrow>();
+                (int dx, int dy) = Arrow.GetDirectionStep(arrow.HeadDirection);
+                int cx = arrow.HeadCell.X + dx, cy = arrow.HeadCell.Y + dy;
+                while (cx >= 0 && cx < Width && cy >= 0 && cy < Height)
+                {
+                    Arrow hit = _occupancy[cx, cy];
+                    if (hit != null && hit != arrow)
+                        deps.Add(hit);
+                    cx += dx; cy += dy;
+                }
+                forwardDeps[i] = deps;
+            }
+        );
+
+        // Phase 2 (sequential): build HashSet dicts from collected deps
+        foreach (Arrow arrow in _arrows)
+        {
+            _dependsOn[arrow] = new HashSet<Arrow>();
+            _dependedOnBy[arrow] = new HashSet<Arrow>();
+        }
+        for (int i = 0; i < count; i++)
+        {
+            Arrow arrow = _arrows[i];
+            foreach (Arrow dep in forwardDeps[i])
+            {
+                _dependsOn[arrow].Add(dep);
+                _dependedOnBy[dep].Add(arrow);
+            }
+        }
+
+        _depsBitsFlat = null;
+        _hasAnyDeps = null;
+        _depsNonZeroWords = null;
+        _depsNonZeroCount = null;
+        _genHeadX = null;
+        _genHeadY = null;
+        _genDir = null;
+        _availableArrowHeads = null;
     }
 
     public void RemoveArrow(Arrow arrow)
