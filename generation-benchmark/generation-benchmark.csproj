@@ -18,5 +18,6 @@
     <Compile Include="LayeredGeneration.cs" />
     <Compile Include="RepairGeneration.cs" />
     <Compile Include="RankedGeneration.cs" />
+    <Compile Include="RankedHybridGeneration.cs" />
   </ItemGroup>
 </Project>

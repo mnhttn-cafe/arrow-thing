@@ -23,7 +23,8 @@ class Program
             string label = algo switch
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
-                "ranked" => "Ranked (Topological Ordering + BFS Fallback)",
+                "ranked" => "Ranked (Topological Ordering, Conservative)",
+                "ranked-hybrid" => "Ranked Hybrid (Rank Fast-Path + BFS Fallback)",
                 "repair-random" => "Random Placement + Flip/Repair (Unbiased)",
                 "repair-biased" => "Random Placement + Flip/Repair (Edge-Biased)",
                 _ => algo,
@@ -88,6 +89,9 @@ class Program
             case "ranked":
                 (board, elapsedMs) = RunRanked(width, height, maxLength, seed);
                 break;
+            case "ranked-hybrid":
+                (board, elapsedMs) = RunRankedHybrid(width, height, maxLength, seed);
+                break;
             case "repair-random":
                 (board, elapsedMs) = RunRepair(width, height, maxLength, seed, biased: false);
                 break;
@@ -132,6 +136,19 @@ class Program
         var random = new Random(seed);
         var sw = Stopwatch.StartNew();
         var arrows = RankedGeneration.Generate(width, height, maxLength, random);
+        sw.Stop();
+
+        var board = new Board(width, height);
+        foreach (var a in arrows)
+            board.AddArrow(new Arrow(a.Cells));
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunRankedHybrid(int width, int height, int maxLength, int seed)
+    {
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+        var arrows = RankedHybridGeneration.Generate(width, height, maxLength, random);
         sw.Stop();
 
         var board = new Board(width, height);
