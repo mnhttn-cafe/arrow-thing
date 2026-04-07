@@ -15,5 +15,7 @@
     <Compile Include="../Assets/Scripts/Domain/Models/Board.cs" />
     <Compile Include="../Assets/Scripts/Domain/BoardGeneration.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="LayeredGeneration.cs" />
+    <Compile Include="RepairGeneration.cs" />
   </ItemGroup>
 </Project>

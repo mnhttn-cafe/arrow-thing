@@ -11,14 +11,28 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        // Warm up JIT
-        Console.WriteLine("Warming up...");
-        RunBenchmark("current", sizes[0], sizes[0], maxArrowLength, seed: 0);
+        string[] algorithms = { "current", "layered", "repair-random", "repair-biased" };
 
-        Console.WriteLine();
-        Console.WriteLine("=== Current Algorithm (Constructive) ===");
-        Console.WriteLine();
-        RunSuite("current", sizes, maxArrowLength, runsPerSize);
+        // Warm up JIT for all algorithms
+        Console.WriteLine("Warming up...");
+        foreach (string algo in algorithms)
+            RunBenchmark(algo, 20, 20, maxArrowLength, seed: 0);
+
+        foreach (string algo in algorithms)
+        {
+            string label = algo switch
+            {
+                "current" => "Current Algorithm (Constructive + Cycle Detection)",
+                "layered" => "Layered (No-Reverse-Deps, No Cycle Detection)",
+                "repair-random" => "Random Placement + SCC Repair (Unbiased)",
+                "repair-biased" => "Random Placement + SCC Repair (Edge-Biased)",
+                _ => algo,
+            };
+            Console.WriteLine();
+            Console.WriteLine($"=== {label} ===");
+            Console.WriteLine();
+            RunSuite(algo, sizes, maxArrowLength, runsPerSize);
+        }
     }
 
     static void RunSuite(string name, int[] sizes, int maxArrowLength, int runsPerSize)
@@ -68,6 +82,15 @@ class Program
             case "current":
                 (board, elapsedMs) = RunCurrentAlgorithm(width, height, maxLength, seed);
                 break;
+            case "layered":
+                (board, elapsedMs) = RunLayered(width, height, maxLength, seed);
+                break;
+            case "repair-random":
+                (board, elapsedMs) = RunRepair(width, height, maxLength, seed, biased: false);
+                break;
+            case "repair-biased":
+                (board, elapsedMs) = RunRepair(width, height, maxLength, seed, biased: true);
+                break;
             default:
                 throw new ArgumentException($"Unknown algorithm: {algorithm}");
         }
@@ -98,6 +121,32 @@ class Program
         while (enumerator.MoveNext()) { }
 
         sw.Stop();
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunLayered(int width, int height, int maxLength, int seed)
+    {
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+        var arrows = LayeredGeneration.Generate(width, height, maxLength, random);
+        sw.Stop();
+
+        var board = new Board(width, height);
+        foreach (var a in arrows)
+            board.AddArrow(new Arrow(a.Cells));
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunRepair(int width, int height, int maxLength, int seed, bool biased)
+    {
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+        var arrows = RepairGeneration.Generate(width, height, maxLength, random, biased);
+        sw.Stop();
+
+        var board = new Board(width, height);
+        foreach (var a in arrows)
+            board.AddArrow(new Arrow(a.Cells));
         return (board, sw.Elapsed.TotalMilliseconds);
     }
 
@@ -158,28 +207,39 @@ class Program
             deps[a] = depList;
         }
 
-        // DAG depth via memoized DFS
+        // DAG depth via iterative topological sort (Kahn's algorithm)
+        // Compute in-degree, then process in topological order
         var depth = new Dictionary<Arrow, int>();
-        int maxDepth = 0;
-
-        int GetDepth(Arrow a)
-        {
-            if (depth.TryGetValue(a, out int d))
-                return d;
-            int max = 0;
-            foreach (Arrow dep in deps[a])
-            {
-                int dd = GetDepth(dep) + 1;
-                if (dd > max) max = dd;
-            }
-            depth[a] = max;
-            return max;
-        }
-
+        var reverseDeps = new Dictionary<Arrow, List<Arrow>>();
+        var inDegree = new Dictionary<Arrow, int>();
         foreach (Arrow a in arrows)
         {
-            int d = GetDepth(a);
-            if (d > maxDepth) maxDepth = d;
+            depth[a] = 0;
+            inDegree[a] = deps[a].Count;
+            reverseDeps[a] = new List<Arrow>();
+        }
+        foreach (Arrow a in arrows)
+            foreach (Arrow dep in deps[a])
+                reverseDeps[dep].Add(a);
+
+        var queue = new Queue<Arrow>();
+        foreach (Arrow a in arrows)
+            if (inDegree[a] == 0) queue.Enqueue(a);
+
+        int maxDepth = 0;
+        while (queue.Count > 0)
+        {
+            var a = queue.Dequeue();
+            foreach (Arrow dependent in reverseDeps[a])
+            {
+                int candidate = depth[a] + 1;
+                if (candidate > depth[dependent])
+                    depth[dependent] = candidate;
+                inDegree[dependent]--;
+                if (inDegree[dependent] == 0)
+                    queue.Enqueue(dependent);
+            }
+            if (depth[a] > maxDepth) maxDepth = depth[a];
         }
 
         // Trivial chain detection: collinear same-direction arrows where one depends on the other
