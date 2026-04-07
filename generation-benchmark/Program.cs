@@ -11,7 +11,7 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "current+compact", "ranked", "ranked+inline" };
+        string[] algorithms = { "current", "current+compact", "current+inline", "ranked+inline" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -24,6 +24,7 @@ class Program
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
                 "current+compact" => "Current + Post-Process Compaction",
+                "current+inline" => "Current + Inline Compaction",
                 "ranked" => "Ranked (Topological Ordering, Conservative)",
                 "ranked+inline" => "Ranked + Inline Compaction",
                 "ranked-hybrid" => "Ranked Hybrid (Rank Fast-Path + BFS Fallback)",
@@ -88,6 +89,9 @@ class Program
             case "current+compact":
                 (board, elapsedMs) = RunCurrentWithCompaction(width, height, maxLength, seed);
                 break;
+            case "current+inline":
+                (board, elapsedMs) = RunCurrentWithInlineCompaction(width, height, maxLength, seed);
+                break;
             case "layered":
                 (board, elapsedMs) = RunLayered(width, height, maxLength, seed);
                 break;
@@ -137,6 +141,157 @@ class Program
 
         sw.Stop();
         return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunCurrentWithInlineCompaction(int width, int height, int maxLength, int seed)
+    {
+        // Phase 1: Generate using the current algorithm to get the arrow list
+        var genBoard = new Board(width, height);
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+
+        var enumerator = BoardGeneration.FillBoardIncremental(genBoard, maxLength, random);
+        // Collect arrows in placement order
+        var placementOrder = new List<Arrow>();
+        int prevCount = 0;
+        while (enumerator.MoveNext())
+        {
+            if (genBoard.Arrows.Count > prevCount)
+            {
+                placementOrder.Add(genBoard.Arrows[genBoard.Arrows.Count - 1]);
+                prevCount = genBoard.Arrows.Count;
+            }
+        }
+
+        // Phase 2: Replay arrows through inline compaction using raw occupancy
+        var occupancy = new Arrow[width, height];
+        var placed = new List<Arrow>();
+        var rightByRow = new List<Arrow>[height];
+        var leftByRow = new List<Arrow>[height];
+        for (int y = 0; y < height; y++) { rightByRow[y] = new List<Arrow>(); leftByRow[y] = new List<Arrow>(); }
+        var upByCol = new List<Arrow>[width];
+        var downByCol = new List<Arrow>[width];
+        for (int x = 0; x < width; x++) { upByCol[x] = new List<Arrow>(); downByCol[x] = new List<Arrow>(); }
+
+        foreach (var original in placementOrder)
+        {
+            var arrow = new Arrow(original.Cells);
+            Place(arrow, placed, occupancy, rightByRow, leftByRow, upByCol, downByCol);
+            TryInlineCompact(arrow, placed, occupancy, width, height, rightByRow, leftByRow, upByCol, downByCol);
+        }
+
+        sw.Stop();
+
+        // Build final Board for analysis
+        var board = new Board(width, height);
+        foreach (var a in placed)
+            board.AddArrow(new Arrow(a.Cells));
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    private static void Place(Arrow arrow, List<Arrow> placed, Arrow[,] occupancy,
+        List<Arrow>[] rightByRow, List<Arrow>[] leftByRow, List<Arrow>[] upByCol, List<Arrow>[] downByCol)
+    {
+        placed.Add(arrow);
+        foreach (var c in arrow.Cells) occupancy[c.X, c.Y] = arrow;
+        switch (arrow.HeadDirection)
+        {
+            case Arrow.Direction.Right: rightByRow[arrow.HeadCell.Y].Add(arrow); break;
+            case Arrow.Direction.Left: leftByRow[arrow.HeadCell.Y].Add(arrow); break;
+            case Arrow.Direction.Up: upByCol[arrow.HeadCell.X].Add(arrow); break;
+            case Arrow.Direction.Down: downByCol[arrow.HeadCell.X].Add(arrow); break;
+        }
+    }
+
+    private static void Unplace(Arrow arrow, List<Arrow> placed, Arrow[,] occupancy,
+        List<Arrow>[] rightByRow, List<Arrow>[] leftByRow, List<Arrow>[] upByCol, List<Arrow>[] downByCol)
+    {
+        placed.Remove(arrow);
+        foreach (var c in arrow.Cells) occupancy[c.X, c.Y] = null;
+        switch (arrow.HeadDirection)
+        {
+            case Arrow.Direction.Right: rightByRow[arrow.HeadCell.Y].Remove(arrow); break;
+            case Arrow.Direction.Left: leftByRow[arrow.HeadCell.Y].Remove(arrow); break;
+            case Arrow.Direction.Up: upByCol[arrow.HeadCell.X].Remove(arrow); break;
+            case Arrow.Direction.Down: downByCol[arrow.HeadCell.X].Remove(arrow); break;
+        }
+    }
+
+    private static void TryInlineCompact(Arrow newArrow, List<Arrow> placed, Arrow[,] occupancy,
+        int width, int height,
+        List<Arrow>[] rightByRow, List<Arrow>[] leftByRow, List<Arrow>[] upByCol, List<Arrow>[] downByCol)
+    {
+        // Check forward deps: arrows in newArrow's ray
+        {
+            (int dx, int dy) = Arrow.GetDirectionStep(newArrow.HeadDirection);
+            int cx = newArrow.HeadCell.X + dx, cy = newArrow.HeadCell.Y + dy;
+            while (cx >= 0 && cx < width && cy >= 0 && cy < height)
+            {
+                Arrow blocker = occupancy[cx, cy];
+                if (blocker != null && blocker != newArrow && CanMerge(blocker, newArrow))
+                {
+                    var merged = DoMerge(blocker, newArrow);
+                    Unplace(newArrow, placed, occupancy, rightByRow, leftByRow, upByCol, downByCol);
+                    Unplace(blocker, placed, occupancy, rightByRow, leftByRow, upByCol, downByCol);
+                    Place(merged, placed, occupancy, rightByRow, leftByRow, upByCol, downByCol);
+                    newArrow = merged;
+                    (dx, dy) = Arrow.GetDirectionStep(newArrow.HeadDirection);
+                    cx = newArrow.HeadCell.X + dx;
+                    cy = newArrow.HeadCell.Y + dy;
+                    continue;
+                }
+                cx += dx; cy += dy;
+            }
+        }
+
+        // Check reverse deps: arrows whose rays pass through newArrow's cells
+        foreach (var cell in newArrow.Cells)
+        {
+            int cx = cell.X, cy = cell.Y;
+            Arrow dep = null;
+            foreach (var a in rightByRow[cy])
+                if (a != newArrow && a.HeadCell.X < cx && CanMerge(newArrow, a)) { dep = a; break; }
+            if (dep == null) foreach (var a in leftByRow[cy])
+                if (a != newArrow && a.HeadCell.X > cx && CanMerge(newArrow, a)) { dep = a; break; }
+            if (dep == null) foreach (var a in upByCol[cx])
+                if (a != newArrow && a.HeadCell.Y < cy && CanMerge(newArrow, a)) { dep = a; break; }
+            if (dep == null) foreach (var a in downByCol[cx])
+                if (a != newArrow && a.HeadCell.Y > cy && CanMerge(newArrow, a)) { dep = a; break; }
+
+            if (dep != null)
+            {
+                var merged = DoMerge(newArrow, dep);
+                Unplace(dep, placed, occupancy, rightByRow, leftByRow, upByCol, downByCol);
+                Unplace(newArrow, placed, occupancy, rightByRow, leftByRow, upByCol, downByCol);
+                Place(merged, placed, occupancy, rightByRow, leftByRow, upByCol, downByCol);
+                newArrow = merged;
+                break;
+            }
+        }
+    }
+
+    private static bool CanMerge(Arrow blocker, Arrow dependent)
+    {
+        if (blocker.HeadDirection != dependent.HeadDirection) return false;
+        bool collinear = blocker.HeadDirection switch
+        {
+            Arrow.Direction.Right or Arrow.Direction.Left => blocker.HeadCell.Y == dependent.HeadCell.Y,
+            Arrow.Direction.Up or Arrow.Direction.Down => blocker.HeadCell.X == dependent.HeadCell.X,
+            _ => false,
+        };
+        if (!collinear) return false;
+        Cell bt = blocker.Cells[blocker.Cells.Count - 1];
+        Cell dh = dependent.HeadCell;
+        int adx = Math.Abs(bt.X - dh.X), ady = Math.Abs(bt.Y - dh.Y);
+        return (adx == 1 && ady == 0) || (adx == 0 && ady == 1);
+    }
+
+    private static Arrow DoMerge(Arrow blocker, Arrow dependent)
+    {
+        var cells = new List<Cell>(blocker.Cells.Count + dependent.Cells.Count);
+        cells.AddRange(blocker.Cells);
+        cells.AddRange(dependent.Cells);
+        return new Arrow(cells);
     }
 
     static (Board board, double elapsedMs) RunRankedInline(int width, int height, int maxLength, int seed)
