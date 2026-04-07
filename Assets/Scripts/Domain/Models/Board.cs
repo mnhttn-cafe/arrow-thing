@@ -12,10 +12,10 @@ public sealed class Board
     // For a cell (cx, cy), arrows whose ray crosses it are:
     //   Right-facing on row cy with head.X < cx, Left-facing on row cy with head.X > cx,
     //   Up-facing on col cx with head.Y < cy, Down-facing on col cx with head.Y > cy.
-    private readonly List<Arrow>[] _rightHeadsByRow;
-    private readonly List<Arrow>[] _leftHeadsByRow;
-    private readonly List<Arrow>[] _upHeadsByCol;
-    private readonly List<Arrow>[] _downHeadsByCol;
+    internal readonly List<Arrow>[] _rightHeadsByRow;
+    internal readonly List<Arrow>[] _leftHeadsByRow;
+    internal readonly List<Arrow>[] _upHeadsByCol;
+    internal readonly List<Arrow>[] _downHeadsByCol;
 
     // Generation candidate pool (null until InitializeForGeneration)
     internal List<ArrowHeadData> _availableArrowHeads;
@@ -251,6 +251,41 @@ public sealed class Board
         AddToRayIndex(arrow);
 
         // Candidate pruning is handled lazily in TryGenerateArrow via occupancy checks
+    }
+
+    /// <summary>
+    /// Removes an arrow during generation: clears occupancy, ray index, and bitset deps.
+    /// The generation index becomes dead (wasted slot). Used by inline compaction.
+    /// </summary>
+    internal void RemoveArrowForGeneration(Arrow arrow)
+    {
+        int deadIdx = arrow._generationIndex;
+
+        // Clear occupancy
+        foreach (Cell c in arrow.Cells)
+            _occupancy[c.X, c.Y] = null;
+        OccupiedCellCount -= arrow.Cells.Count;
+
+        // Remove from collections
+        _arrows.Remove(arrow);
+        _arrowSet.Remove(arrow);
+
+        // Remove from ray index
+        RemoveFromRayIndex(arrow);
+
+        // Zero the dead arrow's dep row
+        System.Array.Clear(_depsBitsFlat, deadIdx * _bitsetWords, _bitsetWords);
+        _hasAnyDeps[deadIdx] = false;
+        _depsNonZeroCount[deadIdx] = 0;
+
+        // Clear dead arrow's bit from all other arrows' dep rows
+        int word = deadIdx >> 6;
+        ulong mask = ~(1UL << (deadIdx & 63));
+        for (int i = 0; i < _nextGenIndex; i++)
+            _depsBitsFlat[i * _bitsetWords + word] &= mask;
+
+        // Mark as dead
+        arrow._generationIndex = -1;
     }
 
     /// <summary>

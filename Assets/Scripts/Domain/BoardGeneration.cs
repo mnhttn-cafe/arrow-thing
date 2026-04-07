@@ -53,7 +53,7 @@ public static class BoardGeneration
     /// </summary>
     public static readonly object FinalizationMarker = new object();
 
-    public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random)
+    public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random, bool compactInline = false)
     {
         board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
@@ -70,6 +70,14 @@ public static class BoardGeneration
             board.AddArrowForGeneration(arrow!);
             ctx.EnsureCapacity(board._bitsetWords);
             ctx.activeWords = (board._nextGenIndex + 63) >> 6;
+
+            if (compactInline)
+            {
+                TryInlineCompact(board, arrow!, ctx);
+                ctx.EnsureCapacity(board._bitsetWords);
+                ctx.activeWords = (board._nextGenIndex + 63) >> 6;
+            }
+
             created++;
             yield return null;
         }
@@ -533,6 +541,112 @@ public static class BoardGeneration
             Arrow.Direction.Down => cx == ax && cy < ay,
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// Inline compaction: after placing an arrow, check if it can be merged with
+    /// a collinear same-direction adjacent forward or reverse dependency.
+    /// Merging removes both arrows and places the merged result, which gets a new
+    /// generation index and fresh bitset deps for subsequent cycle detection.
+    /// </summary>
+    private static void TryInlineCompact(Board board, Arrow newArrow, GenerationContext ctx)
+    {
+        bool merged = true;
+        while (merged)
+        {
+            merged = false;
+
+            // Forward deps: arrows in newArrow's ray (newArrow depends on them)
+            (int dx, int dy) = Arrow.GetDirectionStep(newArrow.HeadDirection);
+            int cx = newArrow.HeadCell.X + dx, cy = newArrow.HeadCell.Y + dy;
+            while (cx >= 0 && cx < board.Width && cy >= 0 && cy < board.Height)
+            {
+                Arrow blocker = board._occupancy[cx, cy];
+                if (blocker != null && blocker != newArrow &&
+                    CanMergeForCompaction(blocker, newArrow))
+                {
+                    var mergedArrow = MergeArrows(blocker, newArrow);
+                    board.RemoveArrowForGeneration(newArrow);
+                    board.RemoveArrowForGeneration(blocker);
+                    board.AddArrowForGeneration(mergedArrow);
+                    ctx.EnsureCapacity(board._bitsetWords);
+                    newArrow = mergedArrow;
+                    merged = true;
+                    break;
+                }
+                cx += dx; cy += dy;
+            }
+            if (merged) continue;
+
+            // Reverse deps: arrows whose rays cross newArrow's cells (they depend on newArrow)
+            for (int i = 0; i < newArrow.Cells.Count; i++)
+            {
+                Cell cell = newArrow.Cells[i];
+                Arrow dep = FindReverseMergeCandidate(board, newArrow, cell);
+                if (dep != null)
+                {
+                    var mergedArrow = MergeArrows(newArrow, dep);
+                    board.RemoveArrowForGeneration(dep);
+                    board.RemoveArrowForGeneration(newArrow);
+                    board.AddArrowForGeneration(mergedArrow);
+                    ctx.EnsureCapacity(board._bitsetWords);
+                    newArrow = mergedArrow;
+                    merged = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks if two arrows can be merged: same direction, collinear,
+    /// and blocker's tail is adjacent to dependent's head.
+    /// </summary>
+    private static bool CanMergeForCompaction(Arrow blocker, Arrow dependent)
+    {
+        if (blocker.HeadDirection != dependent.HeadDirection) return false;
+        bool collinear = blocker.HeadDirection switch
+        {
+            Arrow.Direction.Right or Arrow.Direction.Left =>
+                blocker.HeadCell.Y == dependent.HeadCell.Y,
+            Arrow.Direction.Up or Arrow.Direction.Down =>
+                blocker.HeadCell.X == dependent.HeadCell.X,
+            _ => false,
+        };
+        if (!collinear) return false;
+
+        Cell blockerTail = blocker.Cells[blocker.Cells.Count - 1];
+        Cell dependentHead = dependent.HeadCell;
+        int adx = Math.Abs(blockerTail.X - dependentHead.X);
+        int ady = Math.Abs(blockerTail.Y - dependentHead.Y);
+        return (adx == 1 && ady == 0) || (adx == 0 && ady == 1);
+    }
+
+    /// <summary>
+    /// Finds an arrow whose ray crosses the given cell and that can be merged
+    /// with blocker (blocker is the blocking arrow, the found arrow is the dependent).
+    /// </summary>
+    private static Arrow FindReverseMergeCandidate(Board board, Arrow blocker, Cell cell)
+    {
+        int cx = cell.X, cy = cell.Y;
+        foreach (Arrow a in board._rightHeadsByRow[cy])
+            if (a != blocker && a.HeadCell.X < cx && CanMergeForCompaction(blocker, a)) return a;
+        foreach (Arrow a in board._leftHeadsByRow[cy])
+            if (a != blocker && a.HeadCell.X > cx && CanMergeForCompaction(blocker, a)) return a;
+        foreach (Arrow a in board._upHeadsByCol[cx])
+            if (a != blocker && a.HeadCell.Y < cy && CanMergeForCompaction(blocker, a)) return a;
+        foreach (Arrow a in board._downHeadsByCol[cx])
+            if (a != blocker && a.HeadCell.Y > cy && CanMergeForCompaction(blocker, a)) return a;
+        return null;
+    }
+
+    /// <summary>Creates a merged arrow: blocker cells followed by dependent cells.</summary>
+    private static Arrow MergeArrows(Arrow blocker, Arrow dependent)
+    {
+        var cells = new List<Cell>(blocker.Cells.Count + dependent.Cells.Count);
+        for (int i = 0; i < blocker.Cells.Count; i++) cells.Add(blocker.Cells[i]);
+        for (int i = 0; i < dependent.Cells.Count; i++) cells.Add(dependent.Cells[i]);
+        return new Arrow(cells);
     }
 
     /// <summary>Swap-and-pop removal: O(1) instead of O(N) list shift.</summary>

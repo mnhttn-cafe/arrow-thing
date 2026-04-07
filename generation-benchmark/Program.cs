@@ -11,7 +11,7 @@ class Program
         int maxArrowLength = 20;
         int runsPerSize = 5;
 
-        string[] algorithms = { "current", "current+compact", "current+inline", "ranked+inline" };
+        string[] algorithms = { "current", "current+compact", "current+inline", "current+true-inline", "ranked+inline" };
 
         // Warm up JIT for all algorithms
         Console.WriteLine("Warming up...");
@@ -24,7 +24,8 @@ class Program
             {
                 "current" => "Current Algorithm (Constructive + Cycle Detection)",
                 "current+compact" => "Current + Post-Process Compaction",
-                "current+inline" => "Current + Inline Compaction",
+                "current+inline" => "Current + Inline Compaction (Replay)",
+                "current+true-inline" => "Current + True Inline Compaction",
                 "ranked" => "Ranked (Topological Ordering, Conservative)",
                 "ranked+inline" => "Ranked + Inline Compaction",
                 "ranked-hybrid" => "Ranked Hybrid (Rank Fast-Path + BFS Fallback)",
@@ -92,6 +93,9 @@ class Program
             case "current+inline":
                 (board, elapsedMs) = RunCurrentWithInlineCompaction(width, height, maxLength, seed);
                 break;
+            case "current+true-inline":
+                (board, elapsedMs) = RunCurrentWithTrueInlineCompaction(width, height, maxLength, seed);
+                break;
             case "layered":
                 (board, elapsedMs) = RunLayered(width, height, maxLength, seed);
                 break;
@@ -137,6 +141,19 @@ class Program
         var sw = Stopwatch.StartNew();
 
         var enumerator = BoardGeneration.FillBoardIncremental(board, maxLength, random);
+        while (enumerator.MoveNext()) { }
+
+        sw.Stop();
+        return (board, sw.Elapsed.TotalMilliseconds);
+    }
+
+    static (Board board, double elapsedMs) RunCurrentWithTrueInlineCompaction(int width, int height, int maxLength, int seed)
+    {
+        var board = new Board(width, height);
+        var random = new Random(seed);
+        var sw = Stopwatch.StartNew();
+
+        var enumerator = BoardGeneration.FillBoardIncremental(board, maxLength, random, compactInline: true);
         while (enumerator.MoveNext()) { }
 
         sw.Stop();
