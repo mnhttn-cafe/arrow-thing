@@ -60,8 +60,8 @@ public static class ParallelBoardGeneration
         if (compact)
             CompactParallel(board, threadCount);
 
-        // Phase 3: Parallel finalization
-        board.FinalizeGenerationParallel(threadCount);
+        // Phase 3: Finalization (sequential — parallel ray walking gave only modest gains)
+        board.FinalizeGeneration();
     }
 
     /// <summary>
