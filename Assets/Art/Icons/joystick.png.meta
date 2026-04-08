@@ -1,13 +1,10 @@
 fileFormatVersion: 2
-guid: 311eddfa7cdc31d4c983c9722cae17d1
+guid: 3b7be78e867dd094fb76b78b6cd433f7
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -5975938820719141926
-    second: logout_0
-  - first:
-      213: 2282891400840467557
-    second: logout_1
+      213: -4024710785952163994
+    second: controller_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -129,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: logout_0
+      name: controller_0
       rect:
         serializedVersion: 2
         x: 15
-        y: 15
-        width: 50
-        height: 98
+        y: 9
+        width: 98
+        height: 115
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -144,30 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: adb919fed43311da0800000000000000
-      internalID: -5975938820719141926
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: logout_1
-      rect:
-        serializedVersion: 2
-        x: 47
-        y: 40
-        width: 66
-        height: 49
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 564d3ef32a57eaf10800000000000000
-      internalID: 2282891400840467557
+      spriteID: 66753af2dda5528c0800000000000000
+      internalID: -4024710785952163994
       vertices: []
       indices: 
       edges: []

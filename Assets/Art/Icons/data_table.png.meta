@@ -1,13 +1,16 @@
 fileFormatVersion: 2
-guid: c5ff9a1452c2f1145aa8bce0fa5a0839
+guid: bc3e30d3ef247054cb7035e75ccc6dc8
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1837247311818370628
-    second: cloud_off_0
+      213: 7002747004422792305
+    second: data_0
   - first:
-      213: 3412016848490477412
-    second: cloud_off_1
+      213: 2472752116854624518
+    second: data_1
+  - first:
+      213: -7027689488219440558
+    second: data_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -129,13 +132,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: cloud_off_0
+      name: data_0
       rect:
         serializedVersion: 2
-        x: 4
-        y: 6
-        width: 112
-        height: 108
+        x: 15
+        y: 83
+        width: 98
+        height: 25
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -144,20 +147,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 44ea97922b63f7910800000000000000
-      internalID: 1837247311818370628
+      spriteID: 1742d826c41ce2160800000000000000
+      internalID: 7002747004422792305
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: cloud_off_1
+      name: data_1
       rect:
         serializedVersion: 2
-        x: 41
-        y: 26
-        width: 83
-        height: 80
+        x: 15
+        y: 51
+        width: 98
+        height: 26
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -166,8 +169,30 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4673cedfe3be95f20800000000000000
-      internalID: 3412016848490477412
+      spriteID: 60117b6f2faf05220800000000000000
+      internalID: 2472752116854624518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: data_2
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 20
+        width: 98
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25afeee05a1a87e90800000000000000
+      internalID: -7027689488219440558
       vertices: []
       indices: 
       edges: []

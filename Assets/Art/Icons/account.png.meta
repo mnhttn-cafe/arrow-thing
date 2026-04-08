@@ -1,13 +1,13 @@
 fileFormatVersion: 2
-guid: e506622c33a571b4e88e192749ac051a
+guid: 6bef617b56041a242a393595168658f6
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -5869978824747473973
-    second: account_icon_0
+      213: -9183244194539839575
+    second: account_0
   - first:
-      213: -4630872031876514867
-    second: account_icon_1
+      213: 8223804530028049943
+    second: account_1
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -43,9 +43,9 @@ TextureImporter:
     filterMode: 1
     aniso: 1
     mipBias: 0
-    wrapU: 1
-    wrapV: 1
-    wrapW: 1
+    wrapU: 0
+    wrapV: 0
+    wrapW: 0
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
@@ -129,7 +129,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: account_icon_0
+      name: account_0
       rect:
         serializedVersion: 2
         x: 43
@@ -144,14 +144,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: bc3acdffb55a98ea0800000000000000
-      internalID: -5869978824747473973
+      spriteID: 9afd8ca5f009e8080800000000000000
+      internalID: -9183244194539839575
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: account_icon_1
+      name: account_1
       rect:
         serializedVersion: 2
         x: 20
@@ -166,8 +166,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: dcb75b32c66dbbfb0800000000000000
-      internalID: -4630872031876514867
+      spriteID: 716f19206a2d02270800000000000000
+      internalID: 8223804530028049943
       vertices: []
       indices: 
       edges: []
@@ -185,9 +185,7 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable:
-      account_icon_0: -5869978824747473973
-      account_icon_1: -4630872031876514867
+    nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
