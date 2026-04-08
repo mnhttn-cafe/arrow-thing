@@ -16,8 +16,7 @@ using UnityEngine.UIElements;
 /// The TextField is never set to <c>isReadOnly</c>.  On WebGL mobile, a
 /// readonly HTML input suppresses the virtual keyboard even after the
 /// flag is cleared, because the DOM attribute removal hasn't flushed by
-/// the time <c>.focus()</c> fires.  Instead, edits while not in edit
-/// mode are silently reverted via a <c>ChangeEvent</c> guard.
+/// the time <c>.focus()</c> fires.
 /// </summary>
 public sealed class EditableLabel
 {
