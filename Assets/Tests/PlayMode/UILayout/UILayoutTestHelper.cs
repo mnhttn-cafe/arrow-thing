@@ -176,7 +176,10 @@ public static class UILayoutTestHelper
         if (root.resolvedStyle.opacity < 0.01f)
             return;
 
-        bool isLeaf = root.childCount == 0 || root is Label || root is Button;
+        // Treat overflow-hidden containers as leaves — their children are visually
+        // clipped to the container bounds, so only the container itself matters.
+        bool clips = root.style.overflow.value == Overflow.Hidden && !(root is ScrollView);
+        bool isLeaf = root.childCount == 0 || root is Label || root is Button || clips;
 
         if (isLeaf)
         {

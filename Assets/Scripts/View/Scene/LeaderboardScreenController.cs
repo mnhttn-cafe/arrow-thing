@@ -68,8 +68,14 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     // Drag-to-scroll state
     private bool _isDragScrolling;
+    private bool _dragPending;
     private float _dragScrollStartY;
     private float _dragScrollStartValue;
+    private Vector2 _dragStartPosition;
+    private float _dragThreshold;
+
+    // Entry selection
+    private VisualElement _selectedRow;
 
     // Global leaderboard cache — avoids re-fetching on every tab switch
     private readonly (GlobalLeaderboardResponse lb, PlayerEntryResponse me)?[] _globalCache = new (
@@ -109,6 +115,11 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     protected override void BuildUI(VisualElement root)
     {
+        _dragThreshold = PlayerPrefs.GetFloat(
+            GameSettings.DragThresholdPrefKey,
+            GameSettings.DefaultDragThreshold
+        );
+
         _list = root.Q("lb-list");
         _scroll = root.Q<ScrollView>("lb-scroll");
         _emptyLabel = root.Q<Label>("lb-empty");
@@ -184,7 +195,11 @@ public sealed class LeaderboardScreenController : NavigableScene
         _scroll.RegisterCallback<PointerDownEvent>(OnScrollPointerDown);
         _scroll.RegisterCallback<PointerMoveEvent>(OnScrollPointerMove);
         _scroll.RegisterCallback<PointerUpEvent>(OnScrollPointerUp);
-        _scroll.RegisterCallback<PointerCaptureOutEvent>(_ => _isDragScrolling = false);
+        _scroll.RegisterCallback<PointerCaptureOutEvent>(_ =>
+        {
+            _isDragScrolling = false;
+            _dragPending = false;
+        });
 
         root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
     }
@@ -447,6 +462,8 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     private void RefreshList()
     {
+        _selectedRow = null;
+
         if (_isGlobalView)
         {
             RefreshGlobalList();
@@ -558,15 +575,24 @@ public sealed class LeaderboardScreenController : NavigableScene
             row.Add(sizeLabel);
         }
 
-        // Time
-        var timeLabel = new Label(FormatTime(entry.solveTime));
+        // Time (compact format on All tab)
+        string timeText = showSize
+            ? FormatCompactTime(entry.solveTime)
+            : FormatTime(entry.solveTime);
+        var timeLabel = new Label(timeText);
         timeLabel.AddToClassList("lb-time");
+        if (showSize)
+            timeLabel.AddToClassList("lb-time--compact");
         row.Add(timeLabel);
 
-        // Display name (always present for flex-grow spacing even when empty)
+        // Display name — wrapped for horizontal auto-scroll on overflow
+        var nameWrapper = new VisualElement();
+        nameWrapper.AddToClassList("lb-name-wrapper");
         var nameLabel = new Label(entry.displayName ?? "");
         nameLabel.AddToClassList("lb-name");
-        row.Add(nameLabel);
+        nameWrapper.Add(nameLabel);
+        row.Add(nameWrapper);
+        RegisterNameScroll(nameWrapper, nameLabel);
 
         // Date (relative text, tooltip shows exact date+time)
         var dateLabel = new Label(FormatRelativeDate(entry.completedAt));
@@ -687,34 +713,81 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     private void OnScrollPointerDown(PointerDownEvent evt)
     {
-        // Dismiss context menu if open (StopPropagation prevents OnRootPointerDown)
         DismissContextMenu();
 
-        // Only drag-scroll when content overflows the viewport
-        if (_scroll.verticalScroller.highValue <= 0)
+        // Let row buttons handle their own pointer events
+        if (IsRowButton(evt.target as VisualElement))
             return;
 
-        _isDragScrolling = true;
+        _dragStartPosition = evt.position;
         _dragScrollStartY = evt.position.y;
         _dragScrollStartValue = _scroll.verticalScroller.value;
-        _scroll.CapturePointer(evt.pointerId);
-        evt.StopPropagation();
+        _isDragScrolling = false;
+
+        // Only enable drag-scroll when content overflows
+        if (_scroll.verticalScroller.highValue > 0)
+        {
+            _dragPending = true;
+            _scroll.CapturePointer(evt.pointerId);
+            evt.StopPropagation();
+        }
+        else
+        {
+            _dragPending = true;
+        }
     }
 
     private void OnScrollPointerMove(PointerMoveEvent evt)
     {
-        if (!_isDragScrolling)
+        if (!_dragPending && !_isDragScrolling)
             return;
-        float delta = _dragScrollStartY - evt.position.y;
-        _scroll.verticalScroller.value = _dragScrollStartValue + delta;
+
+        if (_dragPending && !_isDragScrolling)
+        {
+            float delta = Mathf.Abs(evt.position.y - _dragScrollStartY);
+            if (delta > _dragThreshold)
+            {
+                _isDragScrolling = true;
+                _dragPending = false;
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        if (_isDragScrolling)
+        {
+            float scrollDelta = _dragScrollStartY - evt.position.y;
+            _scroll.verticalScroller.value = _dragScrollStartValue + scrollDelta;
+        }
     }
 
     private void OnScrollPointerUp(PointerUpEvent evt)
     {
-        if (!_isDragScrolling)
-            return;
+        bool wasDragging = _isDragScrolling;
+        bool wasPending = _dragPending;
+
         _isDragScrolling = false;
+        _dragPending = false;
         _scroll.ReleasePointer(evt.pointerId);
+
+        if (wasPending && !wasDragging)
+        {
+            // Was a tap — select the entry
+            SelectEntryAtPosition(_dragStartPosition);
+        }
+    }
+
+    private static bool IsRowButton(VisualElement target)
+    {
+        while (target != null)
+        {
+            if (target is Button btn && btn.ClassListContains("lb-row-btn"))
+                return true;
+            target = target.parent;
+        }
+        return false;
     }
 
     private void OnRootPointerDown(PointerDownEvent evt)
@@ -991,15 +1064,22 @@ public sealed class LeaderboardScreenController : NavigableScene
             row.Add(sizeLabel);
         }
 
-        // Time
-        var timeLabel = new Label(FormatTime(entry.time));
+        // Time (compact format on All tab)
+        string timeText = showSize ? FormatCompactTime(entry.time) : FormatTime(entry.time);
+        var timeLabel = new Label(timeText);
         timeLabel.AddToClassList("lb-time");
+        if (showSize)
+            timeLabel.AddToClassList("lb-time--compact");
         row.Add(timeLabel);
 
-        // Display name
+        // Display name — wrapped for horizontal auto-scroll on overflow
+        var nameWrapper = new VisualElement();
+        nameWrapper.AddToClassList("lb-name-wrapper");
         var nameLabel = new Label(entry.displayName ?? "");
         nameLabel.AddToClassList("lb-name");
-        row.Add(nameLabel);
+        nameWrapper.Add(nameLabel);
+        row.Add(nameWrapper);
+        RegisterNameScroll(nameWrapper, nameLabel);
 
         // Play button (replay)
         string capturedGameId = entry.gameId;
@@ -1592,6 +1672,97 @@ public sealed class LeaderboardScreenController : NavigableScene
         }
     }
 
+    // --- Entry selection ---
+
+    private void SelectEntry(VisualElement row)
+    {
+        if (_selectedRow == row)
+            return;
+
+        if (_selectedRow != null)
+        {
+            _selectedRow.RemoveFromClassList("lb-entry--selected");
+            ResetNameScroll(_selectedRow);
+        }
+
+        _selectedRow = row;
+
+        if (row != null)
+        {
+            row.AddToClassList("lb-entry--selected");
+            StartNameScroll(row);
+        }
+    }
+
+    private void SelectEntryAtPosition(Vector2 position)
+    {
+        foreach (var child in _list.Children())
+        {
+            if (child.worldBound.Contains(position))
+            {
+                SelectEntry(child);
+                return;
+            }
+        }
+        SelectEntry(null);
+    }
+
+    // --- Name auto-scroll on hover / select ---
+
+    private void RegisterNameScroll(VisualElement wrapper, Label label)
+    {
+        wrapper.RegisterCallback<PointerEnterEvent>(_ => StartNameScrollLabel(wrapper, label));
+        wrapper.RegisterCallback<PointerLeaveEvent>(_ =>
+        {
+            // Keep scrolled if the entry is selected
+            var row = wrapper.parent;
+            if (row != null && row.ClassListContains("lb-entry--selected"))
+                return;
+            ResetNameScrollLabel(label);
+        });
+    }
+
+    private void StartNameScroll(VisualElement row)
+    {
+        var wrapper = row.Q(className: "lb-name-wrapper");
+        var label = wrapper?.Q<Label>(className: "lb-name");
+        if (wrapper != null && label != null)
+            StartNameScrollLabel(wrapper, label);
+    }
+
+    private void ResetNameScroll(VisualElement row)
+    {
+        var label = row.Q<Label>(className: "lb-name");
+        if (label != null)
+            ResetNameScrollLabel(label);
+    }
+
+    private static void StartNameScrollLabel(VisualElement wrapper, Label label)
+    {
+        float textWidth = label.resolvedStyle.width;
+        float containerWidth = wrapper.contentRect.width;
+        float overflow = textWidth - containerWidth;
+        if (overflow <= 0)
+            return;
+
+        float duration = Mathf.Max(0.5f, overflow / 60f);
+        label.style.transitionDuration = new StyleList<TimeValue>(
+            new List<TimeValue> { new TimeValue(duration, TimeUnit.Second) }
+        );
+        label.style.translate = new Translate(
+            new Length(-overflow, LengthUnit.Pixel),
+            new Length(0)
+        );
+    }
+
+    private static void ResetNameScrollLabel(Label label)
+    {
+        label.style.transitionDuration = new StyleList<TimeValue>(
+            new List<TimeValue> { new TimeValue(0.3f, TimeUnit.Second) }
+        );
+        label.style.translate = new Translate(new Length(0), new Length(0));
+    }
+
     // --- Toast ---
 
     private void ShowToast(string message, float autoHideSeconds = 0f)
@@ -1646,6 +1817,26 @@ public sealed class LeaderboardScreenController : NavigableScene
         if (mins > 0)
             return $"{mins}:{secs:D2}.{millis:D3}";
         return $"{secs}.{millis:D3}";
+    }
+
+    /// <summary>
+    /// Compact time format for the All tab — drops millisecond precision.
+    /// Under 1 minute: "45s". Under 1 hour: "12m 34s". Over 1 hour: "1h 23m".
+    /// </summary>
+    private static string FormatCompactTime(double seconds)
+    {
+        if (seconds < 0)
+            seconds = 0;
+        int totalSecs = (int)seconds;
+        if (totalSecs < 60)
+            return $"{totalSecs}s";
+        int mins = totalSecs / 60;
+        int secs = totalSecs % 60;
+        if (mins < 60)
+            return $"{mins}m {secs:D2}s";
+        int hours = mins / 60;
+        mins %= 60;
+        return $"{hours}h {mins:D2}m";
     }
 
     private static string FormatRelativeDate(string iso8601)
