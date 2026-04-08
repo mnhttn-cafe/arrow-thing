@@ -68,6 +68,13 @@ public sealed class LabeledField
             }
         });
 
+        // When the TextField gains focus (click or keyboard), suppress shortcuts.
+        _input.RegisterCallback<FocusInEvent>(_ =>
+        {
+            if (KeybindManager.Instance != null)
+                KeybindManager.Instance.TextFieldFocused = true;
+        });
+
         // When the TextField loses focus, return to navigator mode.
         _input.RegisterCallback<FocusOutEvent>(_ =>
         {
