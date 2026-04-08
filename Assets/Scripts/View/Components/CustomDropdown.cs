@@ -18,9 +18,14 @@ public sealed class CustomDropdown
 
     public string Value { get; private set; }
 
+    /// <summary>True when the popup list is currently shown.</summary>
+    public bool IsOpen => _popup != null;
+
     private readonly Label _valueLabel;
     private readonly List<string> _choices;
+    private readonly PopupKeyboardNav _popupNav = new PopupKeyboardNav();
     private VisualElement _popup;
+    private ScrollView _popupScroll;
     private ScrollView _watchedScroll;
     private Action<float> _scrollListener;
     private EventCallback<PointerDownEvent> _outsideClickListener;
@@ -43,6 +48,9 @@ public sealed class CustomDropdown
 
         Root.RegisterCallback<ClickEvent>(_ => Toggle());
     }
+
+    /// <summary>Open the dropdown from keyboard navigation.</summary>
+    public void ActivateFromKeyboard() => Open();
 
     public void SetChoices(IReadOnlyList<string> choices)
     {
@@ -88,6 +96,10 @@ public sealed class CustomDropdown
         _popup = new VisualElement();
         _popup.AddToClassList("custom-dropdown__popup");
 
+        _popupScroll = new ScrollView(ScrollViewMode.Vertical);
+        _popupScroll.style.flexGrow = 1;
+        _popup.Add(_popupScroll);
+
         foreach (var choice in _choices)
         {
             var item = new Button();
@@ -101,7 +113,7 @@ public sealed class CustomDropdown
                 evt.StopPropagation();
                 Select(captured);
             });
-            _popup.Add(item);
+            _popupScroll.Add(item);
         }
 
         panelRoot.Add(_popup);
@@ -138,11 +150,31 @@ public sealed class CustomDropdown
         }
 
         Root.AddToClassList("custom-dropdown--open");
+
+        // Set up keyboard navigation for the popup items.
+        // Items live inside _popupScroll, not directly in _popup.
+        var navItems = new List<VisualElement>();
+        var navCallbacks = new List<Action>();
+        foreach (var child in _popupScroll.Children())
+        {
+            navItems.Add(child);
+            var captured = child as Button;
+            navCallbacks.Add(() =>
+            {
+                if (captured != null)
+                    Select(captured.text);
+            });
+        }
+
+        int initialIdx = _choices.IndexOf(Value);
+        if (initialIdx < 0)
+            initialIdx = 0;
+        _popupNav.Open(navItems, navCallbacks, Close, initialIdx);
     }
 
     private void PositionPopup(VisualElement popup)
     {
-        if (Root.panel == null)
+        if (popup == null || Root.panel == null)
             return;
         var panelRoot = Root.panel.visualTree;
 
@@ -184,9 +216,16 @@ public sealed class CustomDropdown
         {
             _popup.RemoveFromHierarchy();
             _popup = null;
+            _popupScroll = null;
         }
+        _popupNav.Close();
         Root.RemoveFromClassList("custom-dropdown--open");
     }
+
+    /// <summary>
+    /// Call from the owning controller's Update() when the dropdown is open.
+    /// </summary>
+    public void UpdateKeyboard() => _popupNav.Update();
 
     private static ScrollView FindAncestorScrollView(VisualElement el)
     {

@@ -156,40 +156,47 @@
 }
 
 .icon--account {
-    background-image: url("/Assets/Art/Icons/account_icon.png");
+    background-image: url("/Assets/Art/Icons/account.png");
 }
 
 .icon--github {
-    background-image: url("/Assets/Art/Icons/Octicons-mark-github.svg.png");
+    background-image: url("/Assets/Art/Icons/github.png");
 }
 
 .icon--discord {
-    background-image: url("/Assets/Art/Icons/discord-white-icon.png");
+    background-image: url("/Assets/Art/Icons/discord.png");
 }
 
 .icon--arrow-back {
     background-image: url("/Assets/Art/Icons/arrow_back.png");
 }
 
-.icon--logout {
-    background-image: url("/Assets/Art/Icons/logout.png");
-}
 
 .icon--trophy {
-    background-image: url("/Assets/Art/Icons/trophy_icon.png");
+    background-image: url("/Assets/Art/Icons/trophy.png");
 }
 
 .icon--arrow-lane-preview {
-    background-image: url("/Assets/Art/Icons/arrow_lane_preview_icon.png");
+    background-image: url("/Assets/Art/Icons/arrow_lane_preview.png");
 }
 
-.icon--upload {
-    background-image: url("/Assets/Art/Icons/upload.png");
+
+.icon--refresh {
+    background-image: url("/Assets/Art/Icons/refresh.png");
 }
 
-.icon--cloud-off {
-    background-image: url("/Assets/Art/Icons/cloud_off.png");
+.icon--joystick {
+    background-image: url("/Assets/Art/Icons/joystick.png");
 }
+
+.icon--keyboard {
+    background-image: url("/Assets/Art/Icons/keyboard.png");
+}
+
+.icon--data-table {
+    background-image: url("/Assets/Art/Icons/data_table.png");
+}
+
 
 /* ── HUD Icon Button ──────────────────────────────────────────────── */
 /*
@@ -684,4 +691,115 @@
 
 .custom-dropdown__item--selected {
     color: var(--accent-info);
+}
+
+/* ── Keyboard Focus Ring ─────────────────────────────────────────── */
+/*
+   Applied by FocusNavigator when keyboard navigation is active.
+   Hidden on pointer interaction; re-shown on next keyboard input.
+*/
+
+/* Double-class selector for high specificity — overrides .menu-btn,
+   .start-btn, .icon-btn, etc. which all set their own border/background.
+   The invisible reserved border is always present so toggling focus
+   never shifts layout — only the color changes. */
+.kb-focusable.kb-focusable {
+    border-width: 3px;
+    border-color: rgba(0, 0, 0, 0);
+}
+
+/* Settings nav tabs: use left-border highlight, not the full focus ring. */
+/* Nav tabs are now icon buttons — the standard kb-focusable/kb-focused
+   rules work naturally with the rounded 40×40 buttons. */
+
+/* Slider focus ring: absolute overlay inside the track — no layout impact. */
+.snap-slider__focus-ring {
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-width: 3px;
+    border-color: rgba(0, 0, 0, 0);
+    border-radius: 4px;
+}
+
+/* Override: slider tracks use the overlay ring, not the global kb-focused border. */
+.snap-slider__track.kb-focused.kb-focused {
+    border-color: rgba(0, 0, 0, 0);
+}
+
+.snap-slider__track.kb-focused .snap-slider__focus-ring {
+    border-color: var(--accent-info);
+}
+
+.kb-focused.kb-focused {
+    border-color: var(--accent-info);
+}
+
+/* Toggle pill: match the pill's rounded shape for the focus border. */
+.setting-toggle.kb-focusable.kb-focusable {
+    border-radius: 17px;
+}
+
+.custom-dropdown__item--kb-focused {
+    background-color: var(--bg-btn);
+}
+
+/* ── Keybind Settings ────────────────────────────────────────────── */
+
+.settings-keybind-group {
+    font-size: 13px;
+    color: var(--text-dim);
+    -unity-font-style: bold;
+    margin-top: 12px;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+}
+
+.settings-keybind-row {
+    flex-direction: column;
+    margin-bottom: 4px;
+}
+
+.settings-keybind-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.settings-keybind-btn-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.settings-keybind-key-btn {
+    min-width: 80px;
+    height: 32px;
+    background-color: var(--bg-input);
+    border-width: 1px;
+    border-color: var(--border-normal);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+    -unity-text-align: middle-center;
+    margin-right: 8px;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.settings-keybind-key-btn:hover {
+    border-color: var(--border-emphasis);
+}
+
+.settings-keybind-reset-btn {
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+}
+
+.settings-keybind-warning {
+    font-size: 12px;
+    color: var(--text-danger);
+    margin-top: 2px;
 }

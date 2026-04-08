@@ -29,6 +29,9 @@ public static class GameSettings
 
     public const string DisplayNamePrefKey = "DisplayName";
 
+    public const string InputBindingOverridesPrefKey = "InputBindingOverrides";
+    public const string KeepTrailPrefKey = "KeepTrailAfterClear";
+
     /// <summary>
     /// Local display name. Loaded from PlayerPrefs by the View layer on startup;
     /// updated in memory here. Works fully offline.
@@ -75,17 +78,13 @@ public static class GameSettings
     /// <summary>The replay data to play back when IsReplaying is true.</summary>
     public static ReplayData ReplaySource { get; private set; }
 
-    /// <summary>Scene to return to after exiting the replay viewer.</summary>
-    public static string ReturnScene { get; private set; }
-
     /// <summary>
     /// Configure replay playback. Call before loading the Replay scene.
     /// </summary>
-    public static void StartReplay(ReplayData replayData, string returnScene)
+    public static void StartReplay(ReplayData replayData)
     {
         IsReplaying = true;
         ReplaySource = replayData;
-        ReturnScene = returnScene ?? "MainMenu";
     }
 
     /// <summary>Clears replay state after the Replay scene has consumed it.</summary>
@@ -93,7 +92,6 @@ public static class GameSettings
     {
         IsReplaying = false;
         ReplaySource = null;
-        ReturnScene = null;
     }
 
     /// <summary>
@@ -109,7 +107,6 @@ public static class GameSettings
         ResumeData = null;
         IsReplaying = false;
         ReplaySource = null;
-        ReturnScene = null;
         LeaderboardFocusGameId = null;
         Width = 0;
         Height = 0;
