@@ -68,31 +68,27 @@ public class MainMenuLayoutTests : UILayoutTestBase
             UILayoutTestHelper.AspectRatio ratio
     )
     {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
-
-        root.Q("main-menu").AddToClassList("screen--hidden");
-        root.Q("mode-select").RemoveFromClassList("screen--hidden");
+        var root = SetUpDocument(SoloSizeSelectUxmlPath, ratio);
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var modeSelect = root.Q("mode-select");
         var panelBounds = root.worldBound;
         string ctx = $"ModeSelect @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
         AssertElements(
-            modeSelect,
+            root,
             panelBounds,
             ctx,
             warn,
-            modeSelect.Q<Label>(className: "section-label"),
-            modeSelect.Q<Button>("preset-small"),
-            modeSelect.Q<Button>("preset-medium"),
-            modeSelect.Q<Button>("preset-large"),
-            modeSelect.Q<Button>("preset-xlarge"),
-            modeSelect.Q<Button>("preset-custom"),
-            modeSelect.Q<Button>("start-btn"),
-            modeSelect.Q<Button>("mode-back-btn")
+            root.Q<Label>(className: "section-label"),
+            root.Q<Button>("preset-small"),
+            root.Q<Button>("preset-medium"),
+            root.Q<Button>("preset-large"),
+            root.Q<Button>("preset-xlarge"),
+            root.Q<Button>("preset-custom"),
+            root.Q<Button>("start-btn"),
+            root.Q<Button>("back-btn")
         );
     }
 
@@ -102,19 +98,15 @@ public class MainMenuLayoutTests : UILayoutTestBase
             UILayoutTestHelper.AspectRatio ratio
     )
     {
-        var root = SetUpDocument(MainMenuUxmlPath, ratio);
-
-        root.Q("main-menu").AddToClassList("screen--hidden");
-        root.Q("mode-select").RemoveFromClassList("screen--hidden");
+        var root = SetUpDocument(SoloSizeSelectUxmlPath, ratio);
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var modeSelect = root.Q("mode-select");
         var panelBounds = root.worldBound;
         string ctx = $"ModeSelect_Trophy @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
-        AssertElements(modeSelect, panelBounds, ctx, warn, modeSelect.Q<Button>("trophy-btn"));
+        AssertElements(root, panelBounds, ctx, warn, root.Q<Button>("trophy-btn"));
     }
 
     [UnityTest]

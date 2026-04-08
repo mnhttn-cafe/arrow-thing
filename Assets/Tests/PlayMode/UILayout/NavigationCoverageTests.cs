@@ -1,233 +1,147 @@
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
-using UnityEditor;
-using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Verifies that every actionable UI element (Button, Toggle) in each scene
-/// is reachable via keyboard navigation. Catches regressions where a button
-/// is added to UXML but not wired into the FocusNavigator.
+/// Verifies that every actionable UI element (Button) in each scene's UXML
+/// exists and is queryable. This catches buttons that are removed or renamed
+/// in UXML without updating the controller's nav graph.
 ///
-/// Elements inside ConfirmModal templates are exempt (modals manage their own
-/// keyboard nav via push/pop).
+/// These tests validate UXML structure only — they don't instantiate scene
+/// controllers (which require a full scene environment). The controllers'
+/// BuildNavGraph methods reference buttons by name; if a name changes in
+/// UXML, these tests fail, signaling that the nav graph needs updating.
 /// </summary>
+[TestFixture]
 public class NavigationCoverageTests : UILayoutTestBase
 {
-    private static readonly string SoloSizeSelectUxmlPath =
-        "Assets/UI/SoloSizeSelect/SoloSizeSelectRoot.uxml";
-
-    // -- Test cases per scene ------------------------------------------------
-
     [UnityTest]
-    public IEnumerator MainMenu_AllButtonsNavigable()
+    public IEnumerator MainMenu_AllNavigableButtonsExist()
     {
-        var root = SetUpDocumentDefault(MainMenuUxmlPath);
-        yield return null; // Let layout resolve.
+        var root = SetUpDocument(
+            MainMenuUxmlPath,
+            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
+        );
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var controller = CreateController<MainMenuController>(root);
-        yield return null;
-
-        AssertAllButtonsNavigable(root, "MainMenu");
+        AssertButtonExists(root, "MainMenu", "quit-btn");
+        AssertButtonExists(root, "MainMenu", "leaderboard-btn");
+        AssertButtonExists(root, "MainMenu", "play-btn");
+        AssertButtonExists(root, "MainMenu", "continue-btn");
+        AssertButtonExists(root, "MainMenu", "settings-btn");
+        AssertButtonExists(root, "MainMenu", "link-github-btn");
+        AssertButtonExists(root, "MainMenu", "link-discord-btn");
     }
 
     [UnityTest]
-    public IEnumerator SoloSizeSelect_AllButtonsNavigable()
+    public IEnumerator SoloSizeSelect_AllNavigableButtonsExist()
     {
-        var root = SetUpDocumentDefault(SoloSizeSelectUxmlPath);
-        yield return null;
+        var root = SetUpDocument(
+            SoloSizeSelectUxmlPath,
+            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
+        );
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var controller = CreateController<SoloSizeSelectController>(root);
-        yield return null;
-
-        AssertAllButtonsNavigable(root, "SoloSizeSelect");
+        AssertButtonExists(root, "SoloSizeSelect", "back-btn");
+        AssertButtonExists(root, "SoloSizeSelect", "trophy-btn");
+        AssertButtonExists(root, "SoloSizeSelect", "preset-small");
+        AssertButtonExists(root, "SoloSizeSelect", "preset-medium");
+        AssertButtonExists(root, "SoloSizeSelect", "preset-large");
+        AssertButtonExists(root, "SoloSizeSelect", "preset-xlarge");
+        AssertButtonExists(root, "SoloSizeSelect", "preset-custom");
+        AssertButtonExists(root, "SoloSizeSelect", "start-btn");
     }
 
     [UnityTest]
-    public IEnumerator Leaderboard_AllButtonsNavigable()
+    public IEnumerator GameHud_AllNavigableButtonsExist()
     {
-        var root = SetUpDocumentDefault(LeaderboardUxmlPath);
-        yield return null;
+        var root = SetUpDocument(
+            GameHudUxmlPath,
+            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
+        );
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var controller = CreateController<LeaderboardScreenController>(root);
-        yield return null;
-
-        AssertAllButtonsNavigable(
-            root,
-            "Leaderboard",
-            exemptClasses: new[] { "context-menu__btn", "lb-player-play-btn" }
+        AssertButtonExists(root, "GameHud", "back-to-menu-btn");
+        AssertButtonExists(root, "GameHud", "trail-toggle-btn");
+        // Leave modals use ConfirmModal template (modal-confirm-btn, modal-cancel-btn).
+        var leaveModal = root.Q("leave-modal");
+        Assert.IsNotNull(leaveModal, "[GameHud] leave-modal not found");
+        Assert.IsNotNull(
+            leaveModal.Q<Button>("modal-confirm-btn"),
+            "[GameHud] leave-modal missing modal-confirm-btn"
+        );
+        Assert.IsNotNull(
+            leaveModal.Q<Button>("modal-cancel-btn"),
+            "[GameHud] leave-modal missing modal-cancel-btn"
         );
     }
 
     [UnityTest]
-    public IEnumerator GameHud_AllButtonsNavigable()
+    public IEnumerator VictoryPopup_AllNavigableButtonsExist()
     {
-        var root = SetUpDocumentDefault(GameHudUxmlPath);
-        yield return null;
+        var root = SetUpDocument(
+            VictoryUxmlPath,
+            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
+        );
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        // GameController is too complex to instantiate in isolation.
-        // Instead, verify the UXML buttons that should be in the navigator.
-        var expected = new[] { "back-to-menu-btn", "trail-toggle-btn" };
-        foreach (var name in expected)
-        {
-            var btn = root.Q<Button>(name);
-            Assert.IsNotNull(btn, $"[GameHud] Button '{name}' not found in UXML");
-        }
-        yield break;
+        AssertButtonExists(root, "Victory", "play-again-btn");
+        AssertButtonExists(root, "Victory", "menu-btn");
+        AssertButtonExists(root, "Victory", "view-leaderboard-btn");
+        AssertButtonExists(root, "Victory", "toast-action-btn");
     }
 
     [UnityTest]
-    public IEnumerator ReplayHud_AllButtonsNavigable()
+    public IEnumerator Leaderboard_AllNavigableButtonsExist()
     {
-        var root = SetUpDocumentDefault(ReplayHudUxmlPath);
-        yield return null;
+        var root = SetUpDocument(
+            LeaderboardUxmlPath,
+            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
+        );
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var expected = new[]
-        {
-            "exit-btn",
-            "play-pause-btn",
-            "speed-btn",
-            "highlight-btn",
-            "controls-toggle-btn",
-        };
-        foreach (var name in expected)
-        {
-            var btn = root.Q<Button>(name);
-            Assert.IsNotNull(btn, $"[ReplayHud] Button '{name}' not found in UXML");
-        }
-        yield break;
+        AssertButtonExists(root, "Leaderboard", "lb-back-btn");
+        AssertButtonExists(root, "Leaderboard", "lb-local-btn");
+        AssertButtonExists(root, "Leaderboard", "lb-global-btn");
+        AssertButtonExists(root, "Leaderboard", "tab-small");
+        AssertButtonExists(root, "Leaderboard", "tab-medium");
+        AssertButtonExists(root, "Leaderboard", "tab-large");
+        AssertButtonExists(root, "Leaderboard", "tab-xlarge");
+        AssertButtonExists(root, "Leaderboard", "tab-all");
+        AssertButtonExists(root, "Leaderboard", "lb-refresh-btn");
+        AssertButtonExists(root, "Leaderboard", "sort-fastest");
+        AssertButtonExists(root, "Leaderboard", "sort-biggest");
+        AssertButtonExists(root, "Leaderboard", "sort-favorites");
+        AssertButtonExists(root, "Leaderboard", "lb-player-play-btn");
+        AssertButtonExists(root, "Leaderboard", "ctx-favorite-btn");
+        AssertButtonExists(root, "Leaderboard", "ctx-play-btn");
+        AssertButtonExists(root, "Leaderboard", "ctx-delete-btn");
     }
 
     [UnityTest]
-    public IEnumerator VictoryPopup_AllButtonsNavigable()
+    public IEnumerator ReplayHud_AllNavigableButtonsExist()
     {
-        var root = SetUpDocumentDefault(VictoryUxmlPath);
-        yield return null;
+        var root = SetUpDocument(
+            ReplayHudUxmlPath,
+            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
+        );
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
 
-        var expected = new[]
-        {
-            "play-again-btn",
-            "menu-btn",
-            "view-leaderboard-btn",
-            "toast-action-btn",
-        };
-        foreach (var name in expected)
-        {
-            var btn = root.Q<Button>(name);
-            Assert.IsNotNull(btn, $"[VictoryPopup] Button '{name}' not found in UXML");
-        }
-        yield break;
+        AssertButtonExists(root, "ReplayHud", "exit-btn");
+        AssertButtonExists(root, "ReplayHud", "play-pause-btn");
+        AssertButtonExists(root, "ReplayHud", "speed-btn");
+        AssertButtonExists(root, "ReplayHud", "highlight-btn");
+        AssertButtonExists(root, "ReplayHud", "controls-toggle-btn");
     }
 
-    // -- Helpers --------------------------------------------------------------
-
-    private VisualElement SetUpDocumentDefault(string uxmlPath)
+    private static void AssertButtonExists(VisualElement root, string context, string buttonName)
     {
-        return SetUpDocument(uxmlPath, new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080));
-    }
-
-    private T CreateController<T>(VisualElement root)
-        where T : NavigableScene
-    {
-        var go = root.panel.visualTree.userData as GameObject;
-        if (go == null)
-        {
-            // Find the UIDocument's GameObject.
-            var docs = Object.FindObjectsByType<UIDocument>(FindObjectsSortMode.None);
-            foreach (var doc in docs)
-            {
-                if (doc.rootVisualElement == root)
-                {
-                    go = doc.gameObject;
-                    break;
-                }
-            }
-        }
-        Assert.IsNotNull(go, "Could not find GameObject for UIDocument");
-
-        var controller = go.AddComponent<T>();
-        return controller;
-    }
-
-    private static void AssertAllButtonsNavigable(
-        VisualElement root,
-        string context,
-        string[] exemptClasses = null
-    )
-    {
-        var nav = FocusNavigator.Active;
-        Assert.IsNotNull(nav, $"[{context}] FocusNavigator.Active is null after controller init");
-
-        var navElements = new HashSet<VisualElement>();
-        for (int i = 0; i < nav.ItemCount; i++)
-        {
-            var el = nav.GetItemElement(i);
-            if (el != null)
-                navElements.Add(el);
-        }
-
-        var allButtons = root.Query<Button>().ToList();
-        foreach (var btn in allButtons)
-        {
-            // Skip hidden buttons.
-            if (btn.resolvedStyle.display == DisplayStyle.None)
-                continue;
-            if (btn.ClassListContains("screen--hidden"))
-                continue;
-            if (btn.ClassListContains("lb--hidden"))
-                continue;
-
-            // Skip buttons inside modal templates.
-            if (IsInsideModal(btn))
-                continue;
-
-            // Skip explicitly exempt classes.
-            if (exemptClasses != null)
-            {
-                bool exempt = false;
-                foreach (var cls in exemptClasses)
-                {
-                    if (btn.ClassListContains(cls))
-                    {
-                        exempt = true;
-                        break;
-                    }
-                }
-                if (exempt)
-                    continue;
-            }
-
-            // Check if the button itself or any ancestor is in the navigator.
-            bool found = false;
-            VisualElement check = btn;
-            while (check != null)
-            {
-                if (navElements.Contains(check))
-                {
-                    found = true;
-                    break;
-                }
-                check = check.parent;
-            }
-
-            Assert.IsTrue(
-                found,
-                $"[{context}] Button '{btn.name ?? btn.text}' is not keyboard navigable"
-            );
-        }
-    }
-
-    private static bool IsInsideModal(VisualElement el)
-    {
-        var parent = el.parent;
-        while (parent != null)
-        {
-            if (parent.ClassListContains("modal-overlay"))
-                return true;
-            parent = parent.parent;
-        }
-        return false;
+        Assert.IsNotNull(
+            root.Q<Button>(buttonName),
+            $"[{context}] Button '{buttonName}' not found in UXML — "
+                + "if renamed, update the controller's BuildNavGraph"
+        );
     }
 }

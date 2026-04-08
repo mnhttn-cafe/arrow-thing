@@ -78,6 +78,7 @@ public class ReplayPlayerTests
         Assert.AreEqual(1f, player.PlaybackSpeed); // default
         Assert.AreEqual(2f, player.CycleSpeed());
         Assert.AreEqual(4f, player.CycleSpeed());
+        Assert.AreEqual(10f, player.CycleSpeed());
         Assert.AreEqual(0.5f, player.CycleSpeed());
         Assert.AreEqual(1f, player.CycleSpeed());
     }
