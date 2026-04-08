@@ -576,7 +576,10 @@ public sealed class LeaderboardScreenController : NavigableScene
         }
 
         // Time (compact format on All tab)
-        var timeLabel = new Label(showSize ? FormatCompactTime(entry.solveTime) : FormatTime(entry.solveTime));
+        string timeText = showSize
+            ? FormatCompactTime(entry.solveTime)
+            : FormatTime(entry.solveTime);
+        var timeLabel = new Label(timeText);
         timeLabel.AddToClassList("lb-time");
         if (showSize)
             timeLabel.AddToClassList("lb-time--compact");
@@ -1062,7 +1065,8 @@ public sealed class LeaderboardScreenController : NavigableScene
         }
 
         // Time (compact format on All tab)
-        var timeLabel = new Label(showSize ? FormatCompactTime(entry.time) : FormatTime(entry.time));
+        string timeText = showSize ? FormatCompactTime(entry.time) : FormatTime(entry.time);
+        var timeLabel = new Label(timeText);
         timeLabel.AddToClassList("lb-time");
         if (showSize)
             timeLabel.AddToClassList("lb-time--compact");
@@ -1707,8 +1711,8 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     private void RegisterNameScroll(VisualElement wrapper, Label label)
     {
-        wrapper.RegisterCallback<MouseEnterEvent>(_ => StartNameScrollLabel(wrapper, label));
-        wrapper.RegisterCallback<MouseLeaveEvent>(_ =>
+        wrapper.RegisterCallback<PointerEnterEvent>(_ => StartNameScrollLabel(wrapper, label));
+        wrapper.RegisterCallback<PointerLeaveEvent>(_ =>
         {
             // Keep scrolled if the entry is selected
             var row = wrapper.parent;
@@ -1742,16 +1746,21 @@ public sealed class LeaderboardScreenController : NavigableScene
             return;
 
         float duration = Mathf.Max(0.5f, overflow / 60f);
-        label.style.transitionDuration =
-            new StyleList<TimeValue>(new List<TimeValue> { new TimeValue(duration, TimeUnit.Second) });
-        label.style.translate = new Translate(new Length(-overflow, LengthUnit.Pixel), 0);
+        label.style.transitionDuration = new StyleList<TimeValue>(
+            new List<TimeValue> { new TimeValue(duration, TimeUnit.Second) }
+        );
+        label.style.translate = new Translate(
+            new Length(-overflow, LengthUnit.Pixel),
+            new Length(0)
+        );
     }
 
     private static void ResetNameScrollLabel(Label label)
     {
-        label.style.transitionDuration =
-            new StyleList<TimeValue>(new List<TimeValue> { new TimeValue(0.3f, TimeUnit.Second) });
-        label.style.translate = new Translate(new Length(0), 0);
+        label.style.transitionDuration = new StyleList<TimeValue>(
+            new List<TimeValue> { new TimeValue(0.3f, TimeUnit.Second) }
+        );
+        label.style.translate = new Translate(new Length(0), new Length(0));
     }
 
     // --- Toast ---

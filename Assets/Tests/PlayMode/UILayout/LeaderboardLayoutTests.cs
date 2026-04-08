@@ -114,8 +114,22 @@ public class LeaderboardLayoutTests : UILayoutTestBase
         var root = SetUpDocument(LeaderboardUxmlPath, ratio);
 
         var list = root.Q("lb-list");
-        list.Add(CreateMockEntryRow(1, showSize: true, compactTime: true, name: "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"));
-        list.Add(CreateMockEntryRow(2, showSize: true, compactTime: true, name: "A Very Long Display Name That Should Not Break Layout"));
+        list.Add(
+            CreateMockEntryRow(
+                1,
+                showSize: true,
+                compactTime: true,
+                name: "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+            )
+        );
+        list.Add(
+            CreateMockEntryRow(
+                2,
+                showSize: true,
+                compactTime: true,
+                name: "A Very Long Display Name That Should Not Break Layout"
+            )
+        );
         list.Add(CreateMockEntryRow(3, showSize: true, compactTime: true, timeText: "12h 34m"));
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
@@ -162,7 +176,13 @@ public class LeaderboardLayoutTests : UILayoutTestBase
 
         var list = root.Q("lb-list");
         list.Add(CreateMockEntryRow(1, showSize: false, name: "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"));
-        list.Add(CreateMockEntryRow(2, showSize: false, name: "A Very Long Display Name That Should Not Break Layout"));
+        list.Add(
+            CreateMockEntryRow(
+                2,
+                showSize: false,
+                name: "A Very Long Display Name That Should Not Break Layout"
+            )
+        );
         list.Add(CreateMockEntryRow(3, showSize: false, timeText: "59:59.999"));
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();

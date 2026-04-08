@@ -195,6 +195,7 @@
     -unity-text-align: middle-left;
     flex-shrink: 0;
     transition-property: translate;
+    transition-duration: 0.3s;
     transition-timing-function: ease-in-out;
 }
 
