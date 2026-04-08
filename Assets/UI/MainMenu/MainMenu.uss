@@ -23,10 +23,6 @@
     background-color: var(--bg-screen);
 }
 
-.screen--hidden {
-    display: none;
-}
-
 /* Title */
 .title {
     width: 80%;
