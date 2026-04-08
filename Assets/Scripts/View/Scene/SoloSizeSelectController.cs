@@ -24,6 +24,7 @@ public sealed class SoloSizeSelectController : NavigableScene
 
     private int _selectedWidth = 10;
     private int _selectedHeight = 10;
+    private bool _selectionInitialized;
 
     // Nav graph indices (set in BuildNavGraph, used in LinkPresetGrid)
     private int _startIdx;
@@ -83,6 +84,7 @@ public sealed class SoloSizeSelectController : NavigableScene
 
     protected override void RestoreState(VisualElement root)
     {
+        // Re-enable from scene stack — restore from instance fields.
         if (_isCustomSelected)
         {
             _customWidthSnap.SetValueWithoutNotify(_selectedWidth);
@@ -95,54 +97,35 @@ public sealed class SoloSizeSelectController : NavigableScene
         }
     }
 
-    protected override void OnEnable()
-    {
-        base.OnEnable();
-
-        // On first launch (no saved state), restore from GameSettings.
-        if (!GameSettings.IsSet)
-            return;
-        // RestoreState already ran if _hasState was true. If not, restore from GameSettings.
-    }
-
-    // Override base OnEnable to handle first-launch vs restore.
-    // The base calls BuildUI → RestoreState (if _hasState) → BuildNavGraph.
-    // For first launch, we need RestoreSelection after BuildUI but before BuildNavGraph.
-    // Since base.OnEnable handles this, we just need the initial selection:
-    private void RestoreFromGameSettings()
-    {
-        if (!GameSettings.IsSet)
-        {
-            SelectPreset(10, 10);
-            return;
-        }
-
-        bool matchesPreset =
-            (GameSettings.Width == 10 && GameSettings.Height == 10)
-            || (GameSettings.Width == 20 && GameSettings.Height == 20)
-            || (GameSettings.Width == 40 && GameSettings.Height == 40)
-            || (GameSettings.Width == 100 && GameSettings.Height == 100);
-
-        if (matchesPreset)
-            SelectPreset(GameSettings.Width, GameSettings.Height);
-        else
-        {
-            _customWidthSnap.SetValueWithoutNotify(GameSettings.Width);
-            _customHeightSnap.SetValueWithoutNotify(GameSettings.Height);
-            SelectCustom();
-        }
-    }
-
     protected override void BuildNavGraph(FocusNavigator nav)
     {
-        // If this is the first enable and RestoreState didn't run, restore from GameSettings.
-        if (
-            !_isCustomSelected
-            && _selectedWidth == 10
-            && _selectedHeight == 10
-            && GameSettings.IsSet
-        )
-            RestoreFromGameSettings();
+        // First enable: restore from GameSettings (or default to Small).
+        // RestoreState handles re-enables from the scene stack.
+        if (!_selectionInitialized)
+        {
+            _selectionInitialized = true;
+            if (GameSettings.IsSet)
+            {
+                bool matchesPreset =
+                    (GameSettings.Width == 10 && GameSettings.Height == 10)
+                    || (GameSettings.Width == 20 && GameSettings.Height == 20)
+                    || (GameSettings.Width == 40 && GameSettings.Height == 40)
+                    || (GameSettings.Width == 100 && GameSettings.Height == 100);
+
+                if (matchesPreset)
+                    SelectPreset(GameSettings.Width, GameSettings.Height);
+                else
+                {
+                    _customWidthSnap.SetValueWithoutNotify(GameSettings.Width);
+                    _customHeightSnap.SetValueWithoutNotify(GameSettings.Height);
+                    SelectCustom();
+                }
+            }
+            else
+            {
+                SelectPreset(10, 10);
+            }
+        }
 
         var items = new List<FocusNavigator.FocusItem>();
 
@@ -378,6 +361,9 @@ public sealed class SoloSizeSelectController : NavigableScene
             return b + 2;
         if (_selectedWidth == 100 && _selectedHeight == 100)
             return b + 3;
+        Debug.LogWarning(
+            $"[SoloSizeSelect] GetPresetIndex: no preset matches {_selectedWidth}x{_selectedHeight}, defaulting to Small"
+        );
         return b;
     }
 

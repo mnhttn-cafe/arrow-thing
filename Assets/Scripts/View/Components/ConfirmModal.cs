@@ -7,6 +7,12 @@ using UnityEngine.UIElements;
 /// Keyboard navigation uses FocusNavigator push/pop: default focus on Cancel,
 /// Left/Right to toggle, Enter to activate, Escape to cancel (or dismiss).
 ///
+/// <b>Event lifetime:</b> Callers subscribe to <see cref="Confirmed"/>,
+/// <see cref="Cancelled"/>, and <see cref="Dismissed"/> once after construction.
+/// These subscriptions persist for the modal's lifetime. If a modal is reused
+/// across different contexts, callers must unsubscribe before re-subscribing to
+/// avoid duplicate invocations. <see cref="Hide"/> does not clear event handlers.
+///
 /// When <c>isDismissable</c> is true, an X button is added and Escape triggers
 /// <see cref="Dismissed"/> instead of <see cref="Cancelled"/>, giving a third
 /// distinct action (e.g. "go back to what I was doing" vs the Cancel button text).

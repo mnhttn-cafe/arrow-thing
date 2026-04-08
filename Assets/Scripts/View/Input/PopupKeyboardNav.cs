@@ -86,6 +86,9 @@ public sealed class PopupKeyboardNav
         )
             _callbacks[_highlightedIndex]?.Invoke();
 
+        // Left dismisses immediately (no DAS) — intentional: popups open from
+        // the right side of a parent item, so Left is a natural "close and return"
+        // gesture. Up/Down use DAS for comfortable item browsing.
         if (km.Cancel.WasPerformedThisFrame() || nav.x < -0.5f)
             _onDismiss?.Invoke();
     }

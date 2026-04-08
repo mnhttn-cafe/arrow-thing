@@ -42,7 +42,8 @@ public sealed class DASRepeater
 
         if (!_held)
         {
-            // First frame of press.
+            // Initial press fires immediately regardless of frame rate — standard
+            // DAS behavior (like keyboard repeat: instant first character, then delay).
             _held = true;
             _holdTime = 0f;
             _nextFireTime = _initialDelay;
