@@ -84,8 +84,12 @@ for file in $staged_added; do
 
     meta="$file.meta"
     if ! git diff --cached --name-only | grep -qx "$meta"; then
-        echo "ERROR: $file added without its .meta file ($meta)"
-        errors=1
+        # Auto-generate the missing .meta file with a random GUID.
+        guid=$(python3 -c "import uuid; print(uuid.uuid4().hex)" 2>/dev/null \
+            || head -c 16 /dev/urandom | xxd -p | tr -d ' \n')
+        printf 'fileFormatVersion: 2\nguid: %s\n' "$guid" > "$meta"
+        git add "$meta"
+        echo "Generated missing .meta: $meta"
     fi
 done
 

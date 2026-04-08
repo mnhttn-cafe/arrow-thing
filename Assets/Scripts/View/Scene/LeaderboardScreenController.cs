@@ -1220,10 +1220,7 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     private void OnBack()
     {
-        // TODO: More permanent solution is to pop game scene from stack anytime navigating off, including going to leaderboard
-        // the bug is basically that victory screen -> leaderboard makes leaderboard above game scene on scene nav. When it pops, it goes to a dead game scene.
-        // Just overriding for now as a dirty patch.
-        SceneNav.Reset("MainMenu");
+        SceneNav.Pop();
     }
 
     private void RebuildEntryNavigator()
