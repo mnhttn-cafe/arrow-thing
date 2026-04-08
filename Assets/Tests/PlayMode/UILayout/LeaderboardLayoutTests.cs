@@ -51,6 +51,16 @@ public class LeaderboardLayoutTests : UILayoutTestBase
         // Simulate global view: unhide the refresh button
         root.Q<Button>("lb-refresh-btn").RemoveFromClassList("lb--hidden");
 
+        // Simulate the controller's responsive tab labels: on narrow viewports
+        // the controller abbreviates labels via GeometryChangedEvent.
+        string[] shortLabels = { "S", "M", "L", "XL", "All" };
+        string[] tabNames = { "tab-small", "tab-medium", "tab-large", "tab-xlarge", "tab-all" };
+        if (ratio.Width < 420)
+        {
+            for (int i = 0; i < tabNames.Length; i++)
+                root.Q<Button>(tabNames[i]).text = shortLabels[i];
+        }
+
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
         var lb = root.Q("leaderboard-root");
