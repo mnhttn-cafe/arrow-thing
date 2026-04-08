@@ -137,6 +137,9 @@
     background-color: var(--row-favorite-bg-hover);
 }
 
+.lb-entry--selected {
+    background-color: var(--bg-row-hover);
+}
 
 .lb-rank {
     font-size: 14px;
@@ -174,12 +177,25 @@
     flex-shrink: 0;
 }
 
+.lb-time--compact {
+    width: 68px;
+    font-size: 14px;
+}
+
+.lb-name-wrapper {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
 .lb-name {
     font-size: 16px;
     color: var(--text-primary);
-    flex-grow: 1;
     -unity-text-align: middle-left;
-    overflow: hidden;
+    flex-shrink: 0;
+    transition-property: translate;
+    transition-timing-function: ease-in-out;
 }
 
 .lb-date {

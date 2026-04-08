@@ -92,12 +92,36 @@ public class LeaderboardLayoutTests : UILayoutTestBase
 
         var list = root.Q("lb-list");
         for (int i = 0; i < 3; i++)
-            list.Add(CreateMockEntryRow(i + 1, showSize: true));
+            list.Add(CreateMockEntryRow(i + 1, showSize: true, compactTime: true));
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
         var panelBounds = root.worldBound;
         string ctx = $"Leaderboard_EntryRows_All @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        var rows = list.Query(className: "lb-entry").ToList();
+        foreach (var row in rows)
+            UILayoutTestHelper.AssertAllVisibleChildren(row, panelBounds, ctx, warn);
+    }
+
+    [UnityTest]
+    public IEnumerator Leaderboard_EntryRows_AllTab_LongNames_FitWithinBounds(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        var list = root.Q("lb-list");
+        list.Add(CreateMockEntryRow(1, showSize: true, compactTime: true, name: "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"));
+        list.Add(CreateMockEntryRow(2, showSize: true, compactTime: true, name: "A Very Long Display Name That Should Not Break Layout"));
+        list.Add(CreateMockEntryRow(3, showSize: true, compactTime: true, timeText: "12h 34m"));
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_EntryRows_All_LongNames @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
         var rows = list.Query(className: "lb-entry").ToList();
@@ -121,6 +145,30 @@ public class LeaderboardLayoutTests : UILayoutTestBase
 
         var panelBounds = root.worldBound;
         string ctx = $"Leaderboard_EntryRows_Size @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        var rows = list.Query(className: "lb-entry").ToList();
+        foreach (var row in rows)
+            UILayoutTestHelper.AssertAllVisibleChildren(row, panelBounds, ctx, warn);
+    }
+
+    [UnityTest]
+    public IEnumerator Leaderboard_EntryRows_SizeTab_LongNames_FitWithinBounds(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, ratio);
+
+        var list = root.Q("lb-list");
+        list.Add(CreateMockEntryRow(1, showSize: false, name: "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"));
+        list.Add(CreateMockEntryRow(2, showSize: false, name: "A Very Long Display Name That Should Not Break Layout"));
+        list.Add(CreateMockEntryRow(3, showSize: false, timeText: "59:59.999"));
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"Leaderboard_EntryRows_Size_LongNames @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
         var rows = list.Query(className: "lb-entry").ToList();
@@ -235,7 +283,13 @@ public class LeaderboardLayoutTests : UILayoutTestBase
         AssertElements(lb, panelBounds, ctx, warn, playerPanel, playBtn);
     }
 
-    private static VisualElement CreateMockEntryRow(int rank, bool showSize)
+    private static VisualElement CreateMockEntryRow(
+        int rank,
+        bool showSize,
+        bool compactTime = false,
+        string name = "Player",
+        string timeText = null
+    )
     {
         var row = new VisualElement();
         row.AddToClassList("lb-entry");
@@ -251,9 +305,19 @@ public class LeaderboardLayoutTests : UILayoutTestBase
             row.Add(sizeLabel);
         }
 
-        var timeLabel = new Label("12:34.567");
+        string time = timeText ?? (compactTime ? "1h 23m" : "12:34.567");
+        var timeLabel = new Label(time);
         timeLabel.AddToClassList("lb-time");
+        if (compactTime)
+            timeLabel.AddToClassList("lb-time--compact");
         row.Add(timeLabel);
+
+        var nameWrapper = new VisualElement();
+        nameWrapper.AddToClassList("lb-name-wrapper");
+        var nameLabel = new Label(name);
+        nameLabel.AddToClassList("lb-name");
+        nameWrapper.Add(nameLabel);
+        row.Add(nameWrapper);
 
         var dateLabel = new Label("3 days ago");
         dateLabel.AddToClassList("lb-date");
