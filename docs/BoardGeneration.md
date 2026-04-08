@@ -92,7 +92,8 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 - Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
 - Calls `board.InitializeForGeneration()`.
 - Loops: `TryGenerateArrow` → `board.AddArrowForGeneration` → `yield return null` until candidates are exhausted or the board is full.
-- After placement, yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
+- Yields `CompactionMarker`, then runs post-process compaction (see below), yielding per merge.
+- Yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
 - Used by `GameController.GenerateBoard` for incremental board display during generation.
 
 ### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows)`
@@ -160,18 +161,43 @@ This means no tentative graph modification, no walk state beyond the current pat
 
 Public static method on `Board`. Returns whether `target` lies strictly forward of `head` along `direction`. Used for both cycle detection (reverse edge lookup) and tail construction (preventing tail cells from falling on the arrow's own ray).
 
+## Post-Process Compaction
+
+After all arrows are placed and before finalization, a compaction pass merges redundant trivial chains to improve board quality.
+
+### Problem
+
+The greedy walk produces many short (length-2) arrows that point in the same direction and are collinear and adjacent. These "trivial chains" add visual clutter without adding puzzle depth — the player clears them in a fixed sequence with no choice involved.
+
+### Algorithm (`CompactBoardInPlace`)
+
+Iterative merge passes over the arrow list:
+
+1. For each arrow (the "dependent"), walk its forward ray looking for an adjacent collinear same-direction arrow (the "blocker") whose tail is exactly one cell from the dependent's head.
+2. If found and both arrows are still alive (`_generationIndex >= 0`), merge them: concatenate blocker's cells then dependent's cells into a single arrow.
+3. Remove both originals via `RemoveArrowForGeneration` (zeros bitset row, clears occupancy/ray index, marks generation index dead) and add the merged arrow via `AddArrowForGeneration`.
+4. Repeat passes until no merges are found.
+
+The compactor yields after each merge for smooth loading progress. Arrows marked dead (`_generationIndex < 0`) are skipped within a pass.
+
+### Why Post-Process
+
+Inline compaction (merging during generation, feeding merged arrows back into cycle detection) was benchmarked and found to produce identical results to post-process compaction — merged arrows don't change the candidate pool or cycle detection outcomes since the merged pair was already in a fixed dependency order. Post-process is simpler: it runs after generation is complete, doesn't interleave with the bitset infrastructure, and integrates cleanly into the loading progress model as a distinct phase.
+
+### Impact
+
+Compaction typically merges 15–25% of arrows on standard boards, reducing trivial chain count without affecting solvability (merged arrows preserve the same dependency relationships). The DAG depth is unchanged since merged pairs were already in a fixed dependency order.
+
 ## Performance
 
-Measured via `GenerationProfiler.cs` (PlayMode) and standalone benchmark (`generation-benchmark/`), single-threaded.
+Measured via `GenerationProfiler.cs` (PlayMode), single-threaded. These numbers predate the compaction pass; compaction adds negligible overhead (a few merge iterations on the already-placed arrow set).
 
-| Board | Benchmark (.NET 8) | Unity (PlayMode, incl. ArrowView) |
-|-------|-------------------|-----------------------------------|
-| 10×10 | <1ms | — |
-| 50×50 ml=20 | ~8ms | — |
-| 200×200 | ~600ms | ~2.7s |
-| 400×400 | ~15s | ~68s |
+| Board | Unity (PlayMode, incl. ArrowView) |
+|-------|-----------------------------------|
+| 200×200 | ~2.7s |
+| 400×400 | ~68s |
 
-Unity overhead is ~3–4x due to ArrowView creation (~38% of work time) and frame yields/rendering (~30% of wall time). The domain algorithm itself accounts for ~62% of work time.
+Unity overhead is ~3–4x vs. raw .NET due to ArrowView creation (~38% of work time) and frame yields/rendering (~30% of wall time). The domain algorithm itself accounts for ~62% of work time.
 
 Key optimisations applied (in order of impact):
 
@@ -188,20 +214,35 @@ Key optimisations applied (in order of impact):
 
 ## Loading Progress Heuristic
 
-The loading bar uses arrow count with a power curve to approximate wall-time progress:
+The loading bar uses a three-phase model to approximate wall-time progress:
+
+### Phase 1: Generation (0% → ~90%)
 
 ```
 rawProgress = Clamp01(arrowCount / (w * h * EstimatedArrowDensity))
-displayProgress = pow(rawProgress, 2.5)
+displayProgress = genEndProgress * pow(rawProgress, progressExponent)
 ```
 
-`EstimatedArrowDensity = 0.1`. The power curve compensates for the nonlinear relationship between arrow count and wall time: early arrows are placed quickly (sparse board, few candidate rejections) while late arrows are slow (dense board, many cycle-detection rejections). Profiling shows the per-arrow cost increases ~15x from early to late generation on a 400×400 board. The exponent 2.5 was chosen empirically to produce smooth perceived progress across board sizes.
+`EstimatedArrowDensity = 0.16`, `progressExponent = 1.5`, `genEndProgress = 0.90`. The power curve compensates for the nonlinear relationship between arrow count and wall time: early arrows are placed quickly (sparse board, few candidate rejections) while late arrows are slow (dense board, many cycle-detection rejections). The density and exponent constants were experimentally derived on boards 100×100 and up (where loading screens are visible long enough to matter) using a standalone .NET benchmark during the optimization pass.
 
-The density constant was derived from profiling (`GenerationProfiler.cs`): the greedy walk produces ~0.10–0.12 arrows per cell across board sizes. The constant is set to 0.1 so `rawProgress` slightly exceeds 1.0 at the end of generation (clamped), ensuring the bar reaches 100%.
+### Phase 2: Compaction (~90% → 95%)
 
-`FillBoardIncremental` yields a `FinalizationMarker` sentinel between arrow placement and dependency graph finalization so the caller can detect the phase transition. Finalization (`FinalizeGenerationIncremental`) is incremental and yielding, but fast enough to be negligible in the progress display.
+At `CompactionMarker`, the actual progress is captured as `genFinalProgress` (avoids a visual jump if generation finished below 90%). Compaction progress interpolates linearly from `genFinalProgress` to `compactEndProgress = 0.95` based on the ratio of merges yielded so far.
 
-If generation parameters change significantly (e.g. different `minLength` defaults or dead-end limits), re-run the profiling test and re-tune the constant.
+### Phase 3: Finalization (95% → 100%)
+
+After `FinalizationMarker`, finalization builds the HashSet dependency graph incrementally. Progress interpolates linearly from 95% to 100% based on arrows finalized.
+
+### Phase Transitions
+
+`FillBoardIncremental` yields `GenerationPhase` enum values between phases:
+
+- `GenerationPhase.Compacting` — between generation and compaction
+- `GenerationPhase.Finalizing` — between compaction and finalization
+
+`GameController` detects these via `is GenerationPhase` pattern matching to switch progress phase, rebuild ArrowViews after compaction (compacted arrows replace the originals), and transition the progress bar smoothly.
+
+If generation parameters change significantly (e.g. different `minLength` defaults or dead-end limits), re-run the profiling test and re-tune the constants.
 
 ## Design History
 
@@ -214,3 +255,4 @@ The current implementation is a rewrite (`generation-rewrite` branch) of an earl
 - **Spatial ray index** (`optimize-domain-performance` branch): added per-row/per-column arrow head lists grouped by direction. Replaced O(N) scans in `WouldCellCauseCycle` and `AddArrow` reverse-dep computation with O(crossing) lookups. Also added `HashSet<Arrow>` for O(1) membership checks and reduced DFS allocation overhead.
 - **Bitset-based cycle detection** (`optimize-board-generation` branch): replaced `HashSet<Arrow>` reachability with `ulong[]` bitsets for all generation-time set operations. BFS through dependency graph now processes 64 arrows per word via bitwise OR. Added `GenerationContext` to pool all per-candidate allocations (bitsets, BFS queue, DFS path/visited). Switched candidate removal from O(N) `List.RemoveAt`/`RemoveAll` to O(1) swap-and-pop with lazy pruning. Replaced `HashSet<Cell>` DFS visited tracking with `bool[,]` grid. Added empty-forward-deps fast path to skip cycle detection entirely for edge-pointing candidates.
 - **Early-abort BFS** (`optimize-domain-performance` branch): integrated cycle detection into the BFS itself via `ComputeReachableSetEarlyAbort`. Each newly discovered arrow is immediately checked against the candidate's head and next cells using flat geometry arrays (`_genHeadX`, `_genHeadY`, `_genDir`), returning as soon as a cycle is found instead of computing the full transitive closure first. Provides ~2x speedup on large boards where cycles are frequently attempted.
+- **Generation algorithm benchmarking** (`board-generation-optimization` branch): explored alternative generation strategies to improve board quality (arrow density, DAG depth, trivial chain ratio). Alternatives benchmarked: **ranked generation** (topological ordering — 10x faster but shallower DAGs), **layered generation** (depth-first layer filling), **repair generation** (flip-based cycle repair for density), **ranked-hybrid** (ranked with depth recovery passes), and **inline compaction** (merging during generation with bitset feedback). The original depth-prioritizing constructive algorithm consistently produced the deepest DAGs and best puzzle quality. Parallelization of candidate evaluation was tested and found 60% slower due to batch overhead and wasted work (N candidates evaluated, 1 used). Parallel post-processing (finalization, compaction scan) gave only 9–39% speedups — not worth the complexity for a once-per-session operation. Final decision: keep the original algorithm with a post-process compaction pass for trivial chain reduction. The standalone benchmark project (`generation-benchmark/`) was removed after benchmarking concluded.

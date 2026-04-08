@@ -254,6 +254,42 @@ public sealed class Board
     }
 
     /// <summary>
+    /// Removes an arrow during generation: clears occupancy, ray index, and bitset deps.
+    /// The generation index becomes dead (wasted slot).
+    /// Internal: called by <see cref="BoardGeneration.CompactBoardInPlace"/> during post-process compaction.
+    /// </summary>
+    internal void RemoveArrowForGeneration(Arrow arrow)
+    {
+        int deadIdx = arrow._generationIndex;
+
+        // Clear occupancy
+        foreach (Cell c in arrow.Cells)
+            _occupancy[c.X, c.Y] = null;
+        OccupiedCellCount -= arrow.Cells.Count;
+
+        // Remove from collections
+        _arrows.Remove(arrow);
+        _arrowSet.Remove(arrow);
+
+        // Remove from ray index
+        RemoveFromRayIndex(arrow);
+
+        // Zero the dead arrow's dep row
+        System.Array.Clear(_depsBitsFlat, deadIdx * _bitsetWords, _bitsetWords);
+        _hasAnyDeps[deadIdx] = false;
+        _depsNonZeroCount[deadIdx] = 0;
+
+        // Clear dead arrow's bit from all other arrows' dep rows
+        int word = deadIdx >> 6;
+        ulong mask = ~(1UL << (deadIdx & 63));
+        for (int i = 0; i < _nextGenIndex; i++)
+            _depsBitsFlat[i * _bitsetWords + word] &= mask;
+
+        // Mark as dead
+        arrow._generationIndex = -1;
+    }
+
+    /// <summary>
     /// Fast path for generation: updates occupancy, ray index, and bitset deps only.
     /// Skips HashSet dependency tracking. Call <see cref="FinalizeGenerationIncremental"/> (or <see cref="FinalizeGeneration"/>) when done.
     /// </summary>

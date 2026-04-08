@@ -191,7 +191,7 @@ public sealed class ReplayViewController : MonoBehaviour
 
             while (gen.MoveNext())
             {
-                if (gen.Current == BoardGeneration.FinalizationMarker)
+                if (gen.Current is GenerationPhase)
                     continue;
                 yield return null;
             }

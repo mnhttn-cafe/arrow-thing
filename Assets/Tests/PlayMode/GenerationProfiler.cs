@@ -57,7 +57,7 @@ public class GenerationProfiler
 
         float frameBudgetMs = 12f;
         int arrowCount = 0;
-        bool finalizing = false;
+        var phase = GenerationPhase.Generating;
         int totalArrows = 0; // captured at finalization transition
 
         // Accumulators (nanoseconds via Stopwatch ticks * 100)
@@ -68,9 +68,11 @@ public class GenerationProfiler
         // Phase-split accumulators
         long placementMoveNextNs = 0;
         long placementViewNs = 0;
+        long compactionMoveNextNs = 0;
         long finalizationMoveNextNs = 0;
 
         int placementFrames = 0;
+        int compactionFrames = 0;
         int finalizationFrames = 0;
 
         // Per-frame samples
@@ -105,15 +107,16 @@ public class GenerationProfiler
                 }
 
                 // Detect phase transition
-                if (!finalizing && generator.Current == BoardGeneration.FinalizationMarker)
+                if (generator.Current is GenerationPhase nextPhase)
                 {
-                    finalizing = true;
-                    totalArrows = board.Arrows.Count;
+                    if (nextPhase == GenerationPhase.Finalizing)
+                        totalArrows = board.Arrows.Count;
+                    phase = nextPhase;
                     continue;
                 }
 
                 // ArrowView creation (placement phase only)
-                if (!finalizing && settings != null)
+                if (phase == GenerationPhase.Generating && settings != null)
                 {
                     var vSw = Stopwatch.StartNew();
                     s_MarkerCreateView.Begin();
@@ -134,19 +137,25 @@ public class GenerationProfiler
             totalMoveNextNs += frameMoveNextNs;
             totalViewNs += frameViewNs;
 
-            string phase;
-            if (!finalizing)
+            string phaseLabel;
+            switch (phase)
             {
-                phase = "placement";
-                placementMoveNextNs += frameMoveNextNs;
-                placementViewNs += frameViewNs;
-                placementFrames++;
-            }
-            else
-            {
-                phase = "finalization";
-                finalizationMoveNextNs += frameMoveNextNs;
-                finalizationFrames++;
+                case GenerationPhase.Generating:
+                    phaseLabel = "placement";
+                    placementMoveNextNs += frameMoveNextNs;
+                    placementViewNs += frameViewNs;
+                    placementFrames++;
+                    break;
+                case GenerationPhase.Compacting:
+                    phaseLabel = "compaction";
+                    compactionMoveNextNs += frameMoveNextNs;
+                    compactionFrames++;
+                    break;
+                default:
+                    phaseLabel = "finalization";
+                    finalizationMoveNextNs += frameMoveNextNs;
+                    finalizationFrames++;
+                    break;
             }
 
             frameSamples.Add(
@@ -157,7 +166,7 @@ public class GenerationProfiler
                     createViewNs = frameViewNs,
                     frameNs = frameSw.Elapsed.Ticks * 100,
                     cumulativeArrows = arrowCount,
-                    phase = phase,
+                    phase = phaseLabel,
                 }
             );
 
@@ -189,7 +198,7 @@ public class GenerationProfiler
             $"Cells:        {board.OccupiedCellCount} / {w * h} ({100f * board.OccupiedCellCount / (w * h):F1}%)"
         );
         sb.AppendLine(
-            $"Frames:       {placementFrames} placement + {finalizationFrames} finalization = {frameSamples.Count} total"
+            $"Frames:       {placementFrames} placement + {compactionFrames} compaction + {finalizationFrames} finalization = {frameSamples.Count} total"
         );
         sb.AppendLine();
         sb.AppendLine("── Wall Clock ────────────────────────────────────────");
@@ -206,6 +215,7 @@ public class GenerationProfiler
             $"  MoveNext (domain):  {toMs(totalMoveNextNs), 8:F0}ms  ({pct(totalMoveNextNs, totalWorkNs):F1}% of work)"
         );
         sb.AppendLine($"    Placement phase:  {toMs(placementMoveNextNs), 8:F0}ms");
+        sb.AppendLine($"    Compaction:       {toMs(compactionMoveNextNs), 8:F0}ms");
         sb.AppendLine($"    Finalization:     {toMs(finalizationMoveNextNs), 8:F0}ms");
         sb.AppendLine(
             $"  ArrowView creation: {toMs(totalViewNs), 8:F0}ms  ({pct(totalViewNs, totalWorkNs):F1}% of work)"

@@ -46,13 +46,8 @@ public static class BoardGeneration
     /// <summary>
     /// Incremental version of board filling. Places as many arrows as possible,
     /// yielding after each arrow to let the caller (e.g. a Unity coroutine) process the next frame.
+    /// Yields <see cref="GenerationPhase"/> values between phases.
     /// </summary>
-    /// <summary>
-    /// Signals that generation has finished placing arrows and is now building
-    /// the dependency graph. Yielded once before finalization begins.
-    /// </summary>
-    public static readonly object FinalizationMarker = new object();
-
     public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random)
     {
         board.InitializeForGeneration();
@@ -74,8 +69,14 @@ public static class BoardGeneration
             yield return null;
         }
 
-        // Signal phase transition, then yield during finalization
-        yield return FinalizationMarker;
+        // Compaction phase: merge trivial collinear same-direction chains
+        yield return GenerationPhase.Compacting;
+        var compactor = CompactBoardInPlace(board);
+        while (compactor.MoveNext())
+            yield return compactor.Current;
+
+        // Finalization phase: build HashSet dependency graph
+        yield return GenerationPhase.Finalizing;
         var finalizer = board.FinalizeGenerationIncremental();
         while (finalizer.MoveNext())
             yield return finalizer.Current;
@@ -210,7 +211,7 @@ public static class BoardGeneration
                 continue;
             }
 
-            arrow = new(tail);
+            arrow = new Arrow(tail);
             return true;
         }
 
@@ -533,6 +534,92 @@ public static class BoardGeneration
             Arrow.Direction.Down => cx == ax && cy < ay,
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// Post-process compaction: iteratively merges trivial collinear same-direction
+    /// chains in-place on the board using RemoveArrowForGeneration/AddArrowForGeneration.
+    /// Yields the cumulative merge count after each merge for smooth progress tracking.
+    /// </summary>
+    private static IEnumerator<int> CompactBoardInPlace(Board board)
+    {
+        int mergeCount = 0;
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            var arrows = new List<Arrow>(board.Arrows);
+
+            foreach (Arrow dependent in arrows)
+            {
+                // Skip arrows merged earlier in this pass
+                if (dependent._generationIndex < 0)
+                    continue;
+
+                (int dx, int dy) = Arrow.GetDirectionStep(dependent.HeadDirection);
+                int cx = dependent.HeadCell.X + dx,
+                    cy = dependent.HeadCell.Y + dy;
+                while (cx >= 0 && cx < board.Width && cy >= 0 && cy < board.Height)
+                {
+                    Arrow blocker = board._occupancy[cx, cy];
+                    if (
+                        blocker != null
+                        && blocker != dependent
+                        && blocker._generationIndex >= 0
+                        && CanMergeForCompaction(blocker, dependent)
+                    )
+                    {
+                        var merged = MergeArrows(blocker, dependent);
+                        board.RemoveArrowForGeneration(dependent);
+                        board.RemoveArrowForGeneration(blocker);
+                        board.AddArrowForGeneration(merged);
+                        mergeCount++;
+                        changed = true;
+                        yield return mergeCount;
+                        break;
+                    }
+                    cx += dx;
+                    cy += dy;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks if two arrows can be merged: same direction, collinear,
+    /// and blocker's tail is adjacent to dependent's head.
+    /// </summary>
+    private static bool CanMergeForCompaction(Arrow blocker, Arrow dependent)
+    {
+        if (blocker.HeadDirection != dependent.HeadDirection)
+            return false;
+        bool collinear = blocker.HeadDirection switch
+        {
+            Arrow.Direction.Right or Arrow.Direction.Left => blocker.HeadCell.Y
+                == dependent.HeadCell.Y,
+            Arrow.Direction.Up or Arrow.Direction.Down => blocker.HeadCell.X
+                == dependent.HeadCell.X,
+            _ => false,
+        };
+        if (!collinear)
+            return false;
+
+        Cell blockerTail = blocker.Cells[blocker.Cells.Count - 1];
+        Cell dependentHead = dependent.HeadCell;
+        int adx = Math.Abs(blockerTail.X - dependentHead.X);
+        int ady = Math.Abs(blockerTail.Y - dependentHead.Y);
+        return (adx == 1 && ady == 0) || (adx == 0 && ady == 1);
+    }
+
+    /// <summary>Creates a merged arrow: blocker cells followed by dependent cells.</summary>
+    private static Arrow MergeArrows(Arrow blocker, Arrow dependent)
+    {
+        var cells = new List<Cell>(blocker.Cells.Count + dependent.Cells.Count);
+        for (int i = 0; i < blocker.Cells.Count; i++)
+            cells.Add(blocker.Cells[i]);
+        for (int i = 0; i < dependent.Cells.Count; i++)
+            cells.Add(dependent.Cells[i]);
+        return new Arrow(cells);
     }
 
     /// <summary>Swap-and-pop removal: O(1) instead of O(N) list shift.</summary>
