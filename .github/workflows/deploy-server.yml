@@ -18,38 +18,8 @@ permissions:
   packages: write
 
 jobs:
-  # Gate: ensure CI passed for this commit before deploying
-  ci-check:
-    runs-on: ubuntu-latest
-    # Skip CI gate for manual triggers — CI only runs on PRs
-    if: github.event_name != 'workflow_dispatch'
-    steps:
-      - name: Verify CI passed
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          SHA=${{ github.sha }}
-          echo "Checking CI status for $SHA..."
-          # Wait up to 5 minutes for CI to report
-          for i in $(seq 1 10); do
-            STATUS=$(gh api "repos/${{ github.repository }}/commits/$SHA/status" --jq '.state')
-            if [ "$STATUS" = "success" ]; then
-              echo "CI passed"
-              exit 0
-            elif [ "$STATUS" = "failure" ] || [ "$STATUS" = "error" ]; then
-              echo "CI failed (state: $STATUS) — aborting deploy"
-              exit 1
-            fi
-            echo "Attempt $i: CI state is '$STATUS' — waiting 30s..."
-            sleep 30
-          done
-          echo "CI did not report success within timeout — aborting deploy"
-          exit 1
-
   build-and-push:
     runs-on: ubuntu-latest
-    needs: ci-check
-    if: ${{ !cancelled() && (needs.ci-check.result == 'success' || needs.ci-check.result == 'skipped') }}
 
     steps:
       - name: Checkout

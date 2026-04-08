@@ -36,11 +36,23 @@ jobs:
           SHA="${{ github.event.workflow_run.head_sha }}"
           SHORT_SHA="${SHA:0:7}"
 
+          HEADER=$(printf '**Arrow Thing %s** is out! (`%s`)\n\n' "$TAG" "$SHORT_SHA")
+          FOOTER=$(printf '\nPlay now: https://arrow-thing.com/\n\n<@&1483631517681975406>')
+
+          # Discord messages must be ≤ 2000 chars; reserve space for header + footer + truncation notice
+          OVERHEAD=$(( ${#HEADER} + ${#FOOTER} + 40 ))
+          MAX_BODY=$(( 2000 - OVERHEAD ))
+
+          BODY=$(cat /tmp/release_notes.txt)
+          if [ ${#BODY} -gt $MAX_BODY ]; then
+            BODY="${BODY:0:$MAX_BODY}…\n\nSee full notes on GitHub."
+          fi
+
           # Build message with real newlines, then let jq handle JSON escaping
           {
-            printf '**Arrow Thing %s** is out! (`%s`)\n\n' "$TAG" "$SHORT_SHA"
-            cat /tmp/release_notes.txt
-            printf '\nPlay now: https://arrow-thing.com/\n\n<@&1483631517681975406>'
+            printf '%s' "$HEADER"
+            printf '%s' "$BODY"
+            printf '%s' "$FOOTER"
           } > /tmp/discord_message.txt
 
           PAYLOAD=$(jq -n --rawfile content /tmp/discord_message.txt '{content: $content, allowed_mentions: {parse: ["roles"]}}')
