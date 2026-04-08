@@ -23,8 +23,8 @@ public class ConfirmModal
     private readonly VisualElement _overlay;
     private readonly Button _confirmBtn;
     private readonly Button _cancelBtn;
-    private readonly Button _dismissBtn;
-    private readonly bool _isDismissable;
+    private Button _dismissBtn;
+    private bool _isDismissable;
 
     public event Action Confirmed;
     public event Action Cancelled;
@@ -37,6 +37,58 @@ public class ConfirmModal
 
     /// <summary>True when the modal is currently visible.</summary>
     public bool IsVisible { get; private set; }
+
+    /// <summary>
+    /// Reconfigure the modal's text and behavior for reuse with different
+    /// contexts (e.g. a single leave modal that switches between simple
+    /// "Leave?" and "Save before leaving?" modes).
+    /// </summary>
+    public void Reconfigure(
+        string title,
+        string confirmText,
+        string cancelText,
+        string subtitle = null,
+        bool isDismissable = false
+    )
+    {
+        _root.Q<Label>("modal-title").text = title;
+        _confirmBtn.text = confirmText;
+        _cancelBtn.text = cancelText;
+
+        var sub = _root.Q<Label>("modal-subtitle");
+        if (sub != null)
+        {
+            if (subtitle != null)
+            {
+                sub.text = subtitle;
+                sub.RemoveFromClassList("screen--hidden");
+            }
+            else
+            {
+                sub.AddToClassList("screen--hidden");
+            }
+        }
+
+        _isDismissable = isDismissable;
+        // Re-add or remove the dismiss button as needed.
+        if (isDismissable && _dismissBtn == null)
+        {
+            var modalBox = _overlay.Q(className: "modal-box");
+            _dismissBtn = new Button();
+            _dismissBtn.AddToClassList("modal-close-btn");
+            var icon = new VisualElement();
+            icon.AddToClassList("modal-close-btn__icon");
+            icon.AddToClassList("icon--close");
+            _dismissBtn.Add(icon);
+            _dismissBtn.clicked += () => Dismissed?.Invoke();
+            modalBox.Insert(0, _dismissBtn);
+        }
+        else if (!isDismissable && _dismissBtn != null)
+        {
+            _dismissBtn.RemoveFromHierarchy();
+            _dismissBtn = null;
+        }
+    }
 
     public ConfirmModal(
         VisualElement root,

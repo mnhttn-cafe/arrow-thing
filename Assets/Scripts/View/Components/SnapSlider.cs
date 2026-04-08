@@ -174,7 +174,8 @@ public sealed class SnapSlider
 
     private void UpdateHandlePosition()
     {
-        if (_max <= _min) return; // Avoid NaN from InverseLerp.
+        if (_max <= _min)
+            return; // Avoid NaN from InverseLerp.
         float trackWidth = _track.resolvedStyle.width;
         float handleWidth = _handle.resolvedStyle.width;
         if (float.IsNaN(trackWidth) || float.IsNaN(handleWidth) || trackWidth <= handleWidth)

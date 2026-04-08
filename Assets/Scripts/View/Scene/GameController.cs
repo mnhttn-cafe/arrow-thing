@@ -105,7 +105,6 @@ public sealed class GameController : MonoBehaviour
     private bool _trailOn;
     private Button _backBtn;
     private ConfirmModal _leaveModal;
-    private ConfirmModal _leaveSaveModal;
     private FocusNavigator _focusNavigator;
     private VisualElement _cancelGenModal;
     private float _loadProgress;
@@ -569,30 +568,11 @@ public sealed class GameController : MonoBehaviour
 
         var hudRoot = hudUIDocument.rootVisualElement;
 
-        // Simple leave — no save conflict.
+        // Single leave modal, reconfigured per ShowLeave based on save state.
         _leaveModal = new ConfirmModal(hudRoot.Q("leave-modal"), "Leave?", "Leave", "Stay");
-        _leaveModal.Confirmed += () =>
-        {
-            // Auto-save if the player has cleared arrows in a continued or autosave-eligible game.
-            if (_autosaveEnabled && (_isContinuedGame || HasAnyClearedArrows))
-                SaveAndLeave();
-            else
-                ReturnToModeSelect();
-        };
-        _leaveModal.Cancelled += OnLeaveDismiss;
-
-        // Save-or-discard leave — existing save from a different board.
-        _leaveSaveModal = new ConfirmModal(
-            hudRoot.Q("leave-save-modal"),
-            "Save before leaving?",
-            "Save & Leave",
-            "Leave without saving",
-            subtitle: "This will replace your current save.",
-            isDismissable: true
-        );
-        _leaveSaveModal.Confirmed += SaveAndLeave;
-        _leaveSaveModal.Cancelled += ReturnToModeSelect;
-        _leaveSaveModal.Dismissed += OnLeaveDismiss;
+        _leaveModal.Confirmed += OnLeaveConfirm;
+        _leaveModal.Cancelled += OnLeaveCancel;
+        _leaveModal.Dismissed += OnLeaveDismiss;
 
         if (_backBtn != null)
         {
@@ -705,8 +685,7 @@ public sealed class GameController : MonoBehaviour
 
     private void OnEscape()
     {
-        var active = ActiveLeaveModal;
-        if (active != null && active.IsVisible)
+        if (_leaveModal != null && _leaveModal.IsVisible)
         {
             OnLeaveDismiss();
             return;
@@ -716,24 +695,45 @@ public sealed class GameController : MonoBehaviour
 
     private void ShowLeave()
     {
-        var modal = WouldOverwriteDifferentSave ? _leaveSaveModal : _leaveModal;
-        if (modal == null)
+        if (_leaveModal == null)
             return;
-        modal.Show();
+
+        if (WouldOverwriteDifferentSave)
+        {
+            _leaveModal.Reconfigure(
+                "Save before leaving?",
+                "Save & Leave",
+                "Leave without saving",
+                subtitle: "This will replace your current save.",
+                isDismissable: true
+            );
+        }
+        else
+        {
+            _leaveModal.Reconfigure("Leave?", "Leave", "Stay");
+        }
+
+        _leaveModal.Show();
         if (_inputHandler != null)
             _inputHandler.SetInputEnabled(false);
     }
 
-    private ConfirmModal ActiveLeaveModal
+    private void OnLeaveConfirm()
     {
-        get
-        {
-            if (_leaveSaveModal != null && _leaveSaveModal.IsVisible)
-                return _leaveSaveModal;
-            if (_leaveModal != null && _leaveModal.IsVisible)
-                return _leaveModal;
-            return null;
-        }
+        if (WouldOverwriteDifferentSave)
+            SaveAndLeave();
+        else if (_autosaveEnabled && (_isContinuedGame || HasAnyClearedArrows))
+            SaveAndLeave();
+        else
+            ReturnToModeSelect();
+    }
+
+    private void OnLeaveCancel()
+    {
+        if (WouldOverwriteDifferentSave)
+            ReturnToModeSelect(); // "Leave without saving"
+        else
+            OnLeaveDismiss(); // "Stay"
     }
 
     private void ToggleTrail()
@@ -856,7 +856,7 @@ public sealed class GameController : MonoBehaviour
 
     private void OnLeaveDismiss()
     {
-        ActiveLeaveModal?.Hide();
+        _leaveModal?.Hide();
         if (_inputHandler != null)
             _inputHandler.SetInputEnabled(true);
     }

@@ -29,17 +29,6 @@
         </ui:VisualElement>
     </ui:VisualElement>
 
-    <ui:VisualElement name="leave-save-modal" class="modal-overlay screen--hidden">
-        <ui:VisualElement class="modal-box">
-            <ui:Label name="modal-title" class="modal-label" />
-            <ui:Label name="modal-subtitle" class="modal-sublabel screen--hidden" />
-            <ui:VisualElement class="modal-buttons">
-                <ui:Button name="modal-confirm-btn" class="modal-btn" />
-                <ui:Button name="modal-cancel-btn" class="modal-btn" />
-            </ui:VisualElement>
-        </ui:VisualElement>
-    </ui:VisualElement>
-
     <ui:VisualElement name="cancel-generation-modal" class="modal-overlay modal--hidden">
         <ui:VisualElement class="modal-box">
             <ui:Label class="modal-label" text="Cancel generation?" />

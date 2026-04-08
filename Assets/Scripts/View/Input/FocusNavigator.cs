@@ -253,7 +253,10 @@ public sealed class FocusNavigator
     /// <param name="onCancel">Called when Escape is pressed while the modal is active.</param>
     public void PushModal(List<FocusItem> items, int initialIndex = 0, Func<bool> onCancel = null)
     {
-        Debug.Assert(_modalStack.Count < 10, "Modal stack depth exceeded 10 — likely a push-without-pop bug");
+        Debug.Assert(
+            _modalStack.Count < 10,
+            "Modal stack depth exceeded 10 — likely a push-without-pop bug"
+        );
 
         // Save current state.
         _modalStack.Push(
