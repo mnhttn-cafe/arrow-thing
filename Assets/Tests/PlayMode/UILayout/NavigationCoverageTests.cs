@@ -29,7 +29,7 @@ public class NavigationCoverageTests : UILayoutTestBase
 
     // ── State definition ────────────────────────────────────────────
 
-    private class UIState
+    public class UIState
     {
         public readonly string Name;
         public readonly Action<VisualElement> Setup;
