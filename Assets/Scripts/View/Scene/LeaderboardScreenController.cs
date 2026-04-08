@@ -21,6 +21,18 @@ public sealed class LeaderboardScreenController : NavigableScene
     };
 
     // Using Root from NavigableScene base class.
+
+    private static readonly string[] TabLabelsFull =
+    {
+        "Small",
+        "Medium",
+        "Large",
+        "XLarge",
+        "All",
+    };
+    private static readonly string[] TabLabelsShort = { "S", "M", "L", "XL", "All" };
+
+    private const float NarrowTabBarThreshold = 420f;
     private VisualElement _list;
     private ScrollView _scroll;
     private Label _emptyLabel;
@@ -35,8 +47,10 @@ public sealed class LeaderboardScreenController : NavigableScene
     private VisualElement _toast;
     private Label _toastText;
 
+    private VisualElement _tabBar;
     private Button[] _tabButtons;
     private Button[] _sortButtons;
+    private bool _usingShortLabels;
 
     private int _activeTabIndex;
     private SortCriterion _activeSortCriterion = SortCriterion.Fastest;
@@ -108,6 +122,8 @@ public sealed class LeaderboardScreenController : NavigableScene
         localBtn.clicked += () => SetScope(false, localBtn, globalBtn);
         globalBtn.clicked += () => SetScope(true, localBtn, globalBtn);
 
+        // Size tabs
+        _tabBar = root.Q(className: "tab-bar");
         _tabButtons = new Button[Tabs.Length];
         for (int i = 0; i < Tabs.Length; i++)
         {
@@ -115,6 +131,7 @@ public sealed class LeaderboardScreenController : NavigableScene
             _tabButtons[i] = root.Q<Button>(Tabs[i].name);
             _tabButtons[i].clicked += () => SelectTab(idx);
         }
+        _tabBar.RegisterCallback<GeometryChangedEvent>(OnTabBarGeometryChanged);
 
         _sortButtons = new Button[3];
         _sortButtons[0] = root.Q<Button>("sort-fastest");
@@ -326,6 +343,19 @@ public sealed class LeaderboardScreenController : NavigableScene
                 return;
             }
         }
+    }
+
+    // --- Responsive tab labels ---
+
+    private void OnTabBarGeometryChanged(GeometryChangedEvent evt)
+    {
+        bool shouldUseShort = _tabBar.resolvedStyle.width < NarrowTabBarThreshold;
+        if (shouldUseShort == _usingShortLabels)
+            return;
+        _usingShortLabels = shouldUseShort;
+        var labels = shouldUseShort ? TabLabelsShort : TabLabelsFull;
+        for (int i = 0; i < _tabButtons.Length; i++)
+            _tabButtons[i].text = labels[i];
     }
 
     // --- Tab / Sort selection ---
