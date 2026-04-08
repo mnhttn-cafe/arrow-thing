@@ -1,147 +1,549 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Verifies that every actionable UI element (Button) in each scene's UXML
-/// exists and is queryable. This catches buttons that are removed or renamed
-/// in UXML without updating the controller's nav graph.
+/// State-based navigation coverage tests. For each scene, defines the set of
+/// possible UI states and validates that:
 ///
-/// These tests validate UXML structure only — they don't instantiate scene
-/// controllers (which require a full scene environment). The controllers'
-/// BuildNavGraph methods reference buttons by name; if a name changes in
-/// UXML, these tests fail, signaling that the nav graph needs updating.
+/// Per state:
+///   1. Every navigable button exists and is visible.
+///   2. Every background button (visible but behind modal) exists and is visible.
+///   3. No other visible button is uncovered.
+///
+/// Per scene:
+///   4. Every named Button in the UXML is navigable in at least one state.
+///
+/// Adding a new button to UXML will fail these tests unless it is added to
+/// the appropriate state's Navigable set or hidden in all states.
 /// </summary>
 [TestFixture]
 public class NavigationCoverageTests : UILayoutTestBase
 {
-    [UnityTest]
-    public IEnumerator MainMenu_AllNavigableButtonsExist()
-    {
-        var root = SetUpDocument(
-            MainMenuUxmlPath,
-            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
-        );
-        yield return UILayoutTestHelper.WaitForLayoutResolve();
+    private static readonly UILayoutTestHelper.AspectRatio StandardRatio =
+        new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080);
 
-        AssertButtonExists(root, "MainMenu", "quit-btn");
-        AssertButtonExists(root, "MainMenu", "leaderboard-btn");
-        AssertButtonExists(root, "MainMenu", "play-btn");
-        AssertButtonExists(root, "MainMenu", "continue-btn");
-        AssertButtonExists(root, "MainMenu", "settings-btn");
-        AssertButtonExists(root, "MainMenu", "link-github-btn");
-        AssertButtonExists(root, "MainMenu", "link-discord-btn");
+    // ── State definition ────────────────────────────────────────────
+
+    private class UIState
+    {
+        public readonly string Name;
+        public readonly Action<VisualElement> Setup;
+        public readonly string[] Navigable;
+        public readonly string[] Background;
+
+        public UIState(
+            string name,
+            Action<VisualElement> setup,
+            string[] navigable,
+            string[] background = null
+        )
+        {
+            Name = name;
+            Setup = setup;
+            Navigable = navigable;
+            Background = background ?? Array.Empty<string>();
+        }
+
+        public override string ToString() => Name;
+    }
+
+    // ── Validation helpers ──────────────────────────────────────────
+
+    /// <summary>
+    /// Returns true if the element and all its ancestors have display != None.
+    /// </summary>
+    private static bool IsEffectivelyVisible(VisualElement el)
+    {
+        while (el != null)
+        {
+            if (el.resolvedStyle.display == DisplayStyle.None)
+                return false;
+            el = el.parent;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Finds all named Button elements in the tree.
+    /// </summary>
+    private static List<Button> FindAllNamedButtons(VisualElement root)
+    {
+        var buttons = new List<Button>();
+        root.Query<Button>().ForEach(btn =>
+        {
+            if (!string.IsNullOrEmpty(btn.name))
+                buttons.Add(btn);
+        });
+        return buttons;
+    }
+
+    /// <summary>
+    /// Validates a single UI state. Checks that the set of visible buttons
+    /// exactly matches the union of Navigable and Background.
+    /// </summary>
+    private static void AssertStateNavigation(VisualElement root, UIState state)
+    {
+        var accountedFor = new HashSet<string>(state.Navigable);
+        foreach (string bg in state.Background)
+            accountedFor.Add(bg);
+
+        // Navigable buttons must exist and be visible.
+        foreach (string name in state.Navigable)
+        {
+            var btn = root.Q<Button>(name);
+            Assert.IsNotNull(btn, $"[{state.Name}] Navigable button '{name}' not found in UXML");
+            Assert.IsTrue(
+                IsEffectivelyVisible(btn),
+                $"[{state.Name}] Navigable button '{name}' is hidden but should be visible"
+            );
+        }
+
+        // Background buttons must exist and be visible.
+        foreach (string name in state.Background)
+        {
+            var btn = root.Q<Button>(name);
+            Assert.IsNotNull(btn, $"[{state.Name}] Background button '{name}' not found in UXML");
+            Assert.IsTrue(
+                IsEffectivelyVisible(btn),
+                $"[{state.Name}] Background button '{name}' is hidden but should be visible"
+            );
+        }
+
+        // No visible button should be uncovered.
+        var allButtons = FindAllNamedButtons(root);
+        var uncovered = new List<string>();
+        foreach (var btn in allButtons)
+        {
+            if (accountedFor.Contains(btn.name))
+                continue;
+            if (IsEffectivelyVisible(btn))
+                uncovered.Add(btn.name);
+        }
+
+        if (uncovered.Count > 0)
+        {
+            Assert.Fail(
+                $"[{state.Name}] Visible buttons not in Navigable or Background: "
+                    + string.Join(", ", uncovered)
+                    + ". Add them to the state declaration or ensure they are hidden."
+            );
+        }
+    }
+
+    /// <summary>
+    /// Validates that every named Button in the document is navigable in at
+    /// least one state. Catches buttons that are never keyboard-reachable.
+    /// </summary>
+    private static void AssertAllButtonsCovered(
+        VisualElement root,
+        string scene,
+        UIState[] states
+    )
+    {
+        var allButtons = FindAllNamedButtons(root);
+        var covered = new HashSet<string>();
+        foreach (var state in states)
+            foreach (string name in state.Navigable)
+                covered.Add(name);
+
+        var uncovered = new List<string>();
+        foreach (var btn in allButtons)
+            if (!covered.Contains(btn.name))
+                uncovered.Add(btn.name);
+
+        if (uncovered.Count > 0)
+        {
+            Assert.Fail(
+                $"[{scene}] Buttons never navigable in any state: "
+                    + string.Join(", ", uncovered)
+                    + ". Add a UI state that includes them or remove them from the UXML."
+            );
+        }
+    }
+
+    // ── MainMenu ────────────────────────────────────────────────────
+
+    private static readonly string[] MainMenuButtons =
+    {
+        "quit-btn",
+        "leaderboard-btn",
+        "play-btn",
+        "settings-btn",
+        "link-github-btn",
+        "link-discord-btn",
+    };
+
+    private static readonly UIState MainMenu_Default = new UIState(
+        "MainMenu/Default",
+        setup: root => { },
+        navigable: MainMenuButtons
+    );
+
+    private static readonly UIState MainMenu_WithContinue = new UIState(
+        "MainMenu/WithContinue",
+        setup: root => root.Q<Button>("continue-btn").RemoveFromClassList("screen--hidden"),
+        navigable: MainMenuButtons.Concat(new[] { "continue-btn" }).ToArray()
+    );
+
+    private static readonly UIState MainMenu_QuitModal = new UIState(
+        "MainMenu/QuitModal",
+        setup: root =>
+        {
+            var modal = root.Q("quit-modal");
+            modal.style.display = DisplayStyle.Flex;
+            modal.Q(className: "modal-overlay").RemoveFromClassList("screen--hidden");
+        },
+        navigable: new[] { "modal-confirm-btn", "modal-cancel-btn" },
+        background: MainMenuButtons
+    );
+
+    private static IEnumerable<UIState> MainMenuStates()
+    {
+        yield return MainMenu_Default;
+        yield return MainMenu_WithContinue;
+        yield return MainMenu_QuitModal;
     }
 
     [UnityTest]
-    public IEnumerator SoloSizeSelect_AllNavigableButtonsExist()
+    public IEnumerator MainMenu_StateNavigation(
+        [ValueSource(nameof(MainMenuStates))] UIState state
+    )
     {
-        var root = SetUpDocument(
-            SoloSizeSelectUxmlPath,
-            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
-        );
+        var root = SetUpDocument(MainMenuUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
-
-        AssertButtonExists(root, "SoloSizeSelect", "back-btn");
-        AssertButtonExists(root, "SoloSizeSelect", "trophy-btn");
-        AssertButtonExists(root, "SoloSizeSelect", "preset-small");
-        AssertButtonExists(root, "SoloSizeSelect", "preset-medium");
-        AssertButtonExists(root, "SoloSizeSelect", "preset-large");
-        AssertButtonExists(root, "SoloSizeSelect", "preset-xlarge");
-        AssertButtonExists(root, "SoloSizeSelect", "preset-custom");
-        AssertButtonExists(root, "SoloSizeSelect", "start-btn");
+        state.Setup(root);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertStateNavigation(root, state);
     }
 
     [UnityTest]
-    public IEnumerator GameHud_AllNavigableButtonsExist()
+    public IEnumerator MainMenu_AllButtonsCovered()
     {
-        var root = SetUpDocument(
-            GameHudUxmlPath,
-            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
-        );
+        var root = SetUpDocument(MainMenuUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertAllButtonsCovered(root, "MainMenu", MainMenuStates().ToArray());
+    }
 
-        AssertButtonExists(root, "GameHud", "back-to-menu-btn");
-        AssertButtonExists(root, "GameHud", "trail-toggle-btn");
-        // Leave modals use ConfirmModal template (modal-confirm-btn, modal-cancel-btn).
-        var leaveModal = root.Q("leave-modal");
-        Assert.IsNotNull(leaveModal, "[GameHud] leave-modal not found");
-        Assert.IsNotNull(
-            leaveModal.Q<Button>("modal-confirm-btn"),
-            "[GameHud] leave-modal missing modal-confirm-btn"
-        );
-        Assert.IsNotNull(
-            leaveModal.Q<Button>("modal-cancel-btn"),
-            "[GameHud] leave-modal missing modal-cancel-btn"
-        );
+    // ── SoloSizeSelect ──────────────────────────────────────────────
+
+    private static readonly UIState SoloSizeSelect_Default = new UIState(
+        "SoloSizeSelect/Default",
+        setup: root => { },
+        navigable: new[]
+        {
+            "back-btn",
+            "trophy-btn",
+            "preset-small",
+            "preset-medium",
+            "preset-large",
+            "preset-xlarge",
+            "preset-custom",
+            "start-btn",
+        }
+    );
+
+    private static IEnumerable<UIState> SoloSizeSelectStates()
+    {
+        yield return SoloSizeSelect_Default;
     }
 
     [UnityTest]
-    public IEnumerator VictoryPopup_AllNavigableButtonsExist()
+    public IEnumerator SoloSizeSelect_StateNavigation(
+        [ValueSource(nameof(SoloSizeSelectStates))] UIState state
+    )
     {
-        var root = SetUpDocument(
-            VictoryUxmlPath,
-            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
-        );
+        var root = SetUpDocument(SoloSizeSelectUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
-
-        AssertButtonExists(root, "Victory", "play-again-btn");
-        AssertButtonExists(root, "Victory", "menu-btn");
-        AssertButtonExists(root, "Victory", "view-leaderboard-btn");
-        AssertButtonExists(root, "Victory", "toast-action-btn");
+        state.Setup(root);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertStateNavigation(root, state);
     }
 
     [UnityTest]
-    public IEnumerator Leaderboard_AllNavigableButtonsExist()
+    public IEnumerator SoloSizeSelect_AllButtonsCovered()
     {
-        var root = SetUpDocument(
-            LeaderboardUxmlPath,
-            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
-        );
+        var root = SetUpDocument(SoloSizeSelectUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertAllButtonsCovered(root, "SoloSizeSelect", SoloSizeSelectStates().ToArray());
+    }
 
-        AssertButtonExists(root, "Leaderboard", "lb-back-btn");
-        AssertButtonExists(root, "Leaderboard", "lb-local-btn");
-        AssertButtonExists(root, "Leaderboard", "lb-global-btn");
-        AssertButtonExists(root, "Leaderboard", "tab-small");
-        AssertButtonExists(root, "Leaderboard", "tab-medium");
-        AssertButtonExists(root, "Leaderboard", "tab-large");
-        AssertButtonExists(root, "Leaderboard", "tab-xlarge");
-        AssertButtonExists(root, "Leaderboard", "tab-all");
-        AssertButtonExists(root, "Leaderboard", "lb-refresh-btn");
-        AssertButtonExists(root, "Leaderboard", "sort-fastest");
-        AssertButtonExists(root, "Leaderboard", "sort-biggest");
-        AssertButtonExists(root, "Leaderboard", "sort-favorites");
-        AssertButtonExists(root, "Leaderboard", "lb-player-play-btn");
-        AssertButtonExists(root, "Leaderboard", "ctx-favorite-btn");
-        AssertButtonExists(root, "Leaderboard", "ctx-play-btn");
-        AssertButtonExists(root, "Leaderboard", "ctx-delete-btn");
+    // ── GameHud ──────────────────────────────────────────────────────
+
+    private static readonly UIState GameHud_Loading = new UIState(
+        "GameHud/Loading",
+        setup: root =>
+        {
+            // Loading overlay visible, HUD elements hidden (as GameController.ShowLoading does).
+            root.Q("loading-overlay").style.display = DisplayStyle.Flex;
+            root.Q("loading-overlay").style.opacity = 1f;
+            root.Q<Label>("timer-label").style.display = DisplayStyle.None;
+            root.Q<Button>("trail-toggle-btn").style.display = DisplayStyle.None;
+        },
+        navigable: new[] { "back-to-menu-btn" }
+    );
+
+    private static readonly UIState GameHud_LoadingCancelModal = new UIState(
+        "GameHud/Loading+CancelGenModal",
+        setup: root =>
+        {
+            root.Q("loading-overlay").style.display = DisplayStyle.Flex;
+            root.Q("loading-overlay").style.opacity = 1f;
+            root.Q<Label>("timer-label").style.display = DisplayStyle.None;
+            root.Q<Button>("trail-toggle-btn").style.display = DisplayStyle.None;
+            root.Q("cancel-generation-modal").RemoveFromClassList("modal--hidden");
+        },
+        navigable: new[] { "cancel-generation-yes-btn", "cancel-generation-no-btn" },
+        background: new[] { "back-to-menu-btn" }
+    );
+
+    private static readonly UIState GameHud_Playing = new UIState(
+        "GameHud/Playing",
+        setup: root =>
+        {
+            // Loading overlay hidden, HUD elements visible.
+            root.Q("loading-overlay").style.display = DisplayStyle.None;
+        },
+        navigable: new[] { "back-to-menu-btn", "trail-toggle-btn" }
+    );
+
+    private static readonly UIState GameHud_PlayingLeaveModal = new UIState(
+        "GameHud/Playing+LeaveModal",
+        setup: root =>
+        {
+            root.Q("loading-overlay").style.display = DisplayStyle.None;
+            var modal = root.Q("leave-modal");
+            modal.style.display = DisplayStyle.Flex;
+            modal.RemoveFromClassList("screen--hidden");
+        },
+        navigable: new[] { "modal-confirm-btn", "modal-cancel-btn" },
+        background: new[] { "back-to-menu-btn", "trail-toggle-btn" }
+    );
+
+    private static IEnumerable<UIState> GameHudStates()
+    {
+        yield return GameHud_Loading;
+        yield return GameHud_LoadingCancelModal;
+        yield return GameHud_Playing;
+        yield return GameHud_PlayingLeaveModal;
     }
 
     [UnityTest]
-    public IEnumerator ReplayHud_AllNavigableButtonsExist()
+    public IEnumerator GameHud_StateNavigation(
+        [ValueSource(nameof(GameHudStates))] UIState state
+    )
     {
-        var root = SetUpDocument(
-            ReplayHudUxmlPath,
-            new UILayoutTestHelper.AspectRatio("16:9", 1920, 1080)
-        );
+        var root = SetUpDocument(GameHudUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
-
-        AssertButtonExists(root, "ReplayHud", "exit-btn");
-        AssertButtonExists(root, "ReplayHud", "play-pause-btn");
-        AssertButtonExists(root, "ReplayHud", "speed-btn");
-        AssertButtonExists(root, "ReplayHud", "highlight-btn");
-        AssertButtonExists(root, "ReplayHud", "controls-toggle-btn");
+        state.Setup(root);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertStateNavigation(root, state);
     }
 
-    private static void AssertButtonExists(VisualElement root, string context, string buttonName)
+    [UnityTest]
+    public IEnumerator GameHud_AllButtonsCovered()
     {
-        Assert.IsNotNull(
-            root.Q<Button>(buttonName),
-            $"[{context}] Button '{buttonName}' not found in UXML — "
-                + "if renamed, update the controller's BuildNavGraph"
-        );
+        var root = SetUpDocument(GameHudUxmlPath, StandardRatio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertAllButtonsCovered(root, "GameHud", GameHudStates().ToArray());
+    }
+
+    // ── VictoryPopup ────────────────────────────────────────────────
+
+    private static readonly string[] VictoryButtons =
+    {
+        "view-leaderboard-btn",
+        "play-again-btn",
+        "menu-btn",
+    };
+
+    private static readonly UIState Victory_Popup = new UIState(
+        "Victory/Popup",
+        setup: root =>
+        {
+            root.Q("victory-overlay").RemoveFromClassList("victory--hidden");
+        },
+        navigable: VictoryButtons
+    );
+
+    private static readonly UIState Victory_PopupWithToast = new UIState(
+        "Victory/Popup+Toast",
+        setup: root =>
+        {
+            root.Q("victory-overlay").RemoveFromClassList("victory--hidden");
+            root.Q("toast").RemoveFromClassList("victory--hidden");
+            root.Q<Button>("toast-action-btn").RemoveFromClassList("victory--hidden");
+        },
+        navigable: VictoryButtons.Concat(new[] { "toast-action-btn" }).ToArray()
+    );
+
+    private static IEnumerable<UIState> VictoryStates()
+    {
+        yield return Victory_Popup;
+        yield return Victory_PopupWithToast;
+    }
+
+    [UnityTest]
+    public IEnumerator Victory_StateNavigation(
+        [ValueSource(nameof(VictoryStates))] UIState state
+    )
+    {
+        var root = SetUpDocument(VictoryUxmlPath, StandardRatio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        state.Setup(root);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertStateNavigation(root, state);
+    }
+
+    [UnityTest]
+    public IEnumerator Victory_AllButtonsCovered()
+    {
+        var root = SetUpDocument(VictoryUxmlPath, StandardRatio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertAllButtonsCovered(root, "Victory", VictoryStates().ToArray());
+    }
+
+    // ── Leaderboard ─────────────────────────────────────────────────
+
+    private static readonly string[] LeaderboardLocalButtons =
+    {
+        "lb-back-btn",
+        "lb-local-btn",
+        "lb-global-btn",
+        "tab-small",
+        "tab-medium",
+        "tab-large",
+        "tab-xlarge",
+        "tab-all",
+        "sort-fastest",
+        "sort-biggest",
+        "sort-favorites",
+    };
+
+    private static readonly UIState Leaderboard_LocalView = new UIState(
+        "Leaderboard/LocalView",
+        setup: root => { },
+        navigable: LeaderboardLocalButtons
+    );
+
+    private static readonly UIState Leaderboard_GlobalView = new UIState(
+        "Leaderboard/GlobalView",
+        setup: root =>
+        {
+            root.Q<Button>("lb-refresh-btn").RemoveFromClassList("lb--hidden");
+            root.Q("lb-player-panel").RemoveFromClassList("lb--hidden");
+            root.Q<Button>("lb-player-play-btn").RemoveFromClassList("lb--hidden");
+        },
+        navigable: LeaderboardLocalButtons
+            .Concat(new[] { "lb-refresh-btn", "lb-player-play-btn" })
+            .ToArray()
+    );
+
+    private static readonly UIState Leaderboard_ContextMenu = new UIState(
+        "Leaderboard/ContextMenu",
+        setup: root =>
+        {
+            root.Q("lb-context-menu").RemoveFromClassList("lb--hidden");
+            root.Q<Button>("ctx-favorite-btn").RemoveFromClassList("lb--hidden");
+            root.Q<Button>("ctx-play-btn").RemoveFromClassList("lb--hidden");
+        },
+        navigable: new[] { "ctx-favorite-btn", "ctx-play-btn", "ctx-delete-btn" },
+        background: LeaderboardLocalButtons
+    );
+
+    private static readonly UIState Leaderboard_DeleteModal = new UIState(
+        "Leaderboard/DeleteModal",
+        setup: root =>
+        {
+            var modal = root.Q("delete-modal");
+            modal.style.display = DisplayStyle.Flex;
+            modal.Q(className: "modal-overlay").RemoveFromClassList("screen--hidden");
+        },
+        navigable: new[] { "modal-confirm-btn", "modal-cancel-btn" },
+        background: LeaderboardLocalButtons
+    );
+
+    private static IEnumerable<UIState> LeaderboardStates()
+    {
+        yield return Leaderboard_LocalView;
+        yield return Leaderboard_GlobalView;
+        yield return Leaderboard_ContextMenu;
+        yield return Leaderboard_DeleteModal;
+    }
+
+    [UnityTest]
+    public IEnumerator Leaderboard_StateNavigation(
+        [ValueSource(nameof(LeaderboardStates))] UIState state
+    )
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, StandardRatio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        state.Setup(root);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertStateNavigation(root, state);
+    }
+
+    [UnityTest]
+    public IEnumerator Leaderboard_AllButtonsCovered()
+    {
+        var root = SetUpDocument(LeaderboardUxmlPath, StandardRatio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertAllButtonsCovered(root, "Leaderboard", LeaderboardStates().ToArray());
+    }
+
+    // ── ReplayHud ───────────────────────────────────────────────────
+
+    private static readonly string[] ReplayAllButtons =
+    {
+        "exit-btn",
+        "controls-toggle-btn",
+        "play-pause-btn",
+        "speed-btn",
+        "highlight-btn",
+    };
+
+    private static readonly UIState Replay_ControlsVisible = new UIState(
+        "Replay/ControlsVisible",
+        setup: root => { },
+        navigable: ReplayAllButtons
+    );
+
+    private static readonly UIState Replay_ControlsHidden = new UIState(
+        "Replay/ControlsHidden",
+        setup: root =>
+        {
+            root.Q("controls-bar").style.display = DisplayStyle.None;
+        },
+        navigable: new[] { "exit-btn", "controls-toggle-btn" }
+    );
+
+    private static IEnumerable<UIState> ReplayHudStates()
+    {
+        yield return Replay_ControlsVisible;
+        yield return Replay_ControlsHidden;
+    }
+
+    [UnityTest]
+    public IEnumerator ReplayHud_StateNavigation(
+        [ValueSource(nameof(ReplayHudStates))] UIState state
+    )
+    {
+        var root = SetUpDocument(ReplayHudUxmlPath, StandardRatio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        state.Setup(root);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertStateNavigation(root, state);
+    }
+
+    [UnityTest]
+    public IEnumerator ReplayHud_AllButtonsCovered()
+    {
+        var root = SetUpDocument(ReplayHudUxmlPath, StandardRatio);
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+        AssertAllButtonsCovered(root, "ReplayHud", ReplayHudStates().ToArray());
     }
 }
