@@ -18,16 +18,24 @@
         <ui:VisualElement class="hud-icon-btn__icon icon--arrow-lane-preview" />
     </ui:Button>
 
-    <ui:VisualElement name="leave-modal" class="modal-overlay modal--hidden">
+    <ui:VisualElement name="leave-modal" class="modal-overlay screen--hidden">
         <ui:VisualElement class="modal-box">
-            <ui:Button name="leave-close-btn" class="modal-close-btn">
-                <ui:VisualElement class="modal-close-btn__icon icon--close" />
-            </ui:Button>
-            <ui:Label name="leave-title" class="modal-label" text="Save game?" />
-            <ui:Label name="leave-sublabel" class="modal-sublabel modal--hidden" text="This will replace your current save." />
+            <ui:Label name="modal-title" class="modal-label" />
+            <ui:Label name="modal-subtitle" class="modal-sublabel screen--hidden" />
             <ui:VisualElement class="modal-buttons">
-                <ui:Button name="leave-yes-btn" class="modal-btn" text="Yes" />
-                <ui:Button name="leave-no-btn" class="modal-btn" text="No" />
+                <ui:Button name="modal-confirm-btn" class="modal-btn" />
+                <ui:Button name="modal-cancel-btn" class="modal-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="leave-save-modal" class="modal-overlay screen--hidden">
+        <ui:VisualElement class="modal-box">
+            <ui:Label name="modal-title" class="modal-label" />
+            <ui:Label name="modal-subtitle" class="modal-sublabel screen--hidden" />
+            <ui:VisualElement class="modal-buttons">
+                <ui:Button name="modal-confirm-btn" class="modal-btn" />
+                <ui:Button name="modal-cancel-btn" class="modal-btn" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

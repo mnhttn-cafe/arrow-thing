@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
-using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
@@ -20,9 +19,6 @@ public sealed class ReplayViewController : MonoBehaviour
 
     [SerializeField]
     private Camera mainCamera;
-
-    [SerializeField]
-    private InputActionAsset inputActions;
 
     [SerializeField]
     private UIDocument hudUIDocument;
@@ -71,7 +67,6 @@ public sealed class ReplayViewController : MonoBehaviour
     private bool _wasPlayingBeforeSeek;
     private TapIndicatorPool _tapPool;
     private List<List<Cell>> _boardSnapshot;
-    private string _returnScene;
 
     // Camera input
     private InputAction _pointAction;
@@ -85,6 +80,14 @@ public sealed class ReplayViewController : MonoBehaviour
     private bool _inputEnabled = true;
     private bool _pointerOverUI;
 
+    // Keyboard navigation
+    private FocusNavigator _replayNavigator;
+    private int _navPlayIdx;
+    private int _navSpeedIdx;
+    private int _navHighlightIdx;
+    private int _navSeekIdx;
+    private int _navExitIdx;
+
     private void Awake()
     {
         if (visualSettings == null)
@@ -94,11 +97,10 @@ public sealed class ReplayViewController : MonoBehaviour
         }
 
         _replayData = GameSettings.ReplaySource;
-        _returnScene = GameSettings.ReturnScene ?? "MainMenu";
         if (_replayData == null)
         {
             Debug.LogError("ReplayViewController: No replay data in GameSettings.");
-            SceneManager.LoadScene("MainMenu");
+            SceneNav.Pop();
             return;
         }
 
@@ -109,6 +111,14 @@ public sealed class ReplayViewController : MonoBehaviour
 
         SettingsController.IsOpenChanged += OnSettingsOpenChanged;
         ThemeManager.ThemeChanged += OnThemeChanged;
+
+        // Create navigator early so navigation events are suppressed from the start.
+        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
+            new FocusNavigator(hudUIDocument.rootVisualElement);
+
+        if (KeybindManager.Instance != null)
+            KeybindManager.Instance.ActiveContext = KeybindManager.Context.Replay;
+
         StartCoroutine(LoadAndPlay());
     }
 
@@ -283,6 +293,39 @@ public sealed class ReplayViewController : MonoBehaviour
             _player.IsPlaying = false;
             UpdatePlayPauseButton();
         }
+
+        HandleReplayKeybinds();
+    }
+
+    private void HandleReplayKeybinds()
+    {
+        var km = KeybindManager.Instance;
+        if (km == null)
+            return;
+        if (SettingsController.Instance != null && SettingsController.Instance.IsOpen)
+            return;
+
+        // Navigator handles arrow keys, Enter, Tab.
+        if (_replayNavigator != null)
+            _replayNavigator.Update();
+
+        // Space always toggles play/pause regardless of focus.
+        if (
+            UnityEngine.InputSystem.Keyboard.current != null
+            && UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame
+        )
+            OnPlayPause();
+
+        // T toggles clearable highlight.
+        if (
+            UnityEngine.InputSystem.Keyboard.current != null
+            && UnityEngine.InputSystem.Keyboard.current.tKey.wasPressedThisFrame
+        )
+            OnHighlightToggle();
+
+        // Escape exits (unless a modal is handling it).
+        if (NavigableScene.ShouldHandleCancel(_replayNavigator))
+            OnExit();
     }
 
     // --- HUD ---
@@ -367,11 +410,136 @@ public sealed class ReplayViewController : MonoBehaviour
             _timeTotal.text = FormatTime(_player.DisplayDuration);
 
         UpdatePlayPauseButton();
+        BuildReplayNavigator();
+    }
+
+    private void BuildReplayNavigator()
+    {
+        var root = hudUIDocument.rootVisualElement;
+        _replayNavigator?.Dispose();
+        _replayNavigator = new FocusNavigator(root);
+
+        var items = new System.Collections.Generic.List<FocusNavigator.FocusItem>();
+
+        // Exit button.
+        _navExitIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = _exitBtn,
+                OnActivate = () =>
+                {
+                    OnExit();
+                    return true;
+                },
+            }
+        );
+
+        // Seek handle — OnHorizontal is already DAS-gated by the navigator.
+        _navSeekIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = _seekHandle,
+                OnHorizontal = dir =>
+                {
+                    if (_player != null)
+                    {
+                        float duration = (float)_player.DisplayDuration;
+                        float step = duration * 0.02f; // 2% per step
+                        float target = (float)_player.CurrentTime + dir * step;
+                        target = Mathf.Clamp(target, 0f, duration);
+                        SeekTo(target);
+                    }
+                    return true;
+                },
+            }
+        );
+
+        // Play/Pause button.
+        _navPlayIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = _playPauseBtn,
+                OnActivate = () =>
+                {
+                    OnPlayPause();
+                    return true;
+                },
+            }
+        );
+
+        // Speed button.
+        _navSpeedIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = _speedBtn,
+                OnActivate = () =>
+                {
+                    OnSpeedCycle();
+                    return true;
+                },
+            }
+        );
+
+        // Highlight/Clearable button.
+        _navHighlightIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = _highlightBtn,
+                OnActivate = () =>
+                {
+                    OnHighlightToggle();
+                    return true;
+                },
+            }
+        );
+
+        // Controls toggle (show/hide bar).
+        int toggleIdx = -1;
+        if (_controlsToggleBtn != null)
+        {
+            toggleIdx = items.Count;
+            items.Add(
+                new FocusNavigator.FocusItem
+                {
+                    Element = _controlsToggleBtn,
+                    OnActivate = () =>
+                    {
+                        OnControlsToggle();
+                        return true;
+                    },
+                }
+            );
+        }
+
+        _replayNavigator.SetItems(items, _navPlayIdx);
+
+        // Nav graph:
+        // Exit ↔ Seek (Down/Up)
+        _replayNavigator.LinkBidi(_navExitIdx, FocusNavigator.NavDir.Down, _navSeekIdx);
+        // Seek ↔ Play (Down/Up)
+        _replayNavigator.LinkBidi(_navSeekIdx, FocusNavigator.NavDir.Down, _navPlayIdx);
+        // Play ↔ Speed ↔ Highlight (Right chain)
+        _replayNavigator.LinkBidi(_navPlayIdx, FocusNavigator.NavDir.Right, _navSpeedIdx);
+        _replayNavigator.LinkBidi(_navSpeedIdx, FocusNavigator.NavDir.Right, _navHighlightIdx);
+        // Highlight ↔ Controls toggle (Right)
+        if (toggleIdx >= 0)
+            _replayNavigator.LinkBidi(_navHighlightIdx, FocusNavigator.NavDir.Right, toggleIdx);
+        // All playback row buttons → Up → Seek
+        _replayNavigator.Link(_navPlayIdx, FocusNavigator.NavDir.Up, _navSeekIdx);
+        _replayNavigator.Link(_navSpeedIdx, FocusNavigator.NavDir.Up, _navSeekIdx);
+        _replayNavigator.Link(_navHighlightIdx, FocusNavigator.NavDir.Up, _navSeekIdx);
+        if (toggleIdx >= 0)
+            _replayNavigator.Link(toggleIdx, FocusNavigator.NavDir.Up, _navSeekIdx);
     }
 
     private void OnExit()
     {
-        SceneManager.LoadScene(_returnScene);
+        SceneNav.Pop();
     }
 
     private void OnPlayPause()
@@ -411,13 +579,14 @@ public sealed class ReplayViewController : MonoBehaviour
         {
             if (_highlightBtn != null)
                 _highlightBtn.AddToClassList("rh-highlight-btn--active");
-            _boardView.UpdateClearableHighlights(_board);
+            _boardView.UpdateClearableHighlights(_board, showTrails: true);
         }
         else
         {
             if (_highlightBtn != null)
                 _highlightBtn.RemoveFromClassList("rh-highlight-btn--active");
             _boardView.ClearAllHighlights();
+            _boardView.SetAllTrailsVisible(false);
         }
     }
 
@@ -493,6 +662,20 @@ public sealed class ReplayViewController : MonoBehaviour
         }
     }
 
+    private void SeekTo(float time)
+    {
+        if (_player == null)
+            return;
+        float duration = (float)_player.DisplayDuration;
+        if (duration <= 0f)
+            return;
+        double normalized = Mathf.Clamp01(time / duration);
+        var result = _player.SeekTo(normalized);
+        RebuildBoardToState(result);
+        UpdateSeekUI();
+        UpdateTimeLabels();
+    }
+
     private void ApplySeekFromPointer(float localX)
     {
         if (_seekTrack == null || _player == null)
@@ -544,7 +727,7 @@ public sealed class ReplayViewController : MonoBehaviour
                 _tapPool.Spawn(worldPos, false);
 
             if (_highlightActive)
-                _boardView.UpdateClearableHighlights(_board);
+                _boardView.UpdateClearableHighlights(_board, showTrails: true);
         }
         else if (evt.type == ReplayEventType.Reject)
         {
@@ -622,7 +805,7 @@ public sealed class ReplayViewController : MonoBehaviour
         }
 
         if (_highlightActive)
-            _boardView.UpdateClearableHighlights(_board);
+            _boardView.UpdateClearableHighlights(_board, showTrails: true);
     }
 
     /// <summary>
@@ -743,14 +926,13 @@ public sealed class ReplayViewController : MonoBehaviour
 
     private void SetupCameraInput()
     {
-        if (inputActions == null)
+        var km = KeybindManager.Instance;
+        if (km == null)
             return;
 
-        var gameplay = inputActions.FindActionMap("Gameplay", true);
-        _pointAction = gameplay.FindAction("Point", true);
-        _selectAction = gameplay.FindAction("Select", true);
-        _zoomAction = gameplay.FindAction("Zoom", true);
-        gameplay.Enable();
+        _pointAction = km.Point;
+        _selectAction = km.Select;
+        _zoomAction = km.Zoom;
 
         EnhancedTouchSupport.Enable();
 

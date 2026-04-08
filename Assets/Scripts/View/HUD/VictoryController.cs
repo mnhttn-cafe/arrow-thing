@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 /// <summary>
@@ -207,6 +206,119 @@ public sealed class VictoryController : MonoBehaviour
         }
 
         _overlay.RemoveFromClassList("victory--hidden");
+
+        // Set up keyboard navigation for victory popup buttons.
+        SetupVictoryNavigator();
+    }
+
+    private FocusNavigator _victoryNavigator;
+
+    private void SetupVictoryNavigator(bool focusLeaderboard = false)
+    {
+        var root = _uiDocument.rootVisualElement;
+        _victoryNavigator = new FocusNavigator(root);
+
+        var items = new System.Collections.Generic.List<FocusNavigator.FocusItem>();
+
+        // Toast retry (top-right, visible after failed submission).
+        int retryIdx = -1;
+        if (
+            _toastActionBtn != null
+            && _toast != null
+            && !_toast.ClassListContains("victory--hidden")
+        )
+        {
+            retryIdx = items.Count;
+            items.Add(
+                new FocusNavigator.FocusItem
+                {
+                    Element = _toastActionBtn,
+                    OnActivate = () =>
+                    {
+                        OnRetry();
+                        return true;
+                    },
+                }
+            );
+        }
+
+        // Vertical column: View Leaderboard → Play Again → Menu.
+        int lbIdx = -1;
+        var viewLb = root.Q<Button>("view-leaderboard-btn");
+        if (viewLb != null)
+        {
+            lbIdx = items.Count;
+            items.Add(
+                new FocusNavigator.FocusItem
+                {
+                    Element = viewLb,
+                    OnActivate = () =>
+                    {
+                        OnViewLeaderboard();
+                        return true;
+                    },
+                }
+            );
+        }
+
+        int playIdx = -1;
+        var playAgain = root.Q<Button>("play-again-btn");
+        if (playAgain != null)
+        {
+            playIdx = items.Count;
+            items.Add(
+                new FocusNavigator.FocusItem
+                {
+                    Element = playAgain,
+                    OnActivate = () =>
+                    {
+                        OnPlayAgain();
+                        return true;
+                    },
+                }
+            );
+        }
+
+        int menuIdx = -1;
+        var menuBtn = root.Q<Button>("menu-btn");
+        if (menuBtn != null)
+        {
+            menuIdx = items.Count;
+            items.Add(
+                new FocusNavigator.FocusItem
+                {
+                    Element = menuBtn,
+                    OnActivate = () =>
+                    {
+                        OnMenu();
+                        return true;
+                    },
+                }
+            );
+        }
+
+        // Default focus on Play Again, or Leaderboard after successful retry.
+        int defaultFocus = focusLeaderboard && lbIdx >= 0 ? lbIdx : (playIdx >= 0 ? playIdx : 0);
+        _victoryNavigator.SetItems(items, defaultFocus);
+
+        // Vertical chain: Leaderboard ↔ Play Again ↔ Menu.
+        if (lbIdx >= 0 && playIdx >= 0)
+            _victoryNavigator.LinkBidi(lbIdx, FocusNavigator.NavDir.Down, playIdx);
+        if (playIdx >= 0 && menuIdx >= 0)
+            _victoryNavigator.LinkBidi(playIdx, FocusNavigator.NavDir.Down, menuIdx);
+
+        // Toast retry: Right from Leaderboard, Up from Leaderboard goes to retry.
+        if (retryIdx >= 0 && lbIdx >= 0)
+        {
+            _victoryNavigator.LinkBidi(lbIdx, FocusNavigator.NavDir.Right, retryIdx);
+            _victoryNavigator.LinkBidi(lbIdx, FocusNavigator.NavDir.Up, retryIdx);
+        }
+    }
+
+    private void Update()
+    {
+        if (_victoryNavigator != null)
+            _victoryNavigator.Update();
     }
 
     private void RecordToLeaderboard()
@@ -297,6 +409,8 @@ public sealed class VictoryController : MonoBehaviour
         if (result.IsSuccess)
         {
             HideToast();
+            // Rebuild navigator without retry button; focus on leaderboard.
+            SetupVictoryNavigator(focusLeaderboard: true);
         }
         else
         {
@@ -324,16 +438,16 @@ public sealed class VictoryController : MonoBehaviour
     private void OnViewLeaderboard()
     {
         GameSettings.LeaderboardFocusGameId = _recordedGameId;
-        SceneManager.LoadScene("Leaderboard");
+        SceneNav.Push("Leaderboard");
     }
 
     private void OnPlayAgain()
     {
-        SceneManager.LoadScene("Game");
+        SceneNav.Replace("Game");
     }
 
     private void OnMenu()
     {
-        SceneManager.LoadScene("MainMenu");
+        SceneNav.Pop();
     }
 }

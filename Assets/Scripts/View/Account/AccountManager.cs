@@ -10,6 +10,12 @@ public class AccountManager
 {
     private readonly ApiClient _api;
 
+    /// <summary>
+    /// Fired when the visible account form changes (e.g. login → change email).
+    /// Parameter is the element that should receive initial keyboard focus.
+    /// </summary>
+    public event System.Action<UnityEngine.UIElements.VisualElement> FormChanged;
+
     // Forms
     private readonly VisualElement _loginForm;
     private readonly VisualElement _verifyForm;
@@ -112,8 +118,12 @@ public class AccountManager
 
         // Combined login / register form
         _loginForm = settingsRoot.Q("login-form");
-        _loginEmail = new LabeledField("Email", "login-email");
-        _loginPassword = new LabeledField("Password", "login-password") { IsPassword = true };
+        _loginEmail = new LabeledField("Email", "login-email") { OnSubmit = OnLogin };
+        _loginPassword = new LabeledField("Password", "login-password")
+        {
+            IsPassword = true,
+            OnSubmit = OnLogin,
+        };
         _loginError = settingsRoot.Q<Label>("login-error");
 
         // "Forgot password?" inline in the password label row
@@ -131,7 +141,10 @@ public class AccountManager
         // Verify form
         _verifyForm = settingsRoot.Q("verify-form");
         _verifyMessage = settingsRoot.Q<Label>("verify-message");
-        _verifyCode = new LabeledField("Verification Code", "verify-code");
+        _verifyCode = new LabeledField("Verification Code", "verify-code")
+        {
+            OnSubmit = OnVerifyCode,
+        };
         _verifyError = settingsRoot.Q<Label>("verify-error");
         _verifySuccess = settingsRoot.Q<Label>("verify-success");
 
@@ -143,7 +156,7 @@ public class AccountManager
 
         // Forgot password form
         _forgotForm = settingsRoot.Q("forgot-form");
-        _forgotEmail = new LabeledField("Email", "forgot-email");
+        _forgotEmail = new LabeledField("Email", "forgot-email") { OnSubmit = OnForgotPassword };
         _forgotError = settingsRoot.Q<Label>("forgot-error");
         _forgotSuccess = settingsRoot.Q<Label>("forgot-success");
 
@@ -155,14 +168,16 @@ public class AccountManager
         // Reset password form
         _resetForm = settingsRoot.Q("reset-form");
         _resetMessage = settingsRoot.Q<Label>("reset-message");
-        _resetCode = new LabeledField("Reset Code", "reset-code");
+        _resetCode = new LabeledField("Reset Code", "reset-code") { OnSubmit = OnResetPassword };
         _resetNewPassword = new LabeledField("New Password", "reset-new-password")
         {
             IsPassword = true,
+            OnSubmit = OnResetPassword,
         };
         _resetConfirmPassword = new LabeledField("Confirm Password", "reset-confirm-password")
         {
             IsPassword = true,
+            OnSubmit = OnResetPassword,
         };
         _resetError = settingsRoot.Q<Label>("reset-error");
         _resetSuccess = settingsRoot.Q<Label>("reset-success");
@@ -189,10 +204,11 @@ public class AccountManager
 
         // Change email form
         _changeEmailForm = settingsRoot.Q("change-email-form");
-        _newEmail = new LabeledField("New Email", "new-email");
+        _newEmail = new LabeledField("New Email", "new-email") { OnSubmit = OnChangeEmail };
         _confirmPassword = new LabeledField("Current Password", "confirm-password")
         {
             IsPassword = true,
+            OnSubmit = OnChangeEmail,
         };
         _changeEmailError = settingsRoot.Q<Label>("change-email-error");
 
@@ -201,27 +217,40 @@ public class AccountManager
         changeEmailFields.Add(_confirmPassword.Root);
 
         settingsRoot.Q<Button>("change-email-submit-btn").clicked += OnChangeEmail;
+        settingsRoot.Q<Button>("change-email-back-btn").clicked += () =>
+            ShowAccountInfo("change-email-btn");
 
         // Confirm email change form
         _confirmEmailForm = settingsRoot.Q("confirm-email-form");
         _confirmEmailMessage = settingsRoot.Q<Label>("confirm-email-message");
-        _confirmEmailCode = new LabeledField("Confirmation Code", "confirm-email-code");
+        _confirmEmailCode = new LabeledField("Confirmation Code", "confirm-email-code")
+        {
+            OnSubmit = OnConfirmEmailChange,
+        };
         _confirmEmailError = settingsRoot.Q<Label>("confirm-email-error");
 
         settingsRoot.Q("confirm-email-fields").Add(_confirmEmailCode.Root);
 
         settingsRoot.Q<Button>("confirm-email-submit-btn").clicked += OnConfirmEmailChange;
+        settingsRoot.Q<Button>("confirm-email-back-btn").clicked += () =>
+            ShowAccountInfo("change-email-btn");
 
         // Change password form
         _changePasswordForm = settingsRoot.Q("change-password-form");
         _currentPassword = new LabeledField("Current Password", "current-password")
         {
             IsPassword = true,
+            OnSubmit = OnChangePassword,
         };
-        _newPassword = new LabeledField("New Password", "new-password") { IsPassword = true };
+        _newPassword = new LabeledField("New Password", "new-password")
+        {
+            IsPassword = true,
+            OnSubmit = OnChangePassword,
+        };
         _confirmNewPassword = new LabeledField("Confirm New Password", "confirm-new-password")
         {
             IsPassword = true,
+            OnSubmit = OnChangePassword,
         };
         _changePasswordError = settingsRoot.Q<Label>("change-password-error");
         _changePasswordSuccess = settingsRoot.Q<Label>("change-password-success");
@@ -232,6 +261,8 @@ public class AccountManager
         changePasswordFields.Add(_confirmNewPassword.Root);
 
         settingsRoot.Q<Button>("change-password-submit-btn").clicked += OnChangePassword;
+        settingsRoot.Q<Button>("change-password-back-btn").clicked += () =>
+            ShowAccountInfo("change-password-btn");
 
         // Start in correct state
         if (_api.IsLoggedIn)
@@ -247,6 +278,7 @@ public class AccountManager
         _loginPassword.Value = "";
         SetVisible(_loginForm, true);
         UpdateStatusLabel();
+        FormChanged?.Invoke(_loginEmail.Input);
     }
 
     private void ShowVerifyForm()
@@ -254,6 +286,7 @@ public class AccountManager
         HideAllForms();
         _verifyCode.Value = "";
         SetVisible(_verifyForm, true);
+        FormChanged?.Invoke(_verifyCode.Input);
     }
 
     private void ShowForgotForm()
@@ -261,6 +294,7 @@ public class AccountManager
         HideAllForms();
         _forgotEmail.Value = "";
         SetVisible(_forgotForm, true);
+        FormChanged?.Invoke(_forgotEmail.Input);
     }
 
     private void ShowResetForm()
@@ -271,13 +305,15 @@ public class AccountManager
         _resetConfirmPassword.Value = "";
         _resetMessage.text = $"We sent a 6-digit code to {_pendingResetEmail}.";
         SetVisible(_resetForm, true);
+        FormChanged?.Invoke(_resetCode.Input);
     }
 
-    private async void ShowAccountInfo()
+    private async void ShowAccountInfo(string focusBtnName = "change-email-btn")
     {
         HideAllForms();
         SetVisible(_accountInfo, true);
         UpdateStatusLabel();
+        FormChanged?.Invoke(_accountInfo.Q<UnityEngine.UIElements.Button>(focusBtnName));
 
         // Refresh account state from server
         var result = await _api.GetMeAsync();
@@ -305,6 +341,7 @@ public class AccountManager
         _newEmail.Value = "";
         _confirmPassword.Value = "";
         SetVisible(_changeEmailForm, true);
+        FormChanged?.Invoke(_newEmail.Input);
     }
 
     private void ShowConfirmEmailForm()
@@ -313,6 +350,7 @@ public class AccountManager
         _confirmEmailCode.Value = "";
         _confirmEmailMessage.text = $"We sent a 6-digit code to {_pendingNewEmail}.";
         SetVisible(_confirmEmailForm, true);
+        FormChanged?.Invoke(_confirmEmailCode.Input);
     }
 
     private void ShowChangePasswordForm()
@@ -322,6 +360,7 @@ public class AccountManager
         _newPassword.Value = "";
         _confirmNewPassword.Value = "";
         SetVisible(_changePasswordForm, true);
+        FormChanged?.Invoke(_currentPassword.Input);
     }
 
     private void HideAllForms()
@@ -563,6 +602,166 @@ public class AccountManager
 
     /// <summary>Cancels any in-progress inline edit (e.g. display name). Call when leaving the settings screen.</summary>
     public void CancelEditing() => _displayName.CancelEdit();
+
+    /// <summary>Activate the display name EditableLabel from keyboard navigation.</summary>
+    public void ActivateDisplayNameFromKeyboard() => _displayName.ActivateFromKeyboard();
+
+    /// <summary>Items that should be linked horizontally (populated by GetFocusItems).</summary>
+    public System.Collections.Generic.List<(int a, int b)> HorizontalPairs { get; } =
+        new System.Collections.Generic.List<(int, int)>();
+
+    /// <summary>
+    /// Returns focus items for all currently visible interactive elements in the
+    /// account section. Each item has a direct OnActivate callback — no event dispatch.
+    /// Also populates <see cref="HorizontalPairs"/> for Left/Right links.
+    /// </summary>
+    public System.Collections.Generic.List<FocusNavigator.FocusItem> GetFocusItems()
+    {
+        var items = new System.Collections.Generic.List<FocusNavigator.FocusItem>();
+        HorizontalPairs.Clear();
+
+        // Display name — always visible. Root is highlighted; Enter enters edit mode.
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = _displayName.Root,
+                OnActivate = () =>
+                {
+                    ActivateDisplayNameFromKeyboard();
+                    return true;
+                },
+            }
+        );
+
+        // Only add items from the currently visible form.
+        if (IsVisible(_loginForm))
+        {
+            AddField(items, _loginEmail);
+            AddField(items, _loginPassword);
+            int loginIdx = items.Count;
+            AddBtn(items, "login-submit-btn", OnLogin);
+            int registerIdx = items.Count;
+            AddBtn(items, "register-submit-btn", OnRegister);
+            HorizontalPairs.Add((loginIdx, registerIdx));
+        }
+        else if (IsVisible(_verifyForm))
+        {
+            AddField(items, _verifyCode);
+            AddBtn(items, "verify-submit-btn", OnVerifyCode);
+            AddBtn(items, "resend-verify-btn", OnResendVerification);
+            AddBtn(items, "verify-back-btn", ShowLoginForm);
+        }
+        else if (IsVisible(_forgotForm))
+        {
+            AddField(items, _forgotEmail);
+            AddBtn(items, "forgot-submit-btn", OnForgotPassword);
+            AddBtn(items, "forgot-back-btn", ShowLoginForm);
+        }
+        else if (IsVisible(_resetForm))
+        {
+            AddField(items, _resetCode);
+            AddField(items, _resetNewPassword);
+            AddField(items, _resetConfirmPassword);
+            AddBtn(items, "reset-submit-btn", OnResetPassword);
+            AddBtn(items, "reset-back-btn", ShowLoginForm);
+        }
+        else if (IsVisible(_accountInfo))
+        {
+            AddBtn(items, "change-email-btn", ShowChangeEmailForm);
+            AddBtn(items, "change-password-btn", ShowChangePasswordForm);
+            AddBtn(items, "logout-btn", () => _logoutModal.Show());
+        }
+        else if (IsVisible(_changeEmailForm))
+        {
+            AddField(items, _newEmail);
+            AddField(items, _confirmPassword);
+            AddBtn(items, "change-email-submit-btn", OnChangeEmail);
+            AddBtn(items, "change-email-back-btn", () => ShowAccountInfo("change-email-btn"));
+        }
+        else if (IsVisible(_confirmEmailForm))
+        {
+            AddField(items, _confirmEmailCode);
+            AddBtn(items, "confirm-email-submit-btn", OnConfirmEmailChange);
+            AddBtn(items, "confirm-email-back-btn", () => ShowAccountInfo("change-email-btn"));
+        }
+        else if (IsVisible(_changePasswordForm))
+        {
+            AddField(items, _currentPassword);
+            AddField(items, _newPassword);
+            AddField(items, _confirmNewPassword);
+            AddBtn(items, "change-password-submit-btn", OnChangePassword);
+            AddBtn(items, "change-password-back-btn", () => ShowAccountInfo("change-password-btn"));
+        }
+
+        return items;
+    }
+
+    private void AddField(
+        System.Collections.Generic.List<FocusNavigator.FocusItem> items,
+        LabeledField field
+    )
+    {
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = field.Input,
+                OnActivate =
+                    field.OnSubmit != null
+                        ? () =>
+                        {
+                            field.OnSubmit();
+                            return true;
+                        }
+                        : (System.Func<bool>)null,
+                OnFocused = () =>
+                {
+                    field.ActivateFromKeyboard();
+                },
+                OnBlurred = () =>
+                {
+                    field.Input.Blur();
+                    if (KeybindManager.Instance != null)
+                        KeybindManager.Instance.TextFieldFocused = false;
+                },
+            }
+        );
+    }
+
+    private void AddBtn(
+        System.Collections.Generic.List<FocusNavigator.FocusItem> items,
+        string btnName,
+        System.Action callback
+    )
+    {
+        // Find button among all forms (it may be in any of them).
+        var btn =
+            _loginForm?.Q<UnityEngine.UIElements.Button>(btnName)
+            ?? _verifyForm?.Q<UnityEngine.UIElements.Button>(btnName)
+            ?? _forgotForm?.Q<UnityEngine.UIElements.Button>(btnName)
+            ?? _resetForm?.Q<UnityEngine.UIElements.Button>(btnName)
+            ?? _accountInfo?.Q<UnityEngine.UIElements.Button>(btnName)
+            ?? _changeEmailForm?.Q<UnityEngine.UIElements.Button>(btnName)
+            ?? _confirmEmailForm?.Q<UnityEngine.UIElements.Button>(btnName)
+            ?? _changePasswordForm?.Q<UnityEngine.UIElements.Button>(btnName);
+        if (btn == null)
+            return;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = btn,
+                OnActivate = () =>
+                {
+                    callback();
+                    return true;
+                },
+            }
+        );
+    }
+
+    private static bool IsVisible(UnityEngine.UIElements.VisualElement el)
+    {
+        return el != null && !el.ClassListContains("screen--hidden");
+    }
 
     private void OnLogoutConfirm()
     {
