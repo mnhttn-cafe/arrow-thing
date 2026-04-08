@@ -25,6 +25,7 @@ public class GameHudLayoutTests : UILayoutTestBase
             ctx,
             warn,
             root.Q<Button>("back-to-menu-btn"),
+            root.Q<Button>("retry-btn"),
             root.Q<Label>("timer-label")
         );
     }
@@ -77,6 +78,36 @@ public class GameHudLayoutTests : UILayoutTestBase
 
         var panelBounds = root.worldBound;
         string ctx = $"GameHudLeaveModal @ {ratio.Name}";
+        bool warn = IsKnownIssueRatio(ratio);
+
+        AssertElements(
+            modal,
+            panelBounds,
+            ctx,
+            warn,
+            modal.Q<Label>("modal-title"),
+            modal.Q<Button>("modal-confirm-btn"),
+            modal.Q<Button>("modal-cancel-btn")
+        );
+    }
+
+    [UnityTest]
+    public IEnumerator GameHudRetryModal_AllElementsVisible(
+        [ValueSource(typeof(UILayoutTestHelper), nameof(UILayoutTestHelper.StandardAspectRatios))]
+            UILayoutTestHelper.AspectRatio ratio
+    )
+    {
+        var root = SetUpDocument(GameHudUxmlPath, ratio);
+
+        var modal = root.Q("retry-modal");
+        var overlay = modal.Q(className: "modal-overlay");
+        overlay.RemoveFromClassList("screen--hidden");
+        modal.style.display = DisplayStyle.Flex;
+
+        yield return UILayoutTestHelper.WaitForLayoutResolve();
+
+        var panelBounds = root.worldBound;
+        string ctx = $"GameHudRetryModal @ {ratio.Name}";
         bool warn = IsKnownIssueRatio(ratio);
 
         AssertElements(
