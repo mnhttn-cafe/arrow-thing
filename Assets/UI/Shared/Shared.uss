@@ -12,6 +12,12 @@
    Small    13px   --text-dim        Tabs, filter/nav btns, dates
    ==================================================================== */
 
+/* ── Visibility ──────────────────────────────────────────────────── */
+
+.screen--hidden {
+    display: none;
+}
+
 /* ── Loading Overlay ──────────────────────────────────────────────── */
 
 .loading-overlay {
