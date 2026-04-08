@@ -108,24 +108,19 @@ public sealed class EditableLabel
         if (KeybindManager.Instance != null)
             KeybindManager.Instance.TextFieldFocused = true;
 
-        // Deferred focus — the readonly toggle needs a frame to take effect.
-        // Generation check ensures a stale deferred call from a previous
-        // edit cycle doesn't interfere.
+        // Focus immediately so the mobile virtual keyboard appears (the
+        // browser requires .focus() within the user-gesture handler).
+        // SelectAll is deferred because it needs the focus to settle first.
+        var inner = _input.Q(className: "unity-text-field__input");
+        if (inner != null)
+            inner.Focus();
+        else
+            _input.Focus();
         _input.schedule.Execute(() =>
         {
             if (gen != _editGeneration)
                 return;
-            var inner = _input.Q(className: "unity-text-field__input");
-            if (inner != null)
-                inner.Focus();
-            else
-                _input.Focus();
-            _input.schedule.Execute(() =>
-            {
-                if (gen != _editGeneration)
-                    return;
-                _input.SelectAll();
-            });
+            _input.SelectAll();
         });
     }
 
