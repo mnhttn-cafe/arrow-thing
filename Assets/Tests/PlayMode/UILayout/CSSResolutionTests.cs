@@ -222,11 +222,7 @@ public class CSSResolutionTests : UILayoutTestBase
         // The controller applies lb-screen--compact when width < 500.
         if (shouldBeCompact)
         {
-            Assert.Less(
-                rootWidth,
-                500f,
-                $"[{ctx}] Root width should be < 500 for compact mode"
-            );
+            Assert.Less(rootWidth, 500f, $"[{ctx}] Root width should be < 500 for compact mode");
         }
         else
         {

@@ -65,10 +65,7 @@ public class SceneNavStackTests
     {
         _stack.Push("MainMenu", "SizeSelect");
         _stack.Push("SizeSelect", "Game");
-        CollectionAssert.AreEqual(
-            new[] { "MainMenu", "SizeSelect" },
-            _stack.ToArray()
-        );
+        CollectionAssert.AreEqual(new[] { "MainMenu", "SizeSelect" }, _stack.ToArray());
     }
 
     // ── Real user flows ─────────────────────────────────────────────

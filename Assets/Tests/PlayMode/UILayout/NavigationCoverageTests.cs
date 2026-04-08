@@ -74,11 +74,12 @@ public class NavigationCoverageTests : UILayoutTestBase
     private static List<Button> FindAllNamedButtons(VisualElement root)
     {
         var buttons = new List<Button>();
-        root.Query<Button>().ForEach(btn =>
-        {
-            if (!string.IsNullOrEmpty(btn.name))
-                buttons.Add(btn);
-        });
+        root.Query<Button>()
+            .ForEach(btn =>
+            {
+                if (!string.IsNullOrEmpty(btn.name))
+                    buttons.Add(btn);
+            });
         return buttons;
     }
 
@@ -139,17 +140,13 @@ public class NavigationCoverageTests : UILayoutTestBase
     /// Validates that every named Button in the document is navigable in at
     /// least one state. Catches buttons that are never keyboard-reachable.
     /// </summary>
-    private static void AssertAllButtonsCovered(
-        VisualElement root,
-        string scene,
-        UIState[] states
-    )
+    private static void AssertAllButtonsCovered(VisualElement root, string scene, UIState[] states)
     {
         var allButtons = FindAllNamedButtons(root);
         var covered = new HashSet<string>();
         foreach (var state in states)
-            foreach (string name in state.Navigable)
-                covered.Add(name);
+        foreach (string name in state.Navigable)
+            covered.Add(name);
 
         var uncovered = new List<string>();
         foreach (var btn in allButtons)
@@ -210,9 +207,7 @@ public class NavigationCoverageTests : UILayoutTestBase
     }
 
     [UnityTest]
-    public IEnumerator MainMenu_StateNavigation(
-        [ValueSource(nameof(MainMenuStates))] UIState state
-    )
+    public IEnumerator MainMenu_StateNavigation([ValueSource(nameof(MainMenuStates))] UIState state)
     {
         var root = SetUpDocument(MainMenuUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
@@ -333,9 +328,7 @@ public class NavigationCoverageTests : UILayoutTestBase
     }
 
     [UnityTest]
-    public IEnumerator GameHud_StateNavigation(
-        [ValueSource(nameof(GameHudStates))] UIState state
-    )
+    public IEnumerator GameHud_StateNavigation([ValueSource(nameof(GameHudStates))] UIState state)
     {
         var root = SetUpDocument(GameHudUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
@@ -388,9 +381,7 @@ public class NavigationCoverageTests : UILayoutTestBase
     }
 
     [UnityTest]
-    public IEnumerator Victory_StateNavigation(
-        [ValueSource(nameof(VictoryStates))] UIState state
-    )
+    public IEnumerator Victory_StateNavigation([ValueSource(nameof(VictoryStates))] UIState state)
     {
         var root = SetUpDocument(VictoryUxmlPath, StandardRatio);
         yield return UILayoutTestHelper.WaitForLayoutResolve();
