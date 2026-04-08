@@ -1,8 +1,8 @@
 # Arrow Thing
 
-Minimalist speed puzzle game prototype built in Unity.
+Minimalist speed puzzle game built in Unity.
 
-Core pitch: clear winding grid-based arrows as fast as possible, then weaponize your speed in PvP by sending garbage.
+Core pitch: clear winding grid-based arrows as fast as possible. Compete on global leaderboards across board sizes.
 
 ## Project Status
 
