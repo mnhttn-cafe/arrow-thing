@@ -6,6 +6,9 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
     exit 0
 fi
 
+# Run asynchronously — installs happen in background while session starts.
+echo '{"async": true, "asyncTimeout": 300000}'
+
 # ── .NET SDK (for CSharpier formatter) ───────────────────────────────
 if ! command -v dotnet &>/dev/null; then
     echo "Installing .NET SDK 10.0..."
