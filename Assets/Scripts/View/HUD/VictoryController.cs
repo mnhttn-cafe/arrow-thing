@@ -438,7 +438,10 @@ public sealed class VictoryController : MonoBehaviour
     private void OnViewLeaderboard()
     {
         GameSettings.LeaderboardFocusGameId = _recordedGameId;
-        SceneNav.Push("Leaderboard");
+        // Replace the (now stale) Game scene so popping Leaderboard returns
+        // to the scene that launched Game (Size Select or MainMenu), not the
+        // dead post-victory Game scene.
+        SceneNav.Replace("Leaderboard");
     }
 
     private void OnPlayAgain()
