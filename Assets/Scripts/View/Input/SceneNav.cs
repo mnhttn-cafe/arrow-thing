@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -8,10 +7,13 @@ using UnityEngine.SceneManagement;
 ///
 /// Controllers should save their state in OnDisable and restore in OnEnable
 /// to survive the disable/enable cycle.
+///
+/// Stack logic is delegated to <see cref="SceneNavStack"/> so it can be
+/// unit-tested without loading real scenes.
 /// </summary>
 public static class SceneNav
 {
-    private static readonly Stack<string> _stack = new Stack<string>();
+    private static readonly SceneNavStack _stack = new SceneNavStack();
 
     /// <summary>
     /// Load a new scene additively and disable the current scene.
@@ -20,7 +22,7 @@ public static class SceneNav
     public static void Push(string sceneName)
     {
         string current = SceneManager.GetActiveScene().name;
-        _stack.Push(current);
+        _stack.Push(current, sceneName);
         SetSceneActive(current, false);
 
         SceneManager.LoadScene(sceneName, LoadSceneMode.Additive);
@@ -41,14 +43,14 @@ public static class SceneNav
     /// </summary>
     public static void Pop()
     {
-        if (_stack.Count == 0)
+        string previous = _stack.Pop();
+        if (previous == null)
         {
             SceneManager.LoadScene("MainMenu");
             return;
         }
 
         string current = SceneManager.GetActiveScene().name;
-        string previous = _stack.Pop();
 
         // Disable the current scene before async unload to prevent
         // overlapping audio listeners / cameras during the unload frame.
@@ -68,6 +70,7 @@ public static class SceneNav
     public static void Replace(string sceneName)
     {
         string current = SceneManager.GetActiveScene().name;
+        _stack.Replace(current, sceneName);
         SetSceneActive(current, false);
         SceneManager.UnloadSceneAsync(current);
 
@@ -89,12 +92,12 @@ public static class SceneNav
     /// </summary>
     public static void Reset(string sceneName)
     {
-        _stack.Clear();
+        _stack.Reset();
         SceneManager.LoadScene(sceneName);
     }
 
     /// <summary>Number of scenes on the stack (not counting the current active scene).</summary>
-    public static int Depth => _stack.Count;
+    public static int Depth => _stack.Depth;
 
     private static void SetSceneActive(string sceneName, bool active)
     {
