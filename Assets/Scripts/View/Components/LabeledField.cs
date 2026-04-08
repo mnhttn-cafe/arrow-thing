@@ -97,7 +97,7 @@ public sealed class LabeledField
         if (KeybindManager.Instance != null)
             KeybindManager.Instance.TextFieldFocused = true;
 
-        _input.Focus();
+        _input.schedule.Execute(() => _input.Focus());
     }
 
     public void RegisterValueChangedCallback(EventCallback<ChangeEvent<string>> callback) =>

@@ -12,6 +12,11 @@ using UnityEngine.UIElements;
 ///   3. Unity's TextField handles all text editing natively.
 ///   4. Enter → commit, switch back to display mode, return to navigator.
 ///   5. Escape → revert to original value, switch back, return to navigator.
+///
+/// The TextField is never set to <c>isReadOnly</c>.  On WebGL mobile, a
+/// readonly HTML input suppresses the virtual keyboard even after the
+/// flag is cleared, because the DOM attribute removal hasn't flushed by
+/// the time <c>.focus()</c> fires.
 /// </summary>
 public sealed class EditableLabel
 {
@@ -41,9 +46,6 @@ public sealed class EditableLabel
         _input = new TextField { maxLength = 24 };
         _input.AddToClassList("editable-label__input");
         Root.Add(_input);
-
-        // Start in display mode — read-only, styled as plain text.
-        _input.isReadOnly = true;
 
         _input.RegisterCallback<ClickEvent>(_ =>
         {
@@ -75,7 +77,6 @@ public sealed class EditableLabel
         // events from a previous Blur() from killing a new edit session.
         _input.RegisterCallback<FocusOutEvent>(_ =>
         {
-            // Defer so we don't race with ActivateFromKeyboard's deferred Focus.
             int gen = _editGeneration;
             _input.schedule.Execute(() =>
             {
@@ -102,7 +103,6 @@ public sealed class EditableLabel
         _editGeneration++;
         int gen = _editGeneration;
         _valueBeforeEdit = _input.value;
-        _input.isReadOnly = false;
         Root.AddToClassList("editable-label--editing");
 
         if (KeybindManager.Instance != null)
@@ -110,7 +110,6 @@ public sealed class EditableLabel
 
         // Focus immediately so the mobile virtual keyboard appears (the
         // browser requires .focus() within the user-gesture handler).
-        // SelectAll is deferred because it needs the focus to settle first.
         var inner = _input.Q(className: "unity-text-field__input");
         if (inner != null)
             inner.Focus();
@@ -156,7 +155,6 @@ public sealed class EditableLabel
         if (!_editing)
             return;
         _editing = false;
-        _input.isReadOnly = true;
         Root.RemoveFromClassList("editable-label--editing");
 
         // Set TextFieldFocused false BEFORE blur so the FocusOutEvent
