@@ -19,6 +19,9 @@ public sealed class InputHandler : MonoBehaviour
     private GameTimer _timer;
     private ReplayRecorder _recorder;
     private Action _onArrowCleared;
+    private Action _onQuickReset;
+    private Action _onQuickSave;
+    private Action _onToggleTrail;
 
     private InputAction _pointAction = null!;
     private InputAction _selectAction = null!;
@@ -42,11 +45,13 @@ public sealed class InputHandler : MonoBehaviour
         Board board,
         BoardView boardView,
         CameraController camCtrl,
-        InputActionAsset inputActions,
         float dragThresholdPixels = 15f,
         GameTimer timer = null,
         ReplayRecorder recorder = null,
-        Action onArrowCleared = null
+        Action onArrowCleared = null,
+        Action onQuickReset = null,
+        Action onQuickSave = null,
+        Action onToggleTrail = null
     )
     {
         _board = board;
@@ -56,12 +61,14 @@ public sealed class InputHandler : MonoBehaviour
         _timer = timer;
         _recorder = recorder;
         _onArrowCleared = onArrowCleared;
+        _onQuickReset = onQuickReset;
+        _onQuickSave = onQuickSave;
+        _onToggleTrail = onToggleTrail;
 
-        var gameplay = inputActions.FindActionMap("Gameplay", true);
-        _pointAction = gameplay.FindAction("Point", true);
-        _selectAction = gameplay.FindAction("Select", true);
-        _zoomAction = gameplay.FindAction("Zoom", true);
-        gameplay.Enable();
+        var km = KeybindManager.Instance;
+        _pointAction = km.Point;
+        _selectAction = km.Select;
+        _zoomAction = km.Zoom;
 
         EnhancedTouchSupport.Enable();
     }
@@ -80,6 +87,29 @@ public sealed class InputHandler : MonoBehaviour
         HandleTouchPinch();
         HandleScrollZoom();
         HandleSelectAndPan();
+        HandleKeybinds();
+    }
+
+    private void HandleKeybinds()
+    {
+        var km = KeybindManager.Instance;
+        if (km == null)
+            return;
+
+        if (km.QuickReset.WasPerformedThisFrame())
+            _onQuickReset?.Invoke();
+
+        if (km.ToggleTrail.WasPerformedThisFrame())
+            _onToggleTrail?.Invoke();
+
+        if (km.ClickHovered.WasPerformedThisFrame())
+        {
+            Vector2 screenPos = _pointAction.ReadValue<Vector2>();
+            HandleTap(screenPos);
+        }
+
+        if (km.QuickSave.WasPerformedThisFrame())
+            _onQuickSave?.Invoke();
     }
 
     private void HandleSelectAndPan()

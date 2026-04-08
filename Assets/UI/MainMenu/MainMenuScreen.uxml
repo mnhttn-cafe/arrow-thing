@@ -5,6 +5,11 @@
                 <ui:VisualElement class="icon-btn__icon icon--close" />
             </ui:Button>
         </ui:VisualElement>
+        <ui:VisualElement class="icon-row icon-row--top-right">
+            <ui:Button name="leaderboard-btn" class="icon-btn icon-btn--gold">
+                <ui:VisualElement class="icon-btn__icon icon--trophy" />
+            </ui:Button>
+        </ui:VisualElement>
 
         <ui:VisualElement class="title" />
         <ui:Button name="play-btn" class="menu-btn start-btn" text="Play" />

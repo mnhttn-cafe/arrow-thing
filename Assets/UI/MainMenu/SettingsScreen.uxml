@@ -9,10 +9,21 @@
 
             <!-- Left nav sidebar -->
             <ui:VisualElement class="settings-nav">
-                <ui:Button name="nav-account" class="settings-nav-btn settings-nav-btn--active" text="Account" />
-                <ui:Button name="nav-gameplay" class="settings-nav-btn" text="Gameplay" />
-                <ui:Button name="nav-data" class="settings-nav-btn" text="Data" />
-                <ui:Button name="nav-about" class="settings-nav-btn" text="About" />
+                <ui:Button name="nav-account" class="settings-nav-btn settings-nav-btn--active">
+                    <ui:VisualElement class="settings-nav-btn__icon icon--account" />
+                </ui:Button>
+                <ui:Button name="nav-gameplay" class="settings-nav-btn">
+                    <ui:VisualElement class="settings-nav-btn__icon icon--joystick" />
+                </ui:Button>
+                <ui:Button name="nav-keybinds" class="settings-nav-btn">
+                    <ui:VisualElement class="settings-nav-btn__icon icon--keyboard" />
+                </ui:Button>
+                <ui:Button name="nav-data" class="settings-nav-btn">
+                    <ui:VisualElement class="settings-nav-btn__icon icon--data-table" />
+                </ui:Button>
+                <ui:Button name="nav-about" class="settings-nav-btn">
+                    <ui:VisualElement class="settings-nav-btn__icon icon--info" />
+                </ui:Button>
             </ui:VisualElement>
 
             <!-- Scrollable content -->
@@ -85,6 +96,7 @@
                         <ui:VisualElement name="change-email-fields" />
                         <ui:Label name="change-email-error" class="account-error screen--hidden" />
                         <ui:Button name="change-email-submit-btn" class="menu-btn account-submit-btn" text="Send Code" />
+                        <ui:Button name="change-email-back-btn" class="account-switch-btn" text="Cancel" />
                     </ui:VisualElement>
 
                     <!-- Logged in: Confirm email change code -->
@@ -94,6 +106,7 @@
                         <ui:VisualElement name="confirm-email-fields" />
                         <ui:Label name="confirm-email-error" class="account-error screen--hidden" />
                         <ui:Button name="confirm-email-submit-btn" class="menu-btn account-submit-btn" text="Confirm" />
+                        <ui:Button name="confirm-email-back-btn" class="account-switch-btn" text="Cancel" />
                     </ui:VisualElement>
 
                     <!-- Logged in: Change password -->
@@ -103,6 +116,7 @@
                         <ui:Label name="change-password-error" class="account-error screen--hidden" />
                         <ui:Label name="change-password-success" class="account-success screen--hidden" />
                         <ui:Button name="change-password-submit-btn" class="menu-btn account-submit-btn" text="Change Password" />
+                        <ui:Button name="change-password-back-btn" class="account-switch-btn" text="Cancel" />
                     </ui:VisualElement>
                 </ui:VisualElement>
 
@@ -123,6 +137,17 @@
                         <ui:Label class="setting-label" text="Zoom Speed" />
                     </ui:VisualElement>
 
+                    <ui:VisualElement name="keep-trail-row" class="setting-row setting-row--toggle">
+                        <ui:Label class="setting-label" text="Keep trail after clear" />
+                        <ui:Toggle name="keep-trail-toggle" class="setting-toggle" />
+                    </ui:VisualElement>
+
+                </ui:VisualElement>
+
+                <!-- Keybinds section -->
+                <ui:VisualElement name="section-keybinds" class="settings-section settings-section--divider">
+                    <ui:Label class="settings-section-header" text="Keybinds" />
+                    <ui:VisualElement name="keybind-list" />
                 </ui:VisualElement>
 
                 <!-- Data section -->

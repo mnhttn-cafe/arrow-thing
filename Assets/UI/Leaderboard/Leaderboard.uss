@@ -248,7 +248,7 @@
 
 /* Play */
 .lb-play-icon {
-    background-image: url("/Assets/Art/Icons/play_icon.png");
+    background-image: url("/Assets/Art/Icons/play.png");
 }
 
 /* Context trigger (no right margin — last in row) */
@@ -257,7 +257,7 @@
 }
 
 .lb-ctx-trigger-icon {
-    background-image: url("/Assets/Art/Icons/context_menu_icon.png");
+    background-image: url("/Assets/Art/Icons/context_menu.png");
 }
 
 /* ── Refresh button (in tab bar) ─────────────────────────────────── */

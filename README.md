@@ -1,12 +1,15 @@
 # Arrow Thing
 
-Minimalist speed puzzle game built in Unity.
+A minimalist speed-clearing puzzle game built in Unity. Clear winding arrows from a grid as fast as you can — an arrow is clearable only when nothing blocks its forward ray. Compete on global leaderboards and watch replays of top solves.
 
-Core pitch: clear winding grid-based arrows as fast as possible. Compete on global leaderboards across board sizes.
+Free to play at **https://arrow-thing.com/**
 
 ## Project Status
 
-- Playable on https://arrow-thing.com/
+- Live on WebGL (Cloudflare Pages)
+- Solo play with multiple board sizes
+- Global leaderboards and replay viewer
+- Accounts, personal bests, and score history
 - Design docs:
   - [`docs/GDD.md`](docs/GDD.md) (game design)
   - [`docs/TechnicalDesign.md`](docs/TechnicalDesign.md) (technical architecture and class structure)

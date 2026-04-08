@@ -33,6 +33,12 @@ public sealed class BoardView : MonoBehaviour
     /// </summary>
     public event System.Action TrailAutoOff;
 
+    /// <summary>
+    /// When true, arrow trail overlay stays visible after an arrow is cleared
+    /// instead of auto-hiding. Controlled via Settings > Gameplay.
+    /// </summary>
+    public bool KeepTrailAfterClear { get; set; }
+
     public BoardGridRenderer GridRenderer { get; private set; }
 
     private Transform _arrowParent;
@@ -142,8 +148,9 @@ public sealed class BoardView : MonoBehaviour
         bool wasFirst = _clearedCount == 1;
         bool wasLast = _board.Arrows.Count == 0;
 
-        // Auto-disable trails when an arrow is cleared to avoid stale lines
-        if (_trailVisible)
+        // Auto-disable trails when an arrow is cleared to avoid stale lines,
+        // unless KeepTrailAfterClear is enabled.
+        if (_trailVisible && !KeepTrailAfterClear)
         {
             SetAllTrailsVisible(false);
             TrailAutoOff?.Invoke();
@@ -271,12 +278,14 @@ public sealed class BoardView : MonoBehaviour
     /// Highlights all currently clearable arrows with a green tint.
     /// Non-clearable arrows are restored to their base color.
     /// </summary>
-    public void UpdateClearableHighlights(Board board)
+    public void UpdateClearableHighlights(Board board, bool showTrails = false)
     {
         foreach (var kvp in _arrowViews)
         {
             bool clearable = board.IsClearable(kvp.Key);
             kvp.Value.SetHighlight(clearable);
+            if (showTrails)
+                kvp.Value.SetTrailVisible(clearable);
         }
     }
 

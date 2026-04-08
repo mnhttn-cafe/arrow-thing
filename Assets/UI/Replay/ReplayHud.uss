@@ -3,14 +3,26 @@
 /* ── Highlight button (inline in controls bar) ────────────────────── */
 .rh-highlight-btn {
     height: 36px;
-    width: auto;
-    padding: 0 14px;
-    font-size: 15px;
-    color: var(--text-secondary);
+    width: 36px;
+    padding: 6px;
     background-color: var(--bg-btn);
     border-radius: 18px;
     border-width: 0;
     margin-left: 8px;
+}
+
+.rh-highlight-icon {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
+}
+
+.rh-highlight-btn:hover .rh-highlight-icon {
+    -unity-background-image-tint-color: var(--text-primary);
+}
+
+.rh-highlight-btn--active .rh-highlight-icon {
+    -unity-background-image-tint-color: var(--text-on-accent);
 }
 
 .rh-highlight-btn:hover {
@@ -166,11 +178,11 @@
 }
 
 .rh-play-icon--play {
-    background-image: url("/Assets/Art/Icons/play_icon.png");
+    background-image: url("/Assets/Art/Icons/play.png");
 }
 
 .rh-play-icon--pause {
-    background-image: url("/Assets/Art/Icons/pause_icon.png");
+    background-image: url("/Assets/Art/Icons/pause.png");
 }
 
 .rh-speed-btn {

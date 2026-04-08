@@ -1,7 +1,10 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="../Shared/Shared.uss" />
+    <Style src="../MainMenu/MainMenu.uss" />
+
     <ui:VisualElement class="screen">
         <ui:VisualElement class="icon-row icon-row--top-left">
-            <ui:Button name="mode-back-btn" class="icon-btn">
+            <ui:Button name="back-btn" class="icon-btn">
                 <ui:VisualElement class="icon-btn__icon icon--arrow-back" />
             </ui:Button>
         </ui:VisualElement>

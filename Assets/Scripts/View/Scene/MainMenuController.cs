@@ -1,169 +1,211 @@
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Drives the main menu UI: screen navigation, board-size selection, and scene transition.
-/// Attach to the same GameObject as the UIDocument.
+/// Drives the main menu UI: Play, Continue, Settings, Leaderboard, and Quit.
+/// Board size selection is in a separate scene (Solo Size Select).
 /// </summary>
-public sealed class MainMenuController : MonoBehaviour
+public sealed class MainMenuController : NavigableScene
 {
-    [SerializeField]
-    private UIDocument uiDocument;
-
     private const string GitHubUrl = "https://github.com/vicplusplus/arrow-thing";
     private const string DiscordUrl = "https://discord.gg/FBwTyaWzpE";
 
-    private const int CustomDimMin = 2;
-    private const int CustomDimMax = 400;
-
-    private VisualElement _mainMenu;
-    private VisualElement _modeSelect;
-
     private ConfirmModal _quitModal;
 
-    // Preset buttons for selection highlight
-    private Button _presetSmall;
-    private Button _presetMedium;
-    private Button _presetLarge;
-    private Button _presetXLarge;
+    protected override KeybindManager.Context NavContext => KeybindManager.Context.MainMenu;
 
-    // Custom preset + slider panel
-    private Button _presetCustom;
-    private VisualElement _customPanel;
-    private SnapSlider _customWidthSnap;
-    private SnapSlider _customHeightSnap;
-    private bool _isCustomSelected;
-
-    // Currently selected board size (default to small)
-    private int _selectedWidth = 10;
-    private int _selectedHeight = 10;
-
-    private void OnEnable()
+    protected override void BuildUI(VisualElement root)
     {
-        var root = uiDocument.rootVisualElement;
-        _mainMenu = root.Q("main-menu");
-        _modeSelect = root.Q("mode-select");
-
-        WireMainMenuButtons();
-        WireModeSelect();
-        WireModals(root);
-
-        ShowScreen(Screen.MainMenu);
-        RestoreSelection();
-    }
-
-    private void WireMainMenuButtons()
-    {
-        var continueBtn = _mainMenu.Q<Button>("continue-btn");
+        var continueBtn = root.Q<Button>("continue-btn");
         if (SaveManager.HasSave())
             SetVisible(continueBtn, true);
 
-        _mainMenu.Q<Button>("play-btn").clicked += () => ShowScreen(Screen.ModeSelect);
+        root.Q<Button>("play-btn").clicked += OnPlay;
         continueBtn.clicked += OnContinue;
-        _mainMenu.Q<Button>("settings-btn").clicked += () => SettingsController.Instance.Open();
-        _mainMenu.Q<Button>("link-github-btn").clicked += () => ExternalLinks.Open(GitHubUrl);
-        _mainMenu.Q<Button>("link-discord-btn").clicked += () => ExternalLinks.Open(DiscordUrl);
+        root.Q<Button>("settings-btn").clicked += () => SettingsController.Instance.Open();
+        root.Q<Button>("leaderboard-btn").clicked += OnLeaderboard;
+        root.Q<Button>("link-github-btn").clicked += () => ExternalLinks.Open(GitHubUrl);
+        root.Q<Button>("link-discord-btn").clicked += () => ExternalLinks.Open(DiscordUrl);
 
-        // Quit button — desktop only (no quit action on mobile or web)
-        var quitBtn = _mainMenu.Q<Button>("quit-btn");
+        var quitBtn = root.Q<Button>("quit-btn");
         if (Application.isMobilePlatform || Application.platform == RuntimePlatform.WebGLPlayer)
             quitBtn.style.display = DisplayStyle.None;
         else
             quitBtn.clicked += OnQuitPressed;
-    }
 
-    private void WireModeSelect()
-    {
-        _presetSmall = _modeSelect.Q<Button>("preset-small");
-        _presetMedium = _modeSelect.Q<Button>("preset-medium");
-        _presetLarge = _modeSelect.Q<Button>("preset-large");
-        _presetXLarge = _modeSelect.Q<Button>("preset-xlarge");
-
-        _presetSmall.clicked += () => SelectPreset(10, 10);
-        _presetMedium.clicked += () => SelectPreset(20, 20);
-        _presetLarge.clicked += () => SelectPreset(40, 40);
-        _presetXLarge.clicked += () => SelectPreset(100, 100);
-
-        _presetCustom = _modeSelect.Q<Button>("preset-custom");
-        _customPanel = _modeSelect.Q("custom-panel");
-
-        _customWidthSnap = new SnapSlider(
-            CustomDimMin,
-            CustomDimMax,
-            20f,
-            smallStep: 1f,
-            snapStep: 10f,
-            format: "0",
-            showLock: true
-        );
-        _customWidthSnap.OnValueChanged += _ => SelectCustom();
-        _customPanel.Q("custom-width-row").Add(_customWidthSnap.Root);
-
-        _customHeightSnap = new SnapSlider(
-            CustomDimMin,
-            CustomDimMax,
-            20f,
-            smallStep: 1f,
-            snapStep: 10f,
-            format: "0",
-            showLock: true
-        );
-        _customHeightSnap.OnValueChanged += _ => SelectCustom();
-        _customPanel.Q("custom-height-row").Add(_customHeightSnap.Root);
-
-        _presetCustom.clicked += SelectCustom;
-        _modeSelect.Q<Button>("start-btn").clicked += OnStart;
-        _modeSelect.Q<Button>("mode-back-btn").clicked += OnModeBack;
-
-        var trophyBtn = _modeSelect.Q<Button>("trophy-btn");
-        if (trophyBtn != null)
-            trophyBtn.clicked += OnTrophy;
-    }
-
-    private void WireModals(VisualElement root)
-    {
         _quitModal = new ConfirmModal(root.Q("quit-modal"), "Quit game?", "Yes", "No");
         _quitModal.Confirmed += OnQuitConfirm;
         _quitModal.Cancelled += () => _quitModal.Hide();
     }
 
-    private void RestoreSelection()
+    protected override void BuildNavGraph(FocusNavigator nav)
     {
-        if (!GameSettings.IsSet)
+        var items = new List<FocusNavigator.FocusItem>();
+
+        var quitBtn = Root.Q<Button>("quit-btn");
+        bool hasQuit =
+            quitBtn != null
+            && !Application.isMobilePlatform
+            && Application.platform != RuntimePlatform.WebGLPlayer;
+        int quitIdx = -1;
+        if (hasQuit)
         {
-            SelectPreset(10, 10);
-            return;
+            quitIdx = items.Count;
+            items.Add(
+                new FocusNavigator.FocusItem
+                {
+                    Element = quitBtn,
+                    OnActivate = () =>
+                    {
+                        OnQuitPressed();
+                        return true;
+                    },
+                }
+            );
         }
 
-        bool matchesPreset =
-            (GameSettings.Width == 10 && GameSettings.Height == 10)
-            || (GameSettings.Width == 20 && GameSettings.Height == 20)
-            || (GameSettings.Width == 40 && GameSettings.Height == 40)
-            || (GameSettings.Width == 100 && GameSettings.Height == 100);
+        int leaderboardIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = Root.Q<Button>("leaderboard-btn"),
+                OnActivate = () =>
+                {
+                    OnLeaderboard();
+                    return true;
+                },
+            }
+        );
 
-        if (matchesPreset)
-            SelectPreset(GameSettings.Width, GameSettings.Height);
-        else
+        int playIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = Root.Q<Button>("play-btn"),
+                OnActivate = () =>
+                {
+                    OnPlay();
+                    return true;
+                },
+            }
+        );
+
+        var continueBtn = Root.Q<Button>("continue-btn");
+        bool hasContinue = !continueBtn.ClassListContains("screen--hidden");
+        int continueIdx = -1;
+        if (hasContinue)
         {
-            _customWidthSnap.SetValueWithoutNotify(GameSettings.Width);
-            _customHeightSnap.SetValueWithoutNotify(GameSettings.Height);
-            SelectCustom();
+            continueIdx = items.Count;
+            items.Add(
+                new FocusNavigator.FocusItem
+                {
+                    Element = continueBtn,
+                    OnActivate = () =>
+                    {
+                        OnContinue();
+                        return true;
+                    },
+                }
+            );
         }
+
+        int settingsIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = Root.Q<Button>("settings-btn"),
+                OnActivate = () =>
+                {
+                    SettingsController.Instance.Open();
+                    return true;
+                },
+            }
+        );
+
+        int githubIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = Root.Q<Button>("link-github-btn"),
+                OnActivate = () =>
+                {
+                    ExternalLinks.Open(GitHubUrl);
+                    return true;
+                },
+            }
+        );
+
+        int discordIdx = items.Count;
+        items.Add(
+            new FocusNavigator.FocusItem
+            {
+                Element = Root.Q<Button>("link-discord-btn"),
+                OnActivate = () =>
+                {
+                    ExternalLinks.Open(DiscordUrl);
+                    return true;
+                },
+            }
+        );
+
+        nav.SetItems(items, playIdx);
+
+        nav.Link(playIdx, FocusNavigator.NavDir.Up, leaderboardIdx);
+        nav.Link(leaderboardIdx, FocusNavigator.NavDir.Down, playIdx);
+
+        if (hasQuit)
+        {
+            nav.LinkBidi(quitIdx, FocusNavigator.NavDir.Right, leaderboardIdx);
+            nav.Link(quitIdx, FocusNavigator.NavDir.Down, playIdx);
+            nav.Link(leaderboardIdx, FocusNavigator.NavDir.Left, quitIdx);
+            nav.Link(playIdx, FocusNavigator.NavDir.Left, quitIdx);
+        }
+
+        int belowPlay = hasContinue ? continueIdx : settingsIdx;
+        nav.LinkBidi(playIdx, FocusNavigator.NavDir.Down, belowPlay);
+        if (hasContinue)
+            nav.LinkBidi(continueIdx, FocusNavigator.NavDir.Down, settingsIdx);
+
+        nav.LinkBidi(settingsIdx, FocusNavigator.NavDir.Down, discordIdx);
+        nav.Link(settingsIdx, FocusNavigator.NavDir.Left, discordIdx);
+
+        nav.LinkBidi(githubIdx, FocusNavigator.NavDir.Right, discordIdx);
+        nav.Link(githubIdx, FocusNavigator.NavDir.Up, settingsIdx);
     }
 
-    // -- Screen navigation --------------------------------------------------
-
-    private enum Screen
+    protected override void OnUpdate(KeybindManager km)
     {
-        MainMenu,
-        ModeSelect,
+        if (km.OpenLeaderboard != null && km.OpenLeaderboard.WasPerformedThisFrame())
+            OnLeaderboard();
     }
 
-    private void ShowScreen(Screen screen)
+    protected override void OnCancel()
     {
-        SetVisible(_mainMenu, screen == Screen.MainMenu);
-        SetVisible(_modeSelect, screen == Screen.ModeSelect);
+        if (!Application.isMobilePlatform && Application.platform != RuntimePlatform.WebGLPlayer)
+            OnQuitPressed();
+    }
+
+    // -- Actions -----------------------------------------------------------------
+
+    private void OnPlay() => SceneNav.Push("Solo Size Select");
+
+    private void OnContinue()
+    {
+        GameSettings.ResumeFromSave();
+        SceneNav.Push("Game");
+    }
+
+    private void OnLeaderboard() => SceneNav.Push("Leaderboard");
+
+    private void OnQuitPressed() => _quitModal.Show();
+
+    private void OnQuitConfirm()
+    {
+        Application.Quit();
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
     }
 
     private static void SetVisible(VisualElement el, bool visible)
@@ -172,78 +214,5 @@ public sealed class MainMenuController : MonoBehaviour
             el.RemoveFromClassList("screen--hidden");
         else
             el.AddToClassList("screen--hidden");
-    }
-
-    // -- Callbacks -----------------------------------------------------------
-
-    private void OnContinue()
-    {
-        GameSettings.ResumeFromSave();
-        SceneManager.LoadScene("Game");
-    }
-
-    private void OnModeBack() => ShowScreen(Screen.MainMenu);
-
-    private void SelectPreset(int width, int height)
-    {
-        _isCustomSelected = false;
-        _selectedWidth = width;
-        _selectedHeight = height;
-        SetVisible(_customPanel, false);
-        UpdateAllPresetHighlights();
-    }
-
-    private void SelectCustom()
-    {
-        _isCustomSelected = true;
-        _selectedWidth = Mathf.RoundToInt(_customWidthSnap.Value);
-        _selectedHeight = Mathf.RoundToInt(_customHeightSnap.Value);
-        SetVisible(_customPanel, true);
-        UpdateAllPresetHighlights();
-    }
-
-    private void UpdateAllPresetHighlights()
-    {
-        UpdatePresetHighlight(_presetSmall, 10, 10);
-        UpdatePresetHighlight(_presetMedium, 20, 20);
-        UpdatePresetHighlight(_presetLarge, 40, 40);
-        UpdatePresetHighlight(_presetXLarge, 100, 100);
-
-        if (_isCustomSelected)
-            _presetCustom.AddToClassList("preset-btn--selected");
-        else
-            _presetCustom.RemoveFromClassList("preset-btn--selected");
-    }
-
-    private void UpdatePresetHighlight(Button btn, int w, int h)
-    {
-        if (!_isCustomSelected && w == _selectedWidth && h == _selectedHeight)
-            btn.AddToClassList("preset-btn--selected");
-        else
-            btn.RemoveFromClassList("preset-btn--selected");
-    }
-
-    private void OnStart()
-    {
-        GameSettings.Apply(_selectedWidth, _selectedHeight);
-        SceneManager.LoadScene("Game");
-    }
-
-    private void OnTrophy()
-    {
-        SceneManager.LoadScene("Leaderboard");
-    }
-
-    private void OnQuitPressed()
-    {
-        _quitModal.Show();
-    }
-
-    private void OnQuitConfirm()
-    {
-        Application.Quit();
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#endif
     }
 }

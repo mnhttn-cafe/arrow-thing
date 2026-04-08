@@ -2,8 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 /// <summary>
@@ -17,9 +15,6 @@ public sealed class GameController : MonoBehaviour
 
     [SerializeField]
     private Camera mainCamera;
-
-    [SerializeField]
-    private InputActionAsset inputActions;
 
     [SerializeField]
     private UIDocument victoryUIDocument;
@@ -107,7 +102,10 @@ public sealed class GameController : MonoBehaviour
     private Label _loadingPercent;
     private Label _timerLabel;
     private Button _trailToggleBtn;
+    private bool _trailOn;
     private Button _backBtn;
+    private ConfirmModal _leaveModal;
+    private FocusNavigator _focusNavigator;
     private VisualElement _cancelGenModal;
     private float _loadProgress;
     private bool _loadingActive;
@@ -122,12 +120,6 @@ public sealed class GameController : MonoBehaviour
             Debug.LogError("GameController: VisualSettings is not assigned.");
             return;
         }
-        if (inputActions == null)
-        {
-            Debug.LogError("GameController: InputActions is not assigned.");
-            return;
-        }
-
         if (mainCamera == null)
             mainCamera = Camera.main;
         if (mainCamera != null)
@@ -135,6 +127,12 @@ public sealed class GameController : MonoBehaviour
 
         SettingsController.IsOpenChanged += OnSettingsOpenChanged;
         ThemeManager.ThemeChanged += OnThemeChanged;
+
+        // Create FocusNavigator early so navigation events are suppressed
+        // from the start, even during generation/loading.
+        if (hudUIDocument != null && hudUIDocument.rootVisualElement != null)
+            _focusNavigator = new FocusNavigator(hudUIDocument.rootVisualElement);
+
         StartCoroutine(GenerateAndSetup());
     }
 
@@ -160,6 +158,18 @@ public sealed class GameController : MonoBehaviour
 
     private void Update()
     {
+        // Tick FocusNavigator for modal keyboard nav (leave/cancel modals).
+        if (_focusNavigator != null)
+            _focusNavigator.Update();
+
+        // Escape: open/close leave modal. Checked after FocusNavigator so
+        // modal dismiss (via ConsumesCancel) runs first and this doesn't re-open it.
+        var km = KeybindManager.Instance;
+        if (NavigableScene.ShouldHandleCancel(_focusNavigator))
+        {
+            OnEscape();
+        }
+
         if (!_loadingActive || _loadingOverlay == null)
             return;
 
@@ -203,7 +213,7 @@ public sealed class GameController : MonoBehaviour
                 Debug.LogWarning(
                     "[GameController] Deferred save load returned null — returning to MainMenu."
                 );
-                SceneManager.LoadScene("MainMenu");
+                SceneNav.Pop();
                 yield break;
             }
             Debug.Log(
@@ -237,7 +247,7 @@ public sealed class GameController : MonoBehaviour
             if (_board.Arrows.Count == 0)
             {
                 SaveManager.Delete();
-                SceneManager.LoadScene("MainMenu");
+                SceneNav.Pop();
                 yield break;
             }
             SetupResumedRecorder(priorData);
@@ -375,7 +385,7 @@ public sealed class GameController : MonoBehaviour
         {
             if (_cancelRequested)
             {
-                SceneManager.LoadScene("MainMenu");
+                SceneNav.Pop();
                 yield break;
             }
 
@@ -401,7 +411,7 @@ public sealed class GameController : MonoBehaviour
         {
             if (_cancelRequested)
             {
-                SceneManager.LoadScene("MainMenu");
+                SceneNav.Pop();
                 yield break;
             }
 
@@ -441,7 +451,7 @@ public sealed class GameController : MonoBehaviour
             Debug.LogWarning(
                 $"[GameController] GenerateBoard produced 0 arrows (board {_w}x{_h}, maxLen={_maxLen}, seed={_activeSeed}). Returning to menu."
             );
-            SceneManager.LoadScene("MainMenu");
+            SceneNav.Pop();
             yield break;
         }
         Debug.Log(
@@ -557,44 +567,76 @@ public sealed class GameController : MonoBehaviour
             return;
 
         var hudRoot = hudUIDocument.rootVisualElement;
-        var leaveModal = hudRoot.Q("leave-modal");
-        var leaveTitle = hudRoot.Q<Label>("leave-title");
-        var leaveSublabel = hudRoot.Q("leave-sublabel");
-        var leaveCloseBtn = hudRoot.Q<Button>("leave-close-btn");
+
+        // Single leave modal, reconfigured per ShowLeave based on save state.
+        _leaveModal = new ConfirmModal(hudRoot.Q("leave-modal"), "Leave?", "Leave", "Stay");
+        _leaveModal.Confirmed += OnLeaveConfirm;
+        _leaveModal.Cancelled += OnLeaveCancel;
+        _leaveModal.Dismissed += OnLeaveDismiss;
 
         if (_backBtn != null)
         {
             _backBtn.clickable = new Clickable(() => { });
-            _backBtn.clicked += () =>
-                ShowLeaveModal(leaveModal, leaveTitle, leaveSublabel, leaveCloseBtn);
+            _backBtn.clicked += ShowLeave;
         }
-
-        hudRoot.Q<Button>("leave-yes-btn").clicked += () => OnLeaveYes(leaveModal);
-        hudRoot.Q<Button>("leave-no-btn").clicked += () => OnLeaveNo(leaveModal);
-
-        if (leaveCloseBtn != null)
-            leaveCloseBtn.clicked += () => HideLeaveModal(leaveModal);
 
         var timerView = gameObject.AddComponent<GameTimerView>();
         timerView.Init(_timer, hudUIDocument, inspectionWarningThreshold);
 
         if (_trailToggleBtn != null)
         {
-            bool trailOn = false;
-            _trailToggleBtn.clicked += () =>
-            {
-                trailOn = !trailOn;
-                _boardView.SetAllTrailsVisible(trailOn);
-                if (trailOn)
-                    _trailToggleBtn.AddToClassList("hud-icon-btn--active");
-                else
-                    _trailToggleBtn.RemoveFromClassList("hud-icon-btn--active");
-            };
+            _trailToggleBtn.clicked += ToggleTrail;
             _boardView.TrailAutoOff += () =>
             {
-                trailOn = false;
+                _trailOn = false;
                 _trailToggleBtn.RemoveFromClassList("hud-icon-btn--active");
             };
+        }
+
+        // Add HUD buttons to FocusNavigator for keyboard accessibility.
+        if (_focusNavigator != null)
+        {
+            var items = new System.Collections.Generic.List<FocusNavigator.FocusItem>();
+            int backIdx = -1;
+            int trailIdx = -1;
+
+            if (_backBtn != null)
+            {
+                backIdx = items.Count;
+                items.Add(
+                    new FocusNavigator.FocusItem
+                    {
+                        Element = _backBtn,
+                        OnActivate = () =>
+                        {
+                            ShowLeave();
+                            return true;
+                        },
+                    }
+                );
+            }
+            if (_trailToggleBtn != null)
+            {
+                trailIdx = items.Count;
+                items.Add(
+                    new FocusNavigator.FocusItem
+                    {
+                        Element = _trailToggleBtn,
+                        OnActivate = () =>
+                        {
+                            ToggleTrail();
+                            return true;
+                        },
+                    }
+                );
+            }
+
+            if (items.Count > 0)
+            {
+                _focusNavigator.SetItems(items);
+                if (backIdx >= 0 && trailIdx >= 0)
+                    _focusNavigator.LinkBidi(backIdx, FocusNavigator.NavDir.Down, trailIdx);
+            }
         }
     }
 
@@ -611,15 +653,100 @@ public sealed class GameController : MonoBehaviour
             _board,
             _boardView,
             _camCtrl,
-            inputActions,
             dragThreshold,
             _timer,
             _recorder,
-            OnArrowCleared
+            OnArrowCleared,
+            onQuickReset: OnQuickReset,
+            onQuickSave: OnQuickSave,
+            onToggleTrail: ToggleTrail
         );
+
+        // Apply keep-trail setting from PlayerPrefs.
+        _boardView.KeepTrailAfterClear = PlayerPrefs.GetInt(GameSettings.KeepTrailPrefKey, 0) == 1;
+
+        if (KeybindManager.Instance != null)
+            KeybindManager.Instance.ActiveContext = KeybindManager.Context.Gameplay;
 
         if (_backBtn != null)
             _backBtn.clicked += () => _inputHandler.SetInputEnabled(false);
+    }
+
+    private void OnQuickReset()
+    {
+        SceneNav.Replace("Game");
+    }
+
+    private void OnQuickSave()
+    {
+        if (_recorder != null)
+            SaveManager.Save(BuildReplayData());
+    }
+
+    private void OnEscape()
+    {
+        if (_leaveModal != null && _leaveModal.IsVisible)
+        {
+            OnLeaveDismiss();
+            return;
+        }
+        ShowLeave();
+    }
+
+    private void ShowLeave()
+    {
+        if (_leaveModal == null)
+            return;
+
+        if (WouldOverwriteDifferentSave)
+        {
+            _leaveModal.Reconfigure(
+                "Save before leaving?",
+                "Save & Leave",
+                "Leave without saving",
+                subtitle: "This will replace your current save.",
+                isDismissable: true
+            );
+        }
+        else
+        {
+            _leaveModal.Reconfigure("Leave?", "Leave", "Stay");
+        }
+
+        _leaveModal.Show();
+        if (_inputHandler != null)
+            _inputHandler.SetInputEnabled(false);
+    }
+
+    private void OnLeaveConfirm()
+    {
+        if (WouldOverwriteDifferentSave)
+            SaveAndLeave();
+        else if (_autosaveEnabled && (_isContinuedGame || HasAnyClearedArrows))
+            SaveAndLeave();
+        else
+            ReturnToModeSelect();
+    }
+
+    private void OnLeaveCancel()
+    {
+        if (WouldOverwriteDifferentSave)
+            ReturnToModeSelect(); // "Leave without saving"
+        else
+            OnLeaveDismiss(); // "Stay"
+    }
+
+    private void ToggleTrail()
+    {
+        _trailOn = !_trailOn;
+        _boardView.SetAllTrailsVisible(_trailOn);
+        if (_trailToggleBtn != null)
+        {
+            if (_trailOn)
+                _trailToggleBtn.AddToClassList("hud-icon-btn--active");
+            else
+                _trailToggleBtn.RemoveFromClassList("hud-icon-btn--active");
+        }
     }
 
     private void WireVictory()
@@ -727,57 +854,11 @@ public sealed class GameController : MonoBehaviour
     private bool WouldOverwriteDifferentSave =>
         !_autosaveEnabled && HasAnyClearedArrows && SaveManager.HasSave();
 
-    private void ShowLeaveModal(
-        VisualElement modal,
-        Label title,
-        VisualElement sublabel,
-        Button closeBtn
-    )
+    private void OnLeaveDismiss()
     {
-        if (WouldOverwriteDifferentSave)
-        {
-            if (title != null)
-                title.text = "Leaving. Save?";
-            if (sublabel != null)
-                sublabel.RemoveFromClassList("modal--hidden");
-            if (closeBtn != null)
-                closeBtn.style.display = DisplayStyle.Flex;
-        }
-        else
-        {
-            if (title != null)
-                title.text = "Leave?";
-            if (sublabel != null)
-                sublabel.AddToClassList("modal--hidden");
-            if (closeBtn != null)
-                closeBtn.style.display = DisplayStyle.None;
-        }
-        modal.RemoveFromClassList("modal--hidden");
-    }
-
-    private void HideLeaveModal(VisualElement modal)
-    {
-        modal.AddToClassList("modal--hidden");
+        _leaveModal?.Hide();
         if (_inputHandler != null)
             _inputHandler.SetInputEnabled(true);
-    }
-
-    private void OnLeaveYes(VisualElement modal)
-    {
-        if (_autosaveEnabled && (_isContinuedGame || HasAnyClearedArrows))
-            SaveAndLeave();
-        else if (WouldOverwriteDifferentSave)
-            SaveAndLeave();
-        else
-            SceneManager.LoadScene("MainMenu");
-    }
-
-    private void OnLeaveNo(VisualElement modal)
-    {
-        if (WouldOverwriteDifferentSave)
-            SceneManager.LoadScene("MainMenu");
-        else
-            HideLeaveModal(modal);
     }
 
     // --- Save ---
@@ -799,6 +880,11 @@ public sealed class GameController : MonoBehaviour
         }
     }
 
+    private static void ReturnToModeSelect()
+    {
+        SceneNav.Pop();
+    }
+
     private void SaveAndLeave()
     {
         if (_recorder != null && _timer != null)
@@ -809,7 +895,7 @@ public sealed class GameController : MonoBehaviour
             );
             SaveManager.Save(BuildReplayData());
         }
-        SceneManager.LoadScene("MainMenu");
+        ReturnToModeSelect();
     }
 
     private ReplayData BuildReplayData()

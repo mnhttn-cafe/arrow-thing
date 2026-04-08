@@ -67,12 +67,11 @@ public class GameHudLayoutTests : UILayoutTestBase
     {
         var root = SetUpDocument(GameHudUxmlPath, ratio);
 
+        // Leave modal uses ConfirmModal template structure.
         var modal = root.Q("leave-modal");
-        modal.RemoveFromClassList("modal--hidden");
-
-        var sublabel = modal.Q("leave-sublabel");
-        if (sublabel != null)
-            sublabel.RemoveFromClassList("modal--hidden");
+        var overlay = modal.Q(className: "modal-overlay");
+        overlay.RemoveFromClassList("screen--hidden");
+        modal.style.display = DisplayStyle.Flex;
 
         yield return UILayoutTestHelper.WaitForLayoutResolve();
 
@@ -85,11 +84,9 @@ public class GameHudLayoutTests : UILayoutTestBase
             panelBounds,
             ctx,
             warn,
-            modal.Q<Label>("leave-title"),
-            modal.Q("leave-sublabel"),
-            modal.Q<Button>("leave-close-btn"),
-            modal.Q<Button>("leave-yes-btn"),
-            modal.Q<Button>("leave-no-btn")
+            modal.Q<Label>("modal-title"),
+            modal.Q<Button>("modal-confirm-btn"),
+            modal.Q<Button>("modal-cancel-btn")
         );
     }
 

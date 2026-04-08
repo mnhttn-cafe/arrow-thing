@@ -13,6 +13,9 @@ public sealed class SnapSlider
 {
     public VisualElement Root { get; }
 
+    /// <summary>The track element — use for keyboard focus targeting.</summary>
+    public VisualElement Track => _track;
+
     /// Current value. Always clamped to [min, max].
     public float Value { get; private set; }
 
@@ -59,13 +62,18 @@ public sealed class SnapSlider
         Root = new VisualElement();
         Root.AddToClassList("snap-slider");
 
-        // 1. Custom track + handle
+        // 1. Custom track + handle + focus ring overlay.
         _track = new VisualElement();
         _track.AddToClassList("snap-slider__track");
 
         _handle = new VisualElement();
         _handle.AddToClassList("snap-slider__handle");
         _track.Add(_handle);
+
+        // Focus ring: absolute overlay inside the track, no layout impact.
+        var focusRing = new VisualElement();
+        focusRing.AddToClassList("snap-slider__focus-ring");
+        _track.Add(focusRing);
 
         _track.RegisterCallback<GeometryChangedEvent>(_ => UpdateHandlePosition());
         _track.RegisterCallback<PointerDownEvent>(OnTrackPointerDown);
@@ -166,6 +174,8 @@ public sealed class SnapSlider
 
     private void UpdateHandlePosition()
     {
+        if (_max <= _min)
+            return; // Avoid NaN from InverseLerp.
         float trackWidth = _track.resolvedStyle.width;
         float handleWidth = _handle.resolvedStyle.width;
         if (float.IsNaN(trackWidth) || float.IsNaN(handleWidth) || trackWidth <= handleWidth)
@@ -181,6 +191,27 @@ public sealed class SnapSlider
     private void Step(float dir)
     {
         float newVal = Mathf.Clamp(Value + dir * _smallStep, _min, _max);
+        CommitValue(newVal);
+    }
+
+    /// <summary>
+    /// Step the slider via keyboard arrow keys. Default uses big steps
+    /// (snapStep if available, otherwise smallStep * 5). When
+    /// <paramref name="useSmallStep"/> is true (Shift held), uses smallStep.
+    /// </summary>
+    /// <param name="direction">-1 for left/decrease, +1 for right/increase.</param>
+    /// <param name="useSmallStep">True when Shift is held for fine adjustment.</param>
+    public void KeyboardStep(int direction, bool useSmallStep)
+    {
+        float step;
+        if (useSmallStep)
+            step = _smallStep;
+        else if (_snapStep > 0f)
+            step = _snapStep;
+        else
+            step = _smallStep * 5f;
+
+        float newVal = Mathf.Clamp(Value + direction * step, _min, _max);
         CommitValue(newVal);
     }
 

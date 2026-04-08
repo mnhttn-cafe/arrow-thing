@@ -41,7 +41,9 @@
             </ui:Button>
             <ui:VisualElement class="rh-playback-spacer rh-playback-spacer--right">
                 <ui:Button name="speed-btn" class="rh-speed-btn" text="1x" />
-                <ui:Button name="highlight-btn" class="rh-highlight-btn" text="Clearable" />
+                <ui:Button name="highlight-btn" class="rh-highlight-btn">
+                    <ui:VisualElement class="rh-highlight-icon icon--arrow-lane-preview" />
+                </ui:Button>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

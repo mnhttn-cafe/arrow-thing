@@ -7,7 +7,7 @@ using System.Collections.Generic;
 /// </summary>
 public sealed class ReplayPlayer
 {
-    private static readonly float[] SpeedSteps = { 0.5f, 1f, 2f, 4f };
+    private static readonly float[] SpeedSteps = { 0.5f, 1f, 2f, 4f, 10f };
 
     /// <summary>Seconds of lead-in before the first event fires, so early clears are visible.</summary>
     public const double LeadInSeconds = 0.5;
