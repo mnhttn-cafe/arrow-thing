@@ -54,15 +54,6 @@ public sealed class EditableLabel
                 ActivateFromKeyboard();
         });
 
-        // Guard: revert any change that arrives while not in edit mode.
-        // This replaces isReadOnly — the field stays editable at the DOM
-        // level so the mobile virtual keyboard can appear on focus.
-        _input.RegisterValueChangedCallback(evt =>
-        {
-            if (!_editing)
-                _input.SetValueWithoutNotify(evt.previousValue);
-        });
-
         _input.RegisterCallback<KeyDownEvent>(evt =>
         {
             if (!_editing)
