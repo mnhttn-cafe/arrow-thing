@@ -31,6 +31,8 @@ The pre-commit hook enforces:
 - Pull requests should not reduce coverage for touched Unity-independent classes.
 - Target at least `90%` line coverage on touched Unity-independent classes, and aim higher for core rules.
 - If a class cannot be covered well, document why in the pull request.
+- UI changes (UXML/USS) must be reflected in PlayMode layout tests in `Assets/Tests/PlayMode/UILayout/`.
+- New buttons added to UXML must be wired into the scene's `FocusNavigator` for keyboard navigation — `NavigationCoverageTests` will catch missing buttons.
 
 ## Docs Consistency
 
