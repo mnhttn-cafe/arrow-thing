@@ -72,7 +72,7 @@ public sealed class LeaderboardScreenController : NavigableScene
     private float _dragScrollStartY;
     private float _dragScrollStartValue;
     private Vector2 _dragStartPosition;
-    private const float TapDistanceThreshold = 10f;
+    private float _dragThreshold;
 
     // Entry selection
     private VisualElement _selectedRow;
@@ -115,6 +115,11 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     protected override void BuildUI(VisualElement root)
     {
+        _dragThreshold = PlayerPrefs.GetFloat(
+            GameSettings.DragThresholdPrefKey,
+            GameSettings.DefaultDragThreshold
+        );
+
         _list = root.Q("lb-list");
         _scroll = root.Q<ScrollView>("lb-scroll");
         _emptyLabel = root.Q<Label>("lb-empty");
@@ -737,7 +742,7 @@ public sealed class LeaderboardScreenController : NavigableScene
         if (_dragPending && !_isDragScrolling)
         {
             float delta = Mathf.Abs(evt.position.y - _dragScrollStartY);
-            if (delta > TapDistanceThreshold)
+            if (delta > _dragThreshold)
             {
                 _isDragScrolling = true;
                 _dragPending = false;
