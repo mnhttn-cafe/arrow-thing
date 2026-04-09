@@ -405,20 +405,20 @@ public sealed class GameController : MonoBehaviour
             new System.Random(_activeSeed)
         );
 
-        // Progress is split across three phases. Weights tuned from
-        // ProfilePhaseTimings_DumpData against 300x300 (the largest board
-        // where loading screen smoothness matters):
-        //   Generation  0% → 80%  (dominates wall time even with Burst)
-        //   Compaction 80% → 94%
-        //   Finalize   94% → 100%
-        // Gen uses candidate depletion (1 - remaining/initial) as the progress
-        // signal, with a ^0.7 exponent. Raw depletion is back-loaded in wall
-        // time because early iterations succeed without popping their candidate
-        // AND per-iteration cycle-detection cost grows with arrow count. The
-        // exponent compensates so the bar tracks wall time linearly.
-        // Fit from 300x300 data: wall_time ≈ depletion^0.7 (max error <1%).
-        const float genEndProgress = 0.80f;
-        const float compactEndProgress = 0.94f;
+        // Progress is split across four phases. Weights tuned from PlayMode
+        // GenerationProfiler data (300x300), where view creation dominates
+        // post-compaction and cannot be ignored:
+        //   Generation    0% → 70%  (Burst domain + per-arrow view spawn)
+        //   Compaction   70% → 78%
+        //   RebuildViews 78% → 93%  (destroy+recreate all views after compact)
+        //   Finalize     93% → 100%
+        // Gen uses candidate depletion (1 - remaining/initial) with a ^0.7
+        // exponent so the raw depletion (back-loaded in wall time) tracks
+        // real time linearly. Rebuild is spread across multiple frames so the
+        // bar keeps moving instead of stalling while views are recreated.
+        const float genEndProgress = 0.70f;
+        const float compactEndProgress = 0.78f;
+        const float rebuildEndProgress = 0.93f;
         const float genProgressExponent = 0.7f;
         // Track Arrow refs so we can remove their views after compaction
         var spawnedArrows = new List<Arrow>();
@@ -426,6 +426,13 @@ public sealed class GameController : MonoBehaviour
         float genFinalProgress = 0f;
         var phase = GenerationPhase.Generating;
         float compactStartRealtime = 0f;
+        // Incremental view rebuild state (set at compact→finalize transition).
+        // While rebuildingViews is true, the inner frame-budget loop adds
+        // ArrowViews instead of advancing the generator.
+        bool rebuildingViews = false;
+        List<Arrow> rebuildList = null;
+        int rebuildIndex = 0;
+        int rebuildTotal = 0;
 
         while (true)
         {
@@ -441,6 +448,21 @@ public sealed class GameController : MonoBehaviour
             bool done = false;
             while (sw.ElapsedMilliseconds < FrameBudgetMs)
             {
+                if (rebuildingViews)
+                {
+                    // Spend remaining frame budget adding ArrowViews in batches.
+                    if (rebuildIndex < rebuildTotal)
+                    {
+                        _boardView.AddArrowView(rebuildList[rebuildIndex]);
+                        spawnedArrows.Add(rebuildList[rebuildIndex]);
+                        rebuildIndex++;
+                        continue;
+                    }
+                    // Rebuild complete; fall through to generator advance for finalize.
+                    rebuildingViews = false;
+                    rebuildList = null;
+                }
+
                 if (!generator.MoveNext())
                 {
                     done = true;
@@ -462,16 +484,15 @@ public sealed class GameController : MonoBehaviour
                         && phase == GenerationPhase.Compacting
                     )
                     {
-                        // Compaction done — remove stale views, add new ones
+                        // Compaction done — remove stale views synchronously (fast)
+                        // and start incremental view rebuild that spans frames.
                         foreach (Arrow a in spawnedArrows)
                             _boardView.RemoveArrowView(a);
                         spawnedArrows.Clear();
-                        for (int i = 0; i < _board.Arrows.Count; i++)
-                        {
-                            Arrow a = _board.Arrows[i];
-                            _boardView.AddArrowView(a);
-                            spawnedArrows.Add(a);
-                        }
+                        rebuildList = new List<Arrow>(_board.Arrows);
+                        rebuildIndex = 0;
+                        rebuildTotal = rebuildList.Count;
+                        rebuildingViews = true;
                     }
                     phase = nextPhase;
                 }
@@ -484,53 +505,64 @@ public sealed class GameController : MonoBehaviour
             }
 
             // Progress calculation per phase
-            switch (phase)
+            if (rebuildingViews)
             {
-                case GenerationPhase.Generating:
+                float rebuildRatio = rebuildTotal > 0 ? (float)rebuildIndex / rebuildTotal : 1f;
+                _loadProgress =
+                    compactEndProgress + (rebuildEndProgress - compactEndProgress) * rebuildRatio;
+            }
+            else
+            {
+                switch (phase)
                 {
-                    int initial = _board.InitialCandidateCount;
-                    int remaining = _board.RemainingCandidateCount;
-                    float depletion = initial > 0 ? 1f - (float)remaining / initial : 0f;
-                    _loadProgress =
-                        genEndProgress * Mathf.Pow(Mathf.Clamp01(depletion), genProgressExponent);
-                    break;
-                }
-                case GenerationPhase.Compacting:
-                {
-                    // Merge-based signal: peaks early because the final "no-merge
-                    // verification pass" produces no new merges, and observed merge
-                    // ratios are ~0.12–0.15 of arrow count.
-                    int mergesCompleted = arrowsBeforeCompaction - _board.Arrows.Count;
-                    float mergeRatio =
-                        arrowsBeforeCompaction > 0
-                            ? Mathf.Clamp01(
-                                (float)mergesCompleted / (arrowsBeforeCompaction * 0.12f)
-                            )
-                            : 1f;
-                    // Wall-time fallback: linear over expected compact duration.
-                    // Fit from ProfilePhaseTimings data: compact_ms ≈ 5e-5 * arrows^1.78.
-                    // Ensures the bar keeps moving during the no-merge final pass.
-                    float expectedCompactSec =
-                        5e-5f * Mathf.Pow(arrowsBeforeCompaction, 1.78f) / 1000f;
-                    float elapsed = Time.realtimeSinceStartup - compactStartRealtime;
-                    float timeRatio =
-                        expectedCompactSec > 0.001f
-                            ? Mathf.Clamp01(elapsed / expectedCompactSec)
-                            : 1f;
-                    float ratio = Mathf.Max(mergeRatio, timeRatio);
-                    _loadProgress =
-                        genFinalProgress + (compactEndProgress - genFinalProgress) * ratio;
-                    break;
-                }
-                case GenerationPhase.Finalizing:
-                {
-                    int arrowCount = _board.Arrows.Count;
-                    float finalizeRatio =
-                        arrowCount > 0 && generator.Current is int finalized
-                            ? Mathf.Clamp01((float)finalized / arrowCount)
-                            : 0f;
-                    _loadProgress = compactEndProgress + (1f - compactEndProgress) * finalizeRatio;
-                    break;
+                    case GenerationPhase.Generating:
+                    {
+                        int initial = _board.InitialCandidateCount;
+                        int remaining = _board.RemainingCandidateCount;
+                        float depletion = initial > 0 ? 1f - (float)remaining / initial : 0f;
+                        _loadProgress =
+                            genEndProgress
+                            * Mathf.Pow(Mathf.Clamp01(depletion), genProgressExponent);
+                        break;
+                    }
+                    case GenerationPhase.Compacting:
+                    {
+                        // Merge-based signal: peaks early because the final "no-merge
+                        // verification pass" produces no new merges, and observed merge
+                        // ratios are ~0.12–0.15 of arrow count.
+                        int mergesCompleted = arrowsBeforeCompaction - _board.Arrows.Count;
+                        float mergeRatio =
+                            arrowsBeforeCompaction > 0
+                                ? Mathf.Clamp01(
+                                    (float)mergesCompleted / (arrowsBeforeCompaction * 0.12f)
+                                )
+                                : 1f;
+                        // Wall-time fallback: linear over expected compact duration.
+                        // Fit from ProfilePhaseTimings data: compact_ms ≈ 5e-5 * arrows^1.78.
+                        // Ensures the bar keeps moving during the no-merge final pass.
+                        float expectedCompactSec =
+                            5e-5f * Mathf.Pow(arrowsBeforeCompaction, 1.78f) / 1000f;
+                        float elapsed = Time.realtimeSinceStartup - compactStartRealtime;
+                        float timeRatio =
+                            expectedCompactSec > 0.001f
+                                ? Mathf.Clamp01(elapsed / expectedCompactSec)
+                                : 1f;
+                        float ratio = Mathf.Max(mergeRatio, timeRatio);
+                        _loadProgress =
+                            genFinalProgress + (compactEndProgress - genFinalProgress) * ratio;
+                        break;
+                    }
+                    case GenerationPhase.Finalizing:
+                    {
+                        int arrowCount = _board.Arrows.Count;
+                        float finalizeRatio =
+                            arrowCount > 0 && generator.Current is int finalized
+                                ? Mathf.Clamp01((float)finalized / arrowCount)
+                                : 0f;
+                        _loadProgress =
+                            rebuildEndProgress + (1f - rebuildEndProgress) * finalizeRatio;
+                        break;
+                    }
                 }
             }
 
