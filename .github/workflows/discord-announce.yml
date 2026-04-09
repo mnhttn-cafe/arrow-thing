@@ -36,8 +36,10 @@ jobs:
           SHA="${{ github.event.workflow_run.head_sha }}"
           SHORT_SHA="${SHA:0:7}"
 
-          HEADER=$(printf '**Arrow Thing %s** is out! (`%s`)\n\n' "$TAG" "$SHORT_SHA")
-          FOOTER=$(printf '\nPlay now: https://arrow-thing.com/\n\n<@&1483631517681975406>')
+          # Use printf -v to preserve trailing newlines (command substitution
+          # strips them, which would collapse the blank line before the body).
+          printf -v HEADER '**Arrow Thing %s** is out! (`%s`)\n\n' "$TAG" "$SHORT_SHA"
+          printf -v FOOTER '\nPlay now: https://arrow-thing.com/\n\n<@&1483631517681975406>'
 
           # Discord messages must be ≤ 2000 chars; reserve space for header + footer + truncation notice
           OVERHEAD=$(( ${#HEADER} + ${#FOOTER} + 40 ))
