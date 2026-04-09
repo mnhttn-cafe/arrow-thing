@@ -412,10 +412,14 @@ public sealed class GameController : MonoBehaviour
         //   Compaction 80% → 94%
         //   Finalize   94% → 100%
         // Gen uses candidate depletion (1 - remaining/initial) as the progress
-        // signal. It tracks wall time more linearly than arrow count, which is
-        // front-loaded (most arrows placed in the first ~60% of gen wall time).
+        // signal, with a ^0.7 exponent. Raw depletion is back-loaded in wall
+        // time because early iterations succeed without popping their candidate
+        // AND per-iteration cycle-detection cost grows with arrow count. The
+        // exponent compensates so the bar tracks wall time linearly.
+        // Fit from 300x300 data: wall_time ≈ depletion^0.7 (max error <1%).
         const float genEndProgress = 0.80f;
         const float compactEndProgress = 0.94f;
+        const float genProgressExponent = 0.7f;
         // Track Arrow refs so we can remove their views after compaction
         var spawnedArrows = new List<Arrow>();
         int arrowsBeforeCompaction = 0;
@@ -485,7 +489,8 @@ public sealed class GameController : MonoBehaviour
                     int initial = _board.InitialCandidateCount;
                     int remaining = _board.RemainingCandidateCount;
                     float depletion = initial > 0 ? 1f - (float)remaining / initial : 0f;
-                    _loadProgress = genEndProgress * Mathf.Clamp01(depletion);
+                    _loadProgress =
+                        genEndProgress * Mathf.Pow(Mathf.Clamp01(depletion), genProgressExponent);
                     break;
                 }
                 case GenerationPhase.Compacting:
