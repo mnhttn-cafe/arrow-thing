@@ -4,11 +4,14 @@
     "references": [
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.InputSystem",
-        "Newtonsoft.Json"
+        "Newtonsoft.Json",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Mathematics"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

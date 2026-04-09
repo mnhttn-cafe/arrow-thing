@@ -426,6 +426,8 @@ public sealed class GameController : MonoBehaviour
         {
             if (_cancelRequested)
             {
+                // Dispose generator to free NativeArrays held by Burst generation state
+                (generator as System.IDisposable)?.Dispose();
                 SceneNav.Pop();
                 yield break;
             }

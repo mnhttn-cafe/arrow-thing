@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Mathematics;
 
 public static class BoardGeneration
 {
@@ -8,6 +10,8 @@ public static class BoardGeneration
 
     /// <summary>
     /// Pooled resources reused across candidates to eliminate per-candidate allocations.
+    /// Used only by <see cref="GenerateArrows"/> (managed sync API for tests).
+    /// <see cref="FillBoardIncremental"/> uses the Burst path instead.
     /// </summary>
     private sealed class GenerationContext
     {
@@ -44,29 +48,52 @@ public static class BoardGeneration
     }
 
     /// <summary>
-    /// Incremental version of board filling. Places as many arrows as possible,
-    /// yielding after each arrow to let the caller (e.g. a Unity coroutine) process the next frame.
+    /// Incremental version of board filling using Burst-compiled generation.
+    /// Places as many arrows as possible, yielding after each arrow for progress.
     /// Yields <see cref="GenerationPhase"/> values between phases.
     /// </summary>
     public static IEnumerator FillBoardIncremental(Board board, int maxLength, Random random)
     {
-        board.InitializeForGeneration();
         int maxPossibleArrows = board.Width * board.Height / 2;
-        var ctx = new GenerationContext(board._bitsetWords, board.Width, board.Height);
-        int created = 0;
 
-        while (
-            created < maxPossibleArrows
-            && board._availableArrowHeads != null
-            && board._availableArrowHeads.Count > 0
-            && TryGenerateArrow(board, maxLength, random, out Arrow arrow, ctx)
-        )
+        // Allocate native state for Burst generation.
+        // try/finally ensures disposal even if the iterator is abandoned (cancelled).
+        var state = new NativeGenerationState(board.Width, board.Height, Allocator.Persistent);
+        try
         {
-            board.AddArrowForGeneration(arrow!);
-            ctx.EnsureCapacity(board._bitsetWords);
-            ctx.activeWords = (board._nextGenIndex + 63) >> 6;
-            created++;
-            yield return null;
+            state.InitializeCandidates();
+            board.InitialCandidateCount = state.candidates.Length;
+
+            // Unity.Mathematics.Random requires nonzero seed
+            var rng = new Random((uint)random.Next(1, int.MaxValue));
+            int created = 0;
+
+            while (created < maxPossibleArrows && state.candidates.Length > 0)
+            {
+                if (!NativeGeneration.TryGenerateArrow(ref state, maxLength, ref rng))
+                    break;
+
+                // Extract arrow from native scratch buffers
+                var cells = new List<Cell>(state.lastArrowCellCount);
+                for (int i = 0; i < state.lastArrowCellCount; i++)
+                    cells.Add(new Cell(state.scratchCellsX[i], state.scratchCellsY[i]));
+                var arrow = new Arrow(cells);
+                arrow._generationIndex = created;
+
+                board._arrows.Add(arrow);
+                board._arrowSet.Add(arrow);
+                board.OccupiedCellCount += cells.Count;
+                board._nativeRemainingCandidates = state.candidates.Length;
+                created++;
+                yield return null;
+            }
+
+            // Copy native generation state to Board for compaction
+            board.InitializeFromNativeGeneration(ref state);
+        }
+        finally
+        {
+            state.Dispose();
         }
 
         // Compaction phase: merge trivial collinear same-direction chains

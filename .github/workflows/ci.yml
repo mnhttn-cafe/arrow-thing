@@ -123,4 +123,4 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           testMode: PlayMode
-          customParameters: --burst-disable-compilation
+          customParameters:

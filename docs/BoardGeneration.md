@@ -90,11 +90,12 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 ### `FillBoardIncremental(Board board, int maxLength, Random random)`
 
 - Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
-- Calls `board.InitializeForGeneration()`.
-- Loops: `TryGenerateArrow` → `board.AddArrowForGeneration` → `yield return null` until candidates are exhausted or the board is full.
+- Uses the **Burst-compiled path**: allocates a `NativeGenerationState`, calls `NativeGeneration.TryGenerateArrow` per candidate, extracts cells from scratch buffers to create managed `Arrow` objects.
+- After the generation loop, `Board.InitializeFromNativeGeneration` copies native bitset/occupancy/ray-index data back into Board's managed arrays for compaction. The `NativeGenerationState` is disposed in a `finally` block (safe against cancellation).
 - Yields `CompactionMarker`, then runs post-process compaction (see below), yielding per merge.
 - Yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
 - Used by `GameController.GenerateBoard` for incremental board display during generation.
+- RNG: `Unity.Mathematics.Random` (seeded from the `System.Random` parameter). Seed-to-board mapping differs from the pre-Burst managed path.
 
 ### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows)`
 
@@ -105,7 +106,7 @@ Flow:
 3. On each successful arrow, call `board.AddArrow(arrow)` which atomically updates occupancy, dependency graph, and candidate pool.
 4. Return `createdArrows == amount`.
 
-Note: `GenerateArrows` uses `AddArrow` (full path with HashSet deps), not `AddArrowForGeneration`. Used by tests and for adding arrows to an existing board.
+Note: `GenerateArrows` uses the **managed path** (not Burst): `AddArrow` (full path with HashSet deps), not `AddArrowForGeneration`. Used by tests and for adding arrows to an existing board.
 
 ## Single Arrow Construction
 
@@ -201,16 +202,17 @@ Unity overhead is ~3–4x vs. raw .NET due to ArrowView creation (~38% of work t
 
 Key optimisations applied (in order of impact):
 
-1. **Bitset-based reachability with early abort** — dependency graph stored as flat `ulong[]` bitsets (`_depsBitsFlat`). BFS processes 64 arrows per word via bitwise OR, replacing `HashSet<Arrow>` iteration with cache-friendly sequential memory access. Membership tests are single bit-checks instead of hash lookups. Cycle detection is integrated into the BFS via `ComputeReachableSetEarlyAbort`: each newly discovered arrow is immediately checked via flat geometry arrays (`_genHeadX`, `_genHeadY`, `_genDir`), aborting early if a cycle is found rather than computing the full transitive closure first.
-2. **Greedy walk** — linear-time random walk replaces DFS+backtracking for tail construction. O(targetLength) per arrow instead of O(4^d) worst-case. Pre-marks ray cells in `visited` grid to eliminate per-step `IsInRay` checks.
-3. **Spatial ray index** — per-row/per-column lists of arrow heads grouped by direction. Replaces O(N) full-arrow scans in cycle detection and `AddArrow` reverse-dep computation with O(crossing) lookups.
-4. **Allocation pooling** — `GenerationContext` holds reusable bitsets, frontier, visited grid, path list, and direction shuffle array. Eliminates all per-candidate heap allocations.
-5. **Swap-and-pop candidate removal** — O(1) removal from `_availableArrowHeads` instead of O(N) `List.RemoveAt` shift. Stale candidates are pruned lazily when encountered.
-6. **Empty-deps fast path** — when a candidate's forward ray is clear (common for edge-pointing arrows), the entire reachability computation and cycle check is skipped.
-7. **Leaf-deps fast path** — when all forward deps have no deps of their own (`_hasAnyDeps` flag), the BFS is skipped and reachable set is just the forward deps.
-8. **Reachability set computed once per head candidate** — the BFS runs once, then each tail cell is checked against the fixed bitset via the ray index.
-9. **Generation-only fast path** — `AddArrowForGeneration` skips HashSet dependency tracking during generation; `FinalizeGenerationIncremental` builds it in one pass afterward.
-10. **O(1) arrow membership** — `HashSet<Arrow> _arrowSet` alongside the `List<Arrow>` for O(1) `Contains` checks in `AddArrow`/`RemoveArrow` validation.
+1. **Burst compilation** — the generation hot path (`NativeGeneration.TryGenerateArrow` and callees) runs as Burst-compiled native code via `[BurstCompile]` static methods on `NativeGeneration`. On WebGL this compiles to WASM SIMD; on desktop it uses SSE/AVX. All generation-time state is held in `NativeGenerationState` (NativeArrays) for Burst compatibility. The managed coroutine calls Burst per-candidate and yields per-arrow for progress reporting. `math.tzcnt` replaces the hand-rolled De Bruijn CTZ with a single hardware instruction.
+2. **Bitset-based reachability with early abort** — dependency graph stored as flat `ulong[]` bitsets (`_depsBitsFlat`). BFS processes 64 arrows per word via bitwise OR, replacing `HashSet<Arrow>` iteration with cache-friendly sequential memory access. Membership tests are single bit-checks instead of hash lookups. Cycle detection is integrated into the BFS via `ComputeReachableSetEarlyAbort`: each newly discovered arrow is immediately checked via flat geometry arrays (`genHeadX`, `genHeadY`, `genDir`), aborting early if a cycle is found rather than computing the full transitive closure first.
+3. **Greedy walk** — linear-time random walk replaces DFS+backtracking for tail construction. O(targetLength) per arrow instead of O(4^d) worst-case. Pre-marks ray cells in `visited` grid to eliminate per-step `IsInRay` checks.
+4. **Spatial ray index** — per-row/per-column flat arrays of arrow head indices grouped by direction. In the Burst path, stored as `NativeArray<int>` with per-row/col counts. Replaces O(N) full-arrow scans in cycle detection and reverse-dep computation with O(crossing) lookups.
+5. **Allocation pooling** — `NativeGenerationState` holds all working arrays (bitsets, frontier, visited grid, path scratch, direction shuffle). Allocated once at generation start, disposed in `finally` block. Zero per-candidate allocations.
+6. **Swap-and-pop candidate removal** — `NativeList<T>.RemoveAtSwapBack` for O(1) candidate pruning. Stale candidates are pruned lazily when encountered.
+7. **Empty-deps fast path** — when a candidate's forward ray is clear (common for edge-pointing arrows), the entire reachability computation and cycle check is skipped.
+8. **Leaf-deps fast path** — when all forward deps have no deps of their own (`hasAnyDeps` flag), the BFS is skipped and reachable set is just the forward deps.
+9. **Reachability set computed once per head candidate** — the BFS runs once, then each tail cell is checked against the fixed bitset via the ray index.
+10. **Generation-only fast path** — Burst path skips HashSet dependency tracking during generation; `FinalizeGenerationIncremental` builds it in one pass afterward.
+11. **O(1) arrow membership** — `HashSet<Arrow> _arrowSet` alongside the `List<Arrow>` for O(1) `Contains` checks in `AddArrow`/`RemoveArrow` validation.
 
 ## Loading Progress Heuristic
 

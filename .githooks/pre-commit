@@ -27,7 +27,7 @@ if [ -n "$staged_all" ]; then
 
         # Public IPv4 addresses — skip private/loopback/version/Unity ranges
         if echo "$content" | grep -En '([0-9]{1,3}\.){3}[0-9]{1,3}' > /dev/null 2>&1; then
-            matches=$(echo "$content" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | grep -Ev '^(0|1\.0\.0\.0|127|10|192\.168|172\.(1[6-9]|2[0-9]|3[01])|999)\.')
+            matches=$(echo "$content" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | grep -Ev '^(0\.|1\.0\.0\.0$|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|999\.)')
             if [ -n "$matches" ]; then
                 echo "ERROR: Public IP address found in $file: $matches"
                 echo "       Use a placeholder like <vps-ip> in docs, or move the value to a GitHub secret."
