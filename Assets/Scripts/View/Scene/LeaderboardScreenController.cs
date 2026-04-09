@@ -50,7 +50,11 @@ public sealed class LeaderboardScreenController : NavigableScene
     private VisualElement _tabBar;
     private Button[] _tabButtons;
     private Button[] _sortButtons;
-    private bool _usingShortLabels;
+
+    // Nullable so BuildUI can reset it on scene re-enable, forcing
+    // OnTabBarGeometryChanged to re-apply labels to the freshly-recreated
+    // tab buttons (which always carry the full labels from UXML).
+    private bool? _usingShortLabels;
 
     private int _activeTabIndex;
     private SortCriterion _activeSortCriterion = SortCriterion.Fastest;
@@ -63,8 +67,12 @@ public sealed class LeaderboardScreenController : NavigableScene
     private Button _ctxFavoriteBtn;
     private Button _ctxPlayBtn;
 
-    // Compact mode — hides inline fav/play buttons on narrow screens
-    private bool _isCompact;
+    // Compact mode — hides inline fav/play buttons on narrow screens.
+    // Derived from the live class list (no caching) so it stays correct
+    // across scene re-enables, where the visual tree is recreated but
+    // C# fields persist.
+    private const string CompactClass = "lb-screen--compact";
+    private bool _isCompact => Root != null && Root.ClassListContains(CompactClass);
 
     // Drag-to-scroll state
     private bool _isDragScrolling;
@@ -115,6 +123,10 @@ public sealed class LeaderboardScreenController : NavigableScene
 
     protected override void BuildUI(VisualElement root)
     {
+        // Reset transient state derived from the (now-recreated) visual tree.
+        // _isCompact is read from the live class list, so it doesn't need a reset.
+        _usingShortLabels = null;
+
         _dragThreshold = PlayerPrefs.GetFloat(
             GameSettings.DragThresholdPrefKey,
             GameSettings.DefaultDragThreshold
@@ -291,14 +303,10 @@ public sealed class LeaderboardScreenController : NavigableScene
     private void OnRootGeometryChanged(GeometryChangedEvent evt)
     {
         bool compact = evt.newRect.width < CompactWidthThreshold;
-        if (compact != _isCompact)
-        {
-            _isCompact = compact;
-            if (_isCompact)
-                Root.AddToClassList("lb-screen--compact");
-            else
-                Root.RemoveFromClassList("lb-screen--compact");
-        }
+        if (compact)
+            Root.AddToClassList(CompactClass);
+        else
+            Root.RemoveFromClassList(CompactClass);
     }
 
     private void AutoScrollToFocusEntry()

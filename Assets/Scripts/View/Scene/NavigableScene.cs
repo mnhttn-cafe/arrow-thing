@@ -38,6 +38,13 @@ public abstract class NavigableScene : MonoBehaviour
     /// <summary>
     /// Wire buttons, create UI components. Called every OnEnable because
     /// UIDocument recreates the visual tree when re-enabled.
+    ///
+    /// IMPORTANT: any subclass field that mirrors visual-tree state (cached
+    /// CSS class flags, current button text, last-applied layout mode, etc.)
+    /// must be reset here, since C# fields persist across re-enable but the
+    /// tree itself does not. Prefer deriving such state from the live tree
+    /// (e.g. <c>root.ClassListContains(...)</c>) over caching it; if caching
+    /// is unavoidable, reset the cache at the top of <see cref="BuildUI"/>.
     /// </summary>
     protected abstract void BuildUI(VisualElement root);
 

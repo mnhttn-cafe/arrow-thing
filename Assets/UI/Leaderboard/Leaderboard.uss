@@ -263,9 +263,13 @@
     -unity-background-image-tint-color: var(--text-secondary);
 }
 
-/* Play */
+/* Play — self-contained so it renders both in row buttons (alongside
+   .lb-row-btn__icon) and standalone (e.g. the player panel play button). */
 .lb-play-icon {
+    flex-grow: 1;
     background-image: url("/Assets/Art/Icons/play.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-secondary);
 }
 
 /* Context trigger (no right margin — last in row) */
