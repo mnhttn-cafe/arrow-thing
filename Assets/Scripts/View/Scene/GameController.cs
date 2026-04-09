@@ -405,16 +405,18 @@ public sealed class GameController : MonoBehaviour
             new System.Random(_activeSeed)
         );
 
-        // Progress is split across three phases:
-        //   Generation  0% → 90%  (bulk of the work)
-        //   Compaction 90% → 95%  (fast merge pass)
-        //   Finalize   95% → 100% (dependency graph build)
-        // Density 0.16 and exponent 1.5 were experimentally derived on boards
-        // 100×100 and up, where loading screens are visible long enough to matter.
-        const float genEndProgress = 0.90f;
-        const float compactEndProgress = 0.95f;
+        // Progress is split across three phases. With Burst-compiled generation,
+        // the managed compaction and finalization passes dominate wall time on
+        // large boards, so the phase weights reflect that:
+        //   Generation  0% → 25%  (Burst-fast)
+        //   Compaction 25% → 70%  (managed merge passes)
+        //   Finalize   70% → 100% (managed dependency graph build)
+        // Density 0.16 was experimentally derived on boards 100×100 and up.
+        // Exponent is linear (1.0) — Burst makes per-arrow time roughly uniform.
+        const float genEndProgress = 0.25f;
+        const float compactEndProgress = 0.70f;
         const float estimatedArrowDensity = 0.16f;
-        const float progressExponent = 1.5f;
+        const float progressExponent = 1.0f;
         float estimatedArrows = _w * _h * estimatedArrowDensity;
         // Track Arrow refs so we can remove their views after compaction
         var spawnedArrows = new List<Arrow>();
@@ -447,7 +449,11 @@ public sealed class GameController : MonoBehaviour
                     if (nextPhase == GenerationPhase.Compacting)
                     {
                         arrowsBeforeCompaction = _board.Arrows.Count;
-                        genFinalProgress = _loadProgress;
+                        // Recalculate gen progress with the final arrow count so
+                        // compaction interpolates from the true end-of-generation
+                        // value rather than a stale value from the previous frame.
+                        float finalRaw = Mathf.Clamp01(arrowsBeforeCompaction / estimatedArrows);
+                        genFinalProgress = genEndProgress * Mathf.Pow(finalRaw, progressExponent);
                     }
                     else if (
                         nextPhase == GenerationPhase.Finalizing
