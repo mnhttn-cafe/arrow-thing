@@ -13,10 +13,23 @@
     <ui:Button name="back-to-menu-btn" class="hud-icon-btn hud-icon-btn--top-left">
         <ui:VisualElement class="hud-icon-btn__icon icon--close" />
     </ui:Button>
+    <ui:Button name="retry-btn" class="hud-icon-btn hud-icon-btn--top-right">
+        <ui:VisualElement class="hud-icon-btn__icon icon--refresh" />
+    </ui:Button>
     <ui:Label name="timer-label" class="timer-label" text="15" />
     <ui:Button name="trail-toggle-btn" class="hud-icon-btn hud-icon-btn--bottom-right">
         <ui:VisualElement class="hud-icon-btn__icon icon--arrow-lane-preview" />
     </ui:Button>
+
+    <ui:VisualElement name="retry-modal" class="modal-overlay screen--hidden">
+        <ui:VisualElement class="modal-box">
+            <ui:Label name="modal-title" class="modal-label" />
+            <ui:VisualElement class="modal-buttons">
+                <ui:Button name="modal-confirm-btn" class="modal-btn" />
+                <ui:Button name="modal-cancel-btn" class="modal-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
 
     <ui:VisualElement name="leave-modal" class="modal-overlay screen--hidden">
         <ui:VisualElement class="modal-box">

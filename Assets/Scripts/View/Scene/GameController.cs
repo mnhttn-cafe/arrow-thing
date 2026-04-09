@@ -104,7 +104,9 @@ public sealed class GameController : MonoBehaviour
     private Button _trailToggleBtn;
     private bool _trailOn;
     private Button _backBtn;
+    private Button _retryBtn;
     private ConfirmModal _leaveModal;
+    private ConfirmModal _retryModal;
     private FocusNavigator _focusNavigator;
     private VisualElement _cancelGenModal;
     private float _loadProgress;
@@ -309,6 +311,7 @@ public sealed class GameController : MonoBehaviour
         var hudRoot = hudUIDocument.rootVisualElement;
         _loadingOverlay = hudRoot.Q("loading-overlay");
         _backBtn = hudRoot.Q<Button>("back-to-menu-btn");
+        _retryBtn = hudRoot.Q<Button>("retry-btn");
         _timerLabel = hudRoot.Q<Label>("timer-label");
         _trailToggleBtn = hudRoot.Q<Button>("trail-toggle-btn");
         _cancelGenModal = hudRoot.Q("cancel-generation-modal");
@@ -637,10 +640,20 @@ public sealed class GameController : MonoBehaviour
         _leaveModal.Cancelled += OnLeaveCancel;
         _leaveModal.Dismissed += OnLeaveDismiss;
 
+        _retryModal = new ConfirmModal(hudRoot.Q("retry-modal"), "Retry?", "Retry", "Cancel");
+        _retryModal.Confirmed += OnRetryConfirm;
+        _retryModal.Cancelled += OnRetryCancel;
+
         if (_backBtn != null)
         {
             _backBtn.clickable = new Clickable(() => { });
             _backBtn.clicked += ShowLeave;
+        }
+
+        if (_retryBtn != null)
+        {
+            _retryBtn.clickable = new Clickable(() => { });
+            _retryBtn.clicked += OnRetryClicked;
         }
 
         var timerView = gameObject.AddComponent<GameTimerView>();
@@ -661,6 +674,7 @@ public sealed class GameController : MonoBehaviour
         {
             var items = new System.Collections.Generic.List<FocusNavigator.FocusItem>();
             int backIdx = -1;
+            int retryIdx = -1;
             int trailIdx = -1;
 
             if (_backBtn != null)
@@ -673,6 +687,21 @@ public sealed class GameController : MonoBehaviour
                         OnActivate = () =>
                         {
                             ShowLeave();
+                            return true;
+                        },
+                    }
+                );
+            }
+            if (_retryBtn != null)
+            {
+                retryIdx = items.Count;
+                items.Add(
+                    new FocusNavigator.FocusItem
+                    {
+                        Element = _retryBtn,
+                        OnActivate = () =>
+                        {
+                            OnRetryClicked();
                             return true;
                         },
                     }
@@ -697,6 +726,13 @@ public sealed class GameController : MonoBehaviour
             if (items.Count > 0)
             {
                 _focusNavigator.SetItems(items);
+                // back (top-left) ↔ Right ↔ retry (top-right)
+                if (backIdx >= 0 && retryIdx >= 0)
+                    _focusNavigator.LinkBidi(backIdx, FocusNavigator.NavDir.Right, retryIdx);
+                // retry (top-right) ↔ Down ↔ trail (bottom-right)
+                if (retryIdx >= 0 && trailIdx >= 0)
+                    _focusNavigator.LinkBidi(retryIdx, FocusNavigator.NavDir.Down, trailIdx);
+                // back (top-left) ↔ Down ↔ trail (bottom-right)
                 if (backIdx >= 0 && trailIdx >= 0)
                     _focusNavigator.LinkBidi(backIdx, FocusNavigator.NavDir.Down, trailIdx);
             }
@@ -738,6 +774,33 @@ public sealed class GameController : MonoBehaviour
     private void OnQuickReset()
     {
         SceneNav.Replace("Game");
+    }
+
+    private void OnRetryClicked()
+    {
+        if (HasAnyClearedArrows)
+        {
+            _retryModal?.Show();
+            if (_inputHandler != null)
+                _inputHandler.SetInputEnabled(false);
+        }
+        else
+        {
+            OnQuickReset();
+        }
+    }
+
+    private void OnRetryConfirm()
+    {
+        _retryModal?.Hide();
+        OnQuickReset();
+    }
+
+    private void OnRetryCancel()
+    {
+        _retryModal?.Hide();
+        if (_inputHandler != null)
+            _inputHandler.SetInputEnabled(true);
     }
 
     private void OnQuickSave()
@@ -837,6 +900,8 @@ public sealed class GameController : MonoBehaviour
             _inputHandler.SetInputEnabled(false);
             if (_backBtn != null)
                 _backBtn.style.display = DisplayStyle.None;
+            if (_retryBtn != null)
+                _retryBtn.style.display = DisplayStyle.None;
             if (_recorder != null)
                 _recorder.RecordEndSolve();
             if (_autosaveEnabled)
@@ -859,6 +924,8 @@ public sealed class GameController : MonoBehaviour
             _timerLabel.style.display = DisplayStyle.None;
         if (_trailToggleBtn != null)
             _trailToggleBtn.style.display = DisplayStyle.None;
+        if (_retryBtn != null)
+            _retryBtn.style.display = DisplayStyle.None;
         if (_backBtn != null && _cancelGenModal != null)
         {
             _backBtn.clicked += () => _cancelGenModal.RemoveFromClassList("modal--hidden");
@@ -904,6 +971,8 @@ public sealed class GameController : MonoBehaviour
             _timerLabel.style.display = DisplayStyle.Flex;
         if (_trailToggleBtn != null)
             _trailToggleBtn.style.display = DisplayStyle.Flex;
+        if (_retryBtn != null)
+            _retryBtn.style.display = DisplayStyle.Flex;
         if (_backBtn != null)
             _backBtn.clickable = new Clickable(() => { });
         if (_cancelGenModal != null)

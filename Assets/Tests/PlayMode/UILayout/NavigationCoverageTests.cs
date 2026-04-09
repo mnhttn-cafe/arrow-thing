@@ -93,13 +93,15 @@ public class NavigationCoverageTests : UILayoutTestBase
         foreach (string bg in state.Background)
             accountedFor.Add(bg);
 
-        // Navigable buttons must exist and be visible.
+        // Navigable buttons must exist and be visible. Multiple buttons may
+        // share a name (e.g. modal-confirm-btn across multiple ConfirmModal
+        // instances in the same UXML); at least one must be visible.
         foreach (string name in state.Navigable)
         {
-            var btn = root.Q<Button>(name);
-            Assert.IsNotNull(btn, $"[{state.Name}] Navigable button '{name}' not found in UXML");
+            var btns = root.Query<Button>(name).ToList();
+            Assert.IsNotEmpty(btns, $"[{state.Name}] Navigable button '{name}' not found in UXML");
             Assert.IsTrue(
-                IsEffectivelyVisible(btn),
+                btns.Any(IsEffectivelyVisible),
                 $"[{state.Name}] Navigable button '{name}' is hidden but should be visible"
             );
         }
@@ -107,10 +109,10 @@ public class NavigationCoverageTests : UILayoutTestBase
         // Background buttons must exist and be visible.
         foreach (string name in state.Background)
         {
-            var btn = root.Q<Button>(name);
-            Assert.IsNotNull(btn, $"[{state.Name}] Background button '{name}' not found in UXML");
+            var btns = root.Query<Button>(name).ToList();
+            Assert.IsNotEmpty(btns, $"[{state.Name}] Background button '{name}' not found in UXML");
             Assert.IsTrue(
-                IsEffectivelyVisible(btn),
+                btns.Any(IsEffectivelyVisible),
                 $"[{state.Name}] Background button '{name}' is hidden but should be visible"
             );
         }
@@ -278,6 +280,7 @@ public class NavigationCoverageTests : UILayoutTestBase
             root.Q("loading-overlay").style.opacity = 1f;
             root.Q<Label>("timer-label").style.display = DisplayStyle.None;
             root.Q<Button>("trail-toggle-btn").style.display = DisplayStyle.None;
+            root.Q<Button>("retry-btn").style.display = DisplayStyle.None;
         },
         navigable: new[] { "back-to-menu-btn" }
     );
@@ -290,6 +293,7 @@ public class NavigationCoverageTests : UILayoutTestBase
             root.Q("loading-overlay").style.opacity = 1f;
             root.Q<Label>("timer-label").style.display = DisplayStyle.None;
             root.Q<Button>("trail-toggle-btn").style.display = DisplayStyle.None;
+            root.Q<Button>("retry-btn").style.display = DisplayStyle.None;
             root.Q("cancel-generation-modal").RemoveFromClassList("modal--hidden");
         },
         navigable: new[] { "cancel-generation-yes-btn", "cancel-generation-no-btn" },
@@ -303,7 +307,7 @@ public class NavigationCoverageTests : UILayoutTestBase
             // Loading overlay hidden, HUD elements visible.
             root.Q("loading-overlay").style.display = DisplayStyle.None;
         },
-        navigable: new[] { "back-to-menu-btn", "trail-toggle-btn" }
+        navigable: new[] { "back-to-menu-btn", "retry-btn", "trail-toggle-btn" }
     );
 
     private static readonly UIState GameHud_PlayingLeaveModal = new UIState(
@@ -316,7 +320,20 @@ public class NavigationCoverageTests : UILayoutTestBase
             modal.RemoveFromClassList("screen--hidden");
         },
         navigable: new[] { "modal-confirm-btn", "modal-cancel-btn" },
-        background: new[] { "back-to-menu-btn", "trail-toggle-btn" }
+        background: new[] { "back-to-menu-btn", "retry-btn", "trail-toggle-btn" }
+    );
+
+    private static readonly UIState GameHud_PlayingRetryModal = new UIState(
+        "GameHud/Playing+RetryModal",
+        setup: root =>
+        {
+            root.Q("loading-overlay").style.display = DisplayStyle.None;
+            var modal = root.Q("retry-modal");
+            modal.style.display = DisplayStyle.Flex;
+            modal.RemoveFromClassList("screen--hidden");
+        },
+        navigable: new[] { "modal-confirm-btn", "modal-cancel-btn" },
+        background: new[] { "back-to-menu-btn", "retry-btn", "trail-toggle-btn" }
     );
 
     private static IEnumerable<UIState> GameHudStates()
@@ -325,6 +342,7 @@ public class NavigationCoverageTests : UILayoutTestBase
         yield return GameHud_LoadingCancelModal;
         yield return GameHud_Playing;
         yield return GameHud_PlayingLeaveModal;
+        yield return GameHud_PlayingRetryModal;
     }
 
     [UnityTest]
