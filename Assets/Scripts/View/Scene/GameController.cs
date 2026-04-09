@@ -405,19 +405,17 @@ public sealed class GameController : MonoBehaviour
             new System.Random(_activeSeed)
         );
 
-        // Progress is split across three phases. With Burst-compiled generation,
-        // the managed compaction and finalization passes dominate wall time on
-        // large boards, so the phase weights reflect that:
-        //   Generation  0% → 25%  (Burst-fast)
-        //   Compaction 25% → 70%  (managed merge passes)
-        //   Finalize   70% → 100% (managed dependency graph build)
-        // Density 0.16 was experimentally derived on boards 100×100 and up.
-        // Exponent is linear (1.0) — Burst makes per-arrow time roughly uniform.
-        const float genEndProgress = 0.25f;
-        const float compactEndProgress = 0.70f;
-        const float estimatedArrowDensity = 0.16f;
-        const float progressExponent = 1.0f;
-        float estimatedArrows = _w * _h * estimatedArrowDensity;
+        // Progress is split across three phases. Weights tuned from
+        // ProfilePhaseTimings_DumpData against 300x300 (the largest board
+        // where loading screen smoothness matters):
+        //   Generation  0% → 80%  (dominates wall time even with Burst)
+        //   Compaction 80% → 94%
+        //   Finalize   94% → 100%
+        // Gen uses candidate depletion (1 - remaining/initial) as the progress
+        // signal. It tracks wall time more linearly than arrow count, which is
+        // front-loaded (most arrows placed in the first ~60% of gen wall time).
+        const float genEndProgress = 0.80f;
+        const float compactEndProgress = 0.94f;
         // Track Arrow refs so we can remove their views after compaction
         var spawnedArrows = new List<Arrow>();
         int arrowsBeforeCompaction = 0;
@@ -449,11 +447,9 @@ public sealed class GameController : MonoBehaviour
                     if (nextPhase == GenerationPhase.Compacting)
                     {
                         arrowsBeforeCompaction = _board.Arrows.Count;
-                        // Recalculate gen progress with the final arrow count so
-                        // compaction interpolates from the true end-of-generation
-                        // value rather than a stale value from the previous frame.
-                        float finalRaw = Mathf.Clamp01(arrowsBeforeCompaction / estimatedArrows);
-                        genFinalProgress = genEndProgress * Mathf.Pow(finalRaw, progressExponent);
+                        // Snap gen progress to its full allocation at the moment of
+                        // transition — all candidates have been consumed by now.
+                        genFinalProgress = genEndProgress;
                     }
                     else if (
                         nextPhase == GenerationPhase.Finalizing
@@ -486,8 +482,10 @@ public sealed class GameController : MonoBehaviour
             {
                 case GenerationPhase.Generating:
                 {
-                    float rawProgress = Mathf.Clamp01(_board.Arrows.Count / estimatedArrows);
-                    _loadProgress = genEndProgress * Mathf.Pow(rawProgress, progressExponent);
+                    int initial = _board.InitialCandidateCount;
+                    int remaining = _board.RemainingCandidateCount;
+                    float depletion = initial > 0 ? 1f - (float)remaining / initial : 0f;
+                    _loadProgress = genEndProgress * Mathf.Clamp01(depletion);
                     break;
                 }
                 case GenerationPhase.Compacting:

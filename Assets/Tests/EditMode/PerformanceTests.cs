@@ -257,8 +257,9 @@ public class PerformanceTests
             // 0=generating (count=arrows placed), 1=compacting (count=merges done),
             // 2=finalizing (count=arrows finalized)
             var samples = new List<(int phase, double ms, int count)>();
-
-            int prevArrowCount = 0;
+            // Parallel series for gen phase: candidate depletion at each sample.
+            // Using 1e6 * (1 - remaining/initial) stored as int for bucket reuse.
+            var genDepletionSamples = new List<(double ms, int depletionScaled)>();
 
             while (gen.MoveNext())
             {
@@ -282,10 +283,15 @@ public class PerformanceTests
                 switch (phase)
                 {
                     case GenerationPhase.Generating:
+                    {
                         // yield return null per arrow placed
                         samples.Add((0, now, board.Arrows.Count));
-                        prevArrowCount = board.Arrows.Count;
+                        int initial = board.InitialCandidateCount;
+                        int remaining = board.RemainingCandidateCount;
+                        float depletion = initial > 0 ? 1f - (float)remaining / initial : 0f;
+                        genDepletionSamples.Add((now, (int)(depletion * 1_000_000f)));
                         break;
+                    }
                     case GenerationPhase.Compacting:
                         // yield return int (cumulative merge count)
                         if (gen.Current is int mergeCount)
@@ -330,6 +336,12 @@ public class PerformanceTests
 
             // Per-phase 10% time buckets of (count progress within that phase)
             var genBuckets = BuildBuckets(samples, 0, genStartMs, compactStartMs, finalArrows);
+            var genDepletionBuckets = BuildBucketsRaw(
+                genDepletionSamples,
+                genStartMs,
+                compactStartMs,
+                1_000_000f
+            );
             var compBuckets = BuildBuckets(
                 samples,
                 1,
@@ -355,10 +367,15 @@ public class PerformanceTests
                 + $"samples: gen={genN} compact={compN} finalize={finN}";
 
             string genLine = "gen     (phase time% -> arrow%):     " + FormatBuckets(genBuckets);
+            string genDepLine =
+                "gen     (phase time% -> candidateDepletion%): "
+                + FormatBuckets(genDepletionBuckets);
             string compLine = "compact (phase time% -> merge%):     " + FormatBuckets(compBuckets);
             string finLine = "finalize(phase time% -> finalized%): " + FormatBuckets(finBuckets);
 
-            UnityEngine.Debug.Log(header + "\n" + genLine + "\n" + compLine + "\n" + finLine);
+            UnityEngine.Debug.Log(
+                header + "\n" + genLine + "\n" + genDepLine + "\n" + compLine + "\n" + finLine
+            );
         }
 
         Assert.Pass("Data dumped — inspect console output");
@@ -383,6 +400,30 @@ public class PerformanceTests
             double t = (s.ms - phaseStartMs) / dur;
             int b = Math.Clamp((int)(t * bucketCount), 0, bucketCount);
             sum[b] += (double)s.count / finalCount;
+            n[b]++;
+        }
+        var avg = new double[bucketCount + 1];
+        for (int i = 0; i <= bucketCount; i++)
+            avg[i] = n[i] > 0 ? sum[i] / n[i] : double.NaN;
+        return avg;
+    }
+
+    private static double[] BuildBucketsRaw(
+        List<(double ms, int valueScaled)> samples,
+        double startMs,
+        double endMs,
+        float scale
+    )
+    {
+        const int bucketCount = 10;
+        var sum = new double[bucketCount + 1];
+        var n = new int[bucketCount + 1];
+        double dur = Math.Max(0.0001, endMs - startMs);
+        foreach (var s in samples)
+        {
+            double t = (s.ms - startMs) / dur;
+            int b = Math.Clamp((int)(t * bucketCount), 0, bucketCount);
+            sum[b] += s.valueScaled / scale;
             n[b]++;
         }
         var avg = new double[bucketCount + 1];
