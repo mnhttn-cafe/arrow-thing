@@ -93,13 +93,15 @@ public class NavigationCoverageTests : UILayoutTestBase
         foreach (string bg in state.Background)
             accountedFor.Add(bg);
 
-        // Navigable buttons must exist and be visible.
+        // Navigable buttons must exist and be visible. Multiple buttons may
+        // share a name (e.g. modal-confirm-btn across multiple ConfirmModal
+        // instances in the same UXML); at least one must be visible.
         foreach (string name in state.Navigable)
         {
-            var btn = root.Q<Button>(name);
-            Assert.IsNotNull(btn, $"[{state.Name}] Navigable button '{name}' not found in UXML");
+            var btns = root.Query<Button>(name).ToList();
+            Assert.IsNotEmpty(btns, $"[{state.Name}] Navigable button '{name}' not found in UXML");
             Assert.IsTrue(
-                IsEffectivelyVisible(btn),
+                btns.Any(IsEffectivelyVisible),
                 $"[{state.Name}] Navigable button '{name}' is hidden but should be visible"
             );
         }
@@ -107,10 +109,10 @@ public class NavigationCoverageTests : UILayoutTestBase
         // Background buttons must exist and be visible.
         foreach (string name in state.Background)
         {
-            var btn = root.Q<Button>(name);
-            Assert.IsNotNull(btn, $"[{state.Name}] Background button '{name}' not found in UXML");
+            var btns = root.Query<Button>(name).ToList();
+            Assert.IsNotEmpty(btns, $"[{state.Name}] Background button '{name}' not found in UXML");
             Assert.IsTrue(
-                IsEffectivelyVisible(btn),
+                btns.Any(IsEffectivelyVisible),
                 $"[{state.Name}] Background button '{name}' is hidden but should be visible"
             );
         }
