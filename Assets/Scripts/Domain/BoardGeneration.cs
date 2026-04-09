@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Mathematics;
+using Random = System.Random;
 
 public static class BoardGeneration
 {
@@ -65,7 +66,7 @@ public static class BoardGeneration
             board.InitialCandidateCount = state.candidates.Length;
 
             // Unity.Mathematics.Random requires nonzero seed
-            var rng = new Random((uint)random.Next(1, int.MaxValue));
+            var rng = new Unity.Mathematics.Random((uint)random.Next(1, int.MaxValue));
             int created = 0;
 
             while (created < maxPossibleArrows && state.candidates.Length > 0)
