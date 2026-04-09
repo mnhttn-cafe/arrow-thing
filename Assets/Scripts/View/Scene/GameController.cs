@@ -425,6 +425,7 @@ public sealed class GameController : MonoBehaviour
         int arrowsBeforeCompaction = 0;
         float genFinalProgress = 0f;
         var phase = GenerationPhase.Generating;
+        float compactStartRealtime = 0f;
 
         while (true)
         {
@@ -454,6 +455,7 @@ public sealed class GameController : MonoBehaviour
                         // Snap gen progress to its full allocation at the moment of
                         // transition — all candidates have been consumed by now.
                         genFinalProgress = genEndProgress;
+                        compactStartRealtime = Time.realtimeSinceStartup;
                     }
                     else if (
                         nextPhase == GenerationPhase.Finalizing
@@ -495,15 +497,29 @@ public sealed class GameController : MonoBehaviour
                 }
                 case GenerationPhase.Compacting:
                 {
+                    // Merge-based signal: peaks early because the final "no-merge
+                    // verification pass" produces no new merges, and observed merge
+                    // ratios are ~0.12–0.15 of arrow count.
                     int mergesCompleted = arrowsBeforeCompaction - _board.Arrows.Count;
-                    float compactRatio =
+                    float mergeRatio =
                         arrowsBeforeCompaction > 0
                             ? Mathf.Clamp01(
-                                (float)mergesCompleted / (arrowsBeforeCompaction * 0.15f)
+                                (float)mergesCompleted / (arrowsBeforeCompaction * 0.12f)
                             )
                             : 1f;
+                    // Wall-time fallback: linear over expected compact duration.
+                    // Fit from ProfilePhaseTimings data: compact_ms ≈ 5e-5 * arrows^1.78.
+                    // Ensures the bar keeps moving during the no-merge final pass.
+                    float expectedCompactSec =
+                        5e-5f * Mathf.Pow(arrowsBeforeCompaction, 1.78f) / 1000f;
+                    float elapsed = Time.realtimeSinceStartup - compactStartRealtime;
+                    float timeRatio =
+                        expectedCompactSec > 0.001f
+                            ? Mathf.Clamp01(elapsed / expectedCompactSec)
+                            : 1f;
+                    float ratio = Mathf.Max(mergeRatio, timeRatio);
                     _loadProgress =
-                        genFinalProgress + (compactEndProgress - genFinalProgress) * compactRatio;
+                        genFinalProgress + (compactEndProgress - genFinalProgress) * ratio;
                     break;
                 }
                 case GenerationPhase.Finalizing:
