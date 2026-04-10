@@ -227,6 +227,225 @@ public class PerformanceTests
         Assert.Pass("Data dumped — inspect console output");
     }
 
+    // ── Per-phase timing profile ─────────────────────────────────────────
+
+    /// <summary>
+    /// Measures wall-time breakdown across generation / compaction / finalization
+    /// and samples progress within each phase. Output feeds loading-bar curve tuning.
+    /// Runs 100x100, 200x200, and 300x300 with a single seed each.
+    /// </summary>
+    [Test]
+    public void ProfilePhaseTimings_DumpData()
+    {
+        var configs = new[] { (100, 100, 50), (200, 200, 50), (300, 300, 50) };
+
+        foreach (var (w, h, maxLen) in configs)
+        {
+            var board = new Board(w, h);
+            var gen = BoardGeneration.FillBoardIncremental(board, maxLen, new Random(0));
+
+            var phase = GenerationPhase.Generating;
+            var swTotal = Stopwatch.StartNew();
+
+            double genStartMs = 0;
+            double compactStartMs = -1;
+            double finalizeStartMs = -1;
+
+            int arrowsAtCompactStart = 0;
+
+            // (phaseIndex, elapsedMs, progressWithinPhaseCount) — phaseIndex:
+            // 0=generating (count=arrows placed), 1=compacting (count=merges done),
+            // 2=finalizing (count=arrows finalized)
+            var samples = new List<(int phase, double ms, int count)>();
+            // Parallel series for gen phase: candidate depletion at each sample.
+            // Using 1e6 * (1 - remaining/initial) stored as int for bucket reuse.
+            var genDepletionSamples = new List<(double ms, int depletionScaled)>();
+
+            while (gen.MoveNext())
+            {
+                double now = swTotal.Elapsed.TotalMilliseconds;
+
+                if (gen.Current is GenerationPhase next)
+                {
+                    if (next == GenerationPhase.Compacting)
+                    {
+                        compactStartMs = now;
+                        arrowsAtCompactStart = board.Arrows.Count;
+                    }
+                    else if (next == GenerationPhase.Finalizing)
+                    {
+                        finalizeStartMs = now;
+                    }
+                    phase = next;
+                    continue;
+                }
+
+                switch (phase)
+                {
+                    case GenerationPhase.Generating:
+                    {
+                        // yield return null per arrow placed
+                        samples.Add((0, now, board.Arrows.Count));
+                        int initial = board.InitialCandidateCount;
+                        int remaining = board.RemainingCandidateCount;
+                        float depletion = initial > 0 ? 1f - (float)remaining / initial : 0f;
+                        genDepletionSamples.Add((now, (int)(depletion * 1_000_000f)));
+                        break;
+                    }
+                    case GenerationPhase.Compacting:
+                        // yield return int (cumulative merge count)
+                        if (gen.Current is int mergeCount)
+                            samples.Add((1, now, mergeCount));
+                        break;
+                    case GenerationPhase.Finalizing:
+                        // yield return int (arrows finalized so far)
+                        if (gen.Current is int finalized)
+                            samples.Add((2, now, finalized));
+                        break;
+                }
+            }
+            swTotal.Stop();
+            double totalMs = swTotal.Elapsed.TotalMilliseconds;
+
+            // Handle edge cases where phases didn't happen
+            if (compactStartMs < 0)
+                compactStartMs = totalMs;
+            if (finalizeStartMs < 0)
+                finalizeStartMs = totalMs;
+
+            double genMs = compactStartMs - genStartMs;
+            double compactMs = finalizeStartMs - compactStartMs;
+            double finalizeMs = totalMs - finalizeStartMs;
+
+            int finalArrows = board.Arrows.Count;
+            int totalMerges = arrowsAtCompactStart - finalArrows;
+
+            // Count samples per phase
+            int genN = 0,
+                compN = 0,
+                finN = 0;
+            foreach (var s in samples)
+            {
+                if (s.phase == 0)
+                    genN++;
+                else if (s.phase == 1)
+                    compN++;
+                else if (s.phase == 2)
+                    finN++;
+            }
+
+            // Per-phase 10% time buckets of (count progress within that phase)
+            var genBuckets = BuildBuckets(samples, 0, genStartMs, compactStartMs, finalArrows);
+            var genDepletionBuckets = BuildBucketsRaw(
+                genDepletionSamples,
+                genStartMs,
+                compactStartMs,
+                1_000_000f
+            );
+            var compBuckets = BuildBuckets(
+                samples,
+                1,
+                compactStartMs,
+                finalizeStartMs,
+                Math.Max(1, totalMerges)
+            );
+            var finBuckets = BuildBuckets(
+                samples,
+                2,
+                finalizeStartMs,
+                totalMs,
+                Math.Max(1, finalArrows)
+            );
+
+            string header =
+                $"\n=== {w}x{h} maxLen={maxLen}: "
+                + $"total={totalMs:F0}ms  "
+                + $"gen={genMs:F0}ms ({100 * genMs / totalMs:F1}%)  "
+                + $"compact={compactMs:F0}ms ({100 * compactMs / totalMs:F1}%)  "
+                + $"finalize={finalizeMs:F0}ms ({100 * finalizeMs / totalMs:F1}%) ===\n"
+                + $"arrows={finalArrows} (placed={arrowsAtCompactStart}, merged={totalMerges})\n"
+                + $"samples: gen={genN} compact={compN} finalize={finN}";
+
+            string genLine = "gen     (phase time% -> arrow%):     " + FormatBuckets(genBuckets);
+            string genDepLine =
+                "gen     (phase time% -> candidateDepletion%): "
+                + FormatBuckets(genDepletionBuckets);
+            string compLine = "compact (phase time% -> merge%):     " + FormatBuckets(compBuckets);
+            string finLine = "finalize(phase time% -> finalized%): " + FormatBuckets(finBuckets);
+
+            UnityEngine.Debug.Log(
+                header + "\n" + genLine + "\n" + genDepLine + "\n" + compLine + "\n" + finLine
+            );
+        }
+
+        Assert.Pass("Data dumped — inspect console output");
+    }
+
+    private static double[] BuildBuckets(
+        List<(int phase, double ms, int count)> samples,
+        int phase,
+        double phaseStartMs,
+        double phaseEndMs,
+        int finalCount
+    )
+    {
+        const int bucketCount = 10;
+        var sum = new double[bucketCount + 1];
+        var n = new int[bucketCount + 1];
+        double dur = Math.Max(0.0001, phaseEndMs - phaseStartMs);
+        foreach (var s in samples)
+        {
+            if (s.phase != phase)
+                continue;
+            double t = (s.ms - phaseStartMs) / dur;
+            int b = Math.Clamp((int)(t * bucketCount), 0, bucketCount);
+            sum[b] += (double)s.count / finalCount;
+            n[b]++;
+        }
+        var avg = new double[bucketCount + 1];
+        for (int i = 0; i <= bucketCount; i++)
+            avg[i] = n[i] > 0 ? sum[i] / n[i] : double.NaN;
+        return avg;
+    }
+
+    private static double[] BuildBucketsRaw(
+        List<(double ms, int valueScaled)> samples,
+        double startMs,
+        double endMs,
+        float scale
+    )
+    {
+        const int bucketCount = 10;
+        var sum = new double[bucketCount + 1];
+        var n = new int[bucketCount + 1];
+        double dur = Math.Max(0.0001, endMs - startMs);
+        foreach (var s in samples)
+        {
+            double t = (s.ms - startMs) / dur;
+            int b = Math.Clamp((int)(t * bucketCount), 0, bucketCount);
+            sum[b] += s.valueScaled / scale;
+            n[b]++;
+        }
+        var avg = new double[bucketCount + 1];
+        for (int i = 0; i <= bucketCount; i++)
+            avg[i] = n[i] > 0 ? sum[i] / n[i] : double.NaN;
+        return avg;
+    }
+
+    private static string FormatBuckets(double[] buckets)
+    {
+        var parts = new List<string>();
+        for (int i = 0; i < buckets.Length; i++)
+        {
+            int pct = i * 10;
+            if (double.IsNaN(buckets[i]))
+                parts.Add($"{pct}%=--");
+            else
+                parts.Add($"{pct}%={buckets[i]:F3}");
+        }
+        return string.Join("  ", parts);
+    }
+
     private static void AssertFullyClearable(Board board, int seed)
     {
         int initial = board.Arrows.Count;

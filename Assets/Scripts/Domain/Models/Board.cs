@@ -2,8 +2,8 @@ using System.Collections.Generic;
 
 public sealed class Board
 {
-    private readonly List<Arrow> _arrows = new();
-    private readonly HashSet<Arrow> _arrowSet = new();
+    internal readonly List<Arrow> _arrows = new();
+    internal readonly HashSet<Arrow> _arrowSet = new();
     internal readonly Arrow[,] _occupancy;
     private readonly Dictionary<Arrow, HashSet<Arrow>> _dependsOn = new();
     private readonly Dictionary<Arrow, HashSet<Arrow>> _dependedOnBy = new();
@@ -40,14 +40,16 @@ public sealed class Board
     public IReadOnlyList<Arrow> Arrows => _arrows;
     public int Width { get; }
     public int Height { get; }
-    public int OccupiedCellCount { get; private set; }
+    public int OccupiedCellCount { get; internal set; }
 
     /// <summary>Number of candidates at the time InitializeForGeneration was called.</summary>
-    public int InitialCandidateCount { get; private set; }
+    public int InitialCandidateCount { get; internal set; }
 
-    /// <summary>Number of remaining unpruned head candidates. 0 before initialization.</summary>
+    /// <summary>Number of remaining unpruned head candidates. 0 before initialization.
+    /// During Burst generation, updated by <see cref="BoardGeneration.FillBoardIncremental"/>.</summary>
     public int RemainingCandidateCount =>
-        _availableArrowHeads != null ? _availableArrowHeads.Count : 0;
+        _availableArrowHeads != null ? _availableArrowHeads.Count : _nativeRemainingCandidates;
+    internal int _nativeRemainingCandidates;
 
     public Board(int width, int height)
     {
@@ -102,6 +104,55 @@ public sealed class Board
         for (int i = 0; i < _nextGenIndex; i++)
             System.Array.Copy(_depsBitsFlat, i * oldWords, newFlat, i * _bitsetWords, oldWords);
         _depsBitsFlat = newFlat;
+    }
+
+    /// <summary>
+    /// Copies generation state from native arrays back into Board's managed arrays.
+    /// Called after Burst generation completes to prepare for managed compaction.
+    /// Assumes <see cref="_arrows"/> and <see cref="_arrowSet"/> are already populated.
+    /// </summary>
+    internal void InitializeFromNativeGeneration(ref NativeGenerationState state)
+    {
+        int maxArrows = Width * Height / 2;
+        _bitsetWords = state.bitsetWords;
+        _nextGenIndex = state.nextGenIndex;
+
+        // Allocate and copy bitset arrays
+        _depsBitsFlat = new ulong[maxArrows * _bitsetWords];
+        int bitsetLen = _nextGenIndex * _bitsetWords;
+        for (int i = 0; i < bitsetLen; i++)
+            _depsBitsFlat[i] = state.depsBitsFlat[i];
+
+        _hasAnyDeps = new bool[maxArrows];
+        for (int i = 0; i < _nextGenIndex; i++)
+            _hasAnyDeps[i] = state.hasAnyDeps[i];
+
+        _depsNonZeroWords = new int[maxArrows * MaxNonZeroTracked];
+        for (int i = 0; i < _nextGenIndex * MaxNonZeroTracked; i++)
+            _depsNonZeroWords[i] = state.depsNonZeroWords[i];
+
+        _depsNonZeroCount = new int[maxArrows];
+        for (int i = 0; i < _nextGenIndex; i++)
+            _depsNonZeroCount[i] = state.depsNonZeroCount[i];
+
+        _genHeadX = new int[maxArrows];
+        _genHeadY = new int[maxArrows];
+        _genDir = new Arrow.Direction[maxArrows];
+        for (int i = 0; i < _nextGenIndex; i++)
+        {
+            _genHeadX[i] = state.genHeadX[i];
+            _genHeadY[i] = state.genHeadY[i];
+            _genDir[i] = (Arrow.Direction)state.genDir[i];
+        }
+
+        // Build occupancy from arrows
+        foreach (Arrow a in _arrows)
+        foreach (Cell c in a.Cells)
+            _occupancy[c.X, c.Y] = a;
+
+        // Build ray index from arrows
+        foreach (Arrow a in _arrows)
+            AddToRayIndex(a);
     }
 
     /// <summary>

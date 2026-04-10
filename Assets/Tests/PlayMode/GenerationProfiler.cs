@@ -34,6 +34,9 @@ public class GenerationProfiler
     public IEnumerator Profile_200x200() => RunProfile(200, 200, 50, 0);
 
     [UnityTest]
+    public IEnumerator Profile_300x300() => RunProfile(300, 300, 50, 0);
+
+    [UnityTest]
     public IEnumerator Profile_400x400() => RunProfile(400, 400, 50, 0);
 
     private IEnumerator RunProfile(int w, int h, int maxLen, int seed)
@@ -65,15 +68,31 @@ public class GenerationProfiler
         long totalViewNs = 0;
         long totalYieldNs = 0;
 
-        // Phase-split accumulators
+        // Phase-split accumulators (domain work only)
         long placementMoveNextNs = 0;
         long placementViewNs = 0;
         long compactionMoveNextNs = 0;
+        long rebuildViewNs = 0; // incremental view rebuild after compaction
         long finalizationMoveNextNs = 0;
+
+        // Phase-split WALL TIME (includes yields between frames)
+        long placementWallNs = 0;
+        long compactionWallNs = 0;
+        long rebuildWallNs = 0;
+        long finalizationWallNs = 0;
 
         int placementFrames = 0;
         int compactionFrames = 0;
+        int rebuildFrames = 0;
         int finalizationFrames = 0;
+
+        // Track spawned view GameObjects so we can simulate the compact→finalize rebuild
+        var spawnedViews = new List<GameObject>();
+
+        // Incremental rebuild state — mirrors GameController.GenerateBoard
+        bool rebuildingViews = false;
+        List<Arrow> rebuildList = null;
+        int rebuildIndex = 0;
 
         // Per-frame samples
         var frameSamples = new List<FrameSample>(2048);
@@ -87,9 +106,36 @@ public class GenerationProfiler
             int frameArrows = 0;
             long frameMoveNextNs = 0;
             long frameViewNs = 0;
+            bool frameHadRebuild = false;
 
             while (frameSw.ElapsedMilliseconds < frameBudgetMs)
             {
+                // Incremental view rebuild (mirrors GameController.GenerateBoard)
+                if (rebuildingViews)
+                {
+                    frameHadRebuild = true;
+                    if (rebuildIndex < rebuildList.Count && settings != null)
+                    {
+                        var vSw = Stopwatch.StartNew();
+                        s_MarkerCreateView.Begin();
+                        var go = new GameObject($"Arrow_{rebuildIndex}");
+                        go.transform.SetParent(boardParent.transform, false);
+                        var view = go.AddComponent<ArrowView>();
+                        view.Init(rebuildList[rebuildIndex], w, h, settings);
+                        spawnedViews.Add(go);
+                        s_MarkerCreateView.End();
+                        vSw.Stop();
+                        long rvNs = vSw.Elapsed.Ticks * 100;
+                        frameViewNs += rvNs;
+                        rebuildViewNs += rvNs;
+                        rebuildIndex++;
+                        continue;
+                    }
+                    // Rebuild done — fall through to generator advance for finalize.
+                    rebuildingViews = false;
+                    rebuildList = null;
+                }
+
                 // MoveNext — this is TryGenerateArrow + AddArrowForGeneration
                 // (or FinalizeGenerationIncremental step)
                 var mnSw = Stopwatch.StartNew();
@@ -109,6 +155,21 @@ public class GenerationProfiler
                 // Detect phase transition
                 if (generator.Current is GenerationPhase nextPhase)
                 {
+                    if (
+                        nextPhase == GenerationPhase.Finalizing
+                        && phase == GenerationPhase.Compacting
+                    )
+                    {
+                        // Synchronously destroy old views (fast) and start
+                        // incremental rebuild over subsequent frame budgets.
+                        foreach (var go in spawnedViews)
+                            Object.DestroyImmediate(go);
+                        spawnedViews.Clear();
+                        rebuildList = new List<Arrow>(board.Arrows);
+                        rebuildIndex = 0;
+                        rebuildingViews = true;
+                    }
+
                     if (nextPhase == GenerationPhase.Finalizing)
                         totalArrows = board.Arrows.Count;
                     phase = nextPhase;
@@ -124,6 +185,7 @@ public class GenerationProfiler
                     go.transform.SetParent(boardParent.transform, false);
                     var view = go.AddComponent<ArrowView>();
                     view.Init(board.Arrows[arrowCount], w, h, settings);
+                    spawnedViews.Add(go);
                     s_MarkerCreateView.End();
                     vSw.Stop();
                     frameViewNs += vSw.Elapsed.Ticks * 100;
@@ -133,29 +195,42 @@ public class GenerationProfiler
             }
 
             frameSw.Stop();
+            long frameWallNs = frameSw.Elapsed.Ticks * 100;
 
             totalMoveNextNs += frameMoveNextNs;
             totalViewNs += frameViewNs;
 
             string phaseLabel;
-            switch (phase)
+            if (frameHadRebuild)
             {
-                case GenerationPhase.Generating:
-                    phaseLabel = "placement";
-                    placementMoveNextNs += frameMoveNextNs;
-                    placementViewNs += frameViewNs;
-                    placementFrames++;
-                    break;
-                case GenerationPhase.Compacting:
-                    phaseLabel = "compaction";
-                    compactionMoveNextNs += frameMoveNextNs;
-                    compactionFrames++;
-                    break;
-                default:
-                    phaseLabel = "finalization";
-                    finalizationMoveNextNs += frameMoveNextNs;
-                    finalizationFrames++;
-                    break;
+                phaseLabel = "rebuild";
+                rebuildWallNs += frameWallNs;
+                rebuildFrames++;
+            }
+            else
+            {
+                switch (phase)
+                {
+                    case GenerationPhase.Generating:
+                        phaseLabel = "placement";
+                        placementMoveNextNs += frameMoveNextNs;
+                        placementViewNs += frameViewNs;
+                        placementWallNs += frameWallNs;
+                        placementFrames++;
+                        break;
+                    case GenerationPhase.Compacting:
+                        phaseLabel = "compaction";
+                        compactionMoveNextNs += frameMoveNextNs;
+                        compactionWallNs += frameWallNs;
+                        compactionFrames++;
+                        break;
+                    default:
+                        phaseLabel = "finalization";
+                        finalizationMoveNextNs += frameMoveNextNs;
+                        finalizationWallNs += frameWallNs;
+                        finalizationFrames++;
+                        break;
+                }
             }
 
             frameSamples.Add(
@@ -176,7 +251,28 @@ public class GenerationProfiler
             var yieldSw = Stopwatch.StartNew();
             yield return null;
             yieldSw.Stop();
-            totalYieldNs += yieldSw.Elapsed.Ticks * 100;
+            long yieldNs = yieldSw.Elapsed.Ticks * 100;
+            totalYieldNs += yieldNs;
+            // Attribute yield time to the phase that just finished its frame.
+            if (frameHadRebuild)
+            {
+                rebuildWallNs += yieldNs;
+            }
+            else
+            {
+                switch (phase)
+                {
+                    case GenerationPhase.Generating:
+                        placementWallNs += yieldNs;
+                        break;
+                    case GenerationPhase.Compacting:
+                        compactionWallNs += yieldNs;
+                        break;
+                    default:
+                        finalizationWallNs += yieldNs;
+                        break;
+                }
+            }
         }
 
         wallSw.Stop();
@@ -198,7 +294,7 @@ public class GenerationProfiler
             $"Cells:        {board.OccupiedCellCount} / {w * h} ({100f * board.OccupiedCellCount / (w * h):F1}%)"
         );
         sb.AppendLine(
-            $"Frames:       {placementFrames} placement + {compactionFrames} compaction + {finalizationFrames} finalization = {frameSamples.Count} total"
+            $"Frames:       {placementFrames} placement + {compactionFrames} compaction + {rebuildFrames} rebuild + {finalizationFrames} finalization = {frameSamples.Count} total"
         );
         sb.AppendLine();
         sb.AppendLine("── Wall Clock ────────────────────────────────────────");
@@ -208,6 +304,23 @@ public class GenerationProfiler
         );
         sb.AppendLine(
             $"  Yield/render:       {toMs(totalYieldNs), 8:F0}ms  ({pct(totalYieldNs, wallMs * 1_000_000L):F1}%)"
+        );
+        sb.AppendLine();
+        // Per-phase wall time — THIS is what the loading bar should track.
+        // Includes domain work + view creation + yields/render time.
+        long totalWallNs = placementWallNs + compactionWallNs + rebuildWallNs + finalizationWallNs;
+        sb.AppendLine("── Wall Time by Phase (feeds loading-bar tuning) ─────");
+        sb.AppendLine(
+            $"  Placement:          {toMs(placementWallNs), 8:F0}ms  ({pct(placementWallNs, totalWallNs):F1}%)"
+        );
+        sb.AppendLine(
+            $"  Compaction:         {toMs(compactionWallNs), 8:F0}ms  ({pct(compactionWallNs, totalWallNs):F1}%)"
+        );
+        sb.AppendLine(
+            $"  Rebuild views:      {toMs(rebuildWallNs), 8:F0}ms  ({pct(rebuildWallNs, totalWallNs):F1}%)"
+        );
+        sb.AppendLine(
+            $"  Finalization:       {toMs(finalizationWallNs), 8:F0}ms  ({pct(finalizationWallNs, totalWallNs):F1}%)"
         );
         sb.AppendLine();
         sb.AppendLine("── Work Breakdown ────────────────────────────────────");
@@ -220,6 +333,8 @@ public class GenerationProfiler
         sb.AppendLine(
             $"  ArrowView creation: {toMs(totalViewNs), 8:F0}ms  ({pct(totalViewNs, totalWorkNs):F1}% of work)"
         );
+        sb.AppendLine($"    Placement spawns: {toMs(placementViewNs), 8:F0}ms");
+        sb.AppendLine($"    Rebuild spawns:   {toMs(rebuildViewNs), 8:F0}ms");
         sb.AppendLine();
 
         if (totalArrows > 0)
