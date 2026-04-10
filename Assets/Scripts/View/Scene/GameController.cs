@@ -406,19 +406,19 @@ public sealed class GameController : MonoBehaviour
         );
 
         // Progress is split across four phases. Weights tuned from PlayMode
-        // GenerationProfiler data (300x300), where view creation dominates
-        // post-compaction and cannot be ignored:
-        //   Generation    0% → 70%  (Burst domain + per-arrow view spawn)
-        //   Compaction   70% → 78%
-        //   RebuildViews 78% → 93%  (destroy+recreate all views after compact)
-        //   Finalize     93% → 100%
+        // GenerationProfiler data (300x300), matching measured wall-time
+        // fractions 70.8% / 8.5% / 13.0% / 7.7%:
+        //   Generation    0% → 71%  (Burst domain + per-arrow view spawn)
+        //   Compaction   71% → 79%
+        //   RebuildViews 79% → 92%  (incremental, one view per iteration)
+        //   Finalize     92% → 100%
         // Gen uses candidate depletion (1 - remaining/initial) with a ^0.7
         // exponent so the raw depletion (back-loaded in wall time) tracks
         // real time linearly. Rebuild is spread across multiple frames so the
         // bar keeps moving instead of stalling while views are recreated.
-        const float genEndProgress = 0.70f;
-        const float compactEndProgress = 0.78f;
-        const float rebuildEndProgress = 0.93f;
+        const float genEndProgress = 0.71f;
+        const float compactEndProgress = 0.79f;
+        const float rebuildEndProgress = 0.92f;
         const float genProgressExponent = 0.7f;
         // Track Arrow refs so we can remove their views after compaction
         var spawnedArrows = new List<Arrow>();
