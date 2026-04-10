@@ -90,34 +90,6 @@ public class GenerationTests
     }
 
     [Test]
-    public void GenerateArrows_ExactAmountRequested_ReturnsTrue()
-    {
-        var board = new Board(8, 8);
-        bool success = BoardGeneration.GenerateArrows(
-            board,
-            3,
-            4,
-            new System.Random(1),
-            out int created
-        );
-        Assert.That(success, Is.True);
-        Assert.That(created, Is.EqualTo(4));
-        Assert.That(board.Arrows.Count, Is.EqualTo(4));
-    }
-
-    [Test]
-    public void GenerateArrows_ExternalAddArrow_DoesNotThrow()
-    {
-        var board = new Board(8, 8);
-        BoardGeneration.GenerateArrows(board, 3, 1, new System.Random(0), out _);
-        // External mutation should not break further generation
-        board.AddArrow(new Arrow(new Cell[] { new(7, 7), new(7, 6) }));
-        Assert.DoesNotThrow(() =>
-            BoardGeneration.GenerateArrows(board, 3, 1, new System.Random(1), out _)
-        );
-    }
-
-    [Test]
     public void FillBoard_NoCyclicDependencies()
     {
         // Verify every generated board is fully solvable: repeatedly clear

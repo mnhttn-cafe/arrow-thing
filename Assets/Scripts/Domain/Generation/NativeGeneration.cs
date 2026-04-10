@@ -1,36 +1,115 @@
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Mathematics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Burst-compiled board generation kernels. All methods operate on
-/// <see cref="NativeGenerationState"/> and produce arrow cell data in
-/// the state's scratch buffers for the managed caller to consume.
+/// Portable board generation kernels. Operates on <see cref="NativeGenerationState"/>
+/// via managed arrays. Shared between Unity and the .NET server build.
+///
+/// Performance notes:
+/// - Hot paths are marked [MethodImpl(AggressiveInlining)] to hint the JIT.
+/// - Bit-twiddling uses a De Bruijn trailing-zero-count (portable across
+///   netstandard2.1 and Unity; System.Numerics.BitOperations is net5.0+).
+/// - All state is flat arrays; per-iteration allocations are zero.
 /// </summary>
-[BurstCompile]
 public static class NativeGeneration
 {
     private const int MinArrowLength = 2;
+
+    // De Bruijn CTZ table for 64-bit values. Portable alternative to
+    // System.Numerics.BitOperations.TrailingZeroCount which requires net5.0+.
+    private static readonly int[] DeBruijn64Tab =
+    {
+        0,
+        1,
+        56,
+        2,
+        57,
+        49,
+        28,
+        3,
+        61,
+        58,
+        42,
+        50,
+        38,
+        29,
+        17,
+        4,
+        62,
+        47,
+        59,
+        36,
+        45,
+        43,
+        51,
+        22,
+        53,
+        39,
+        33,
+        30,
+        24,
+        18,
+        12,
+        5,
+        63,
+        55,
+        48,
+        27,
+        60,
+        41,
+        37,
+        16,
+        46,
+        35,
+        44,
+        21,
+        52,
+        32,
+        23,
+        11,
+        54,
+        26,
+        40,
+        15,
+        34,
+        20,
+        31,
+        10,
+        25,
+        14,
+        19,
+        9,
+        13,
+        8,
+        7,
+        6,
+    };
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int Ctz64(ulong value)
+    {
+        if (value == 0)
+            return 64;
+        ulong isolated = value & (ulong)(-(long)value); // isolate lowest set bit
+        return DeBruijn64Tab[(isolated * 0x03F79D71B4CA8B09UL) >> 58];
+    }
 
     /// <summary>
     /// Attempts to generate one arrow. On success, the arrow's cells are written to
     /// <c>state.scratchCellsX/Y[0..state.lastArrowCellCount]</c> and the arrow is
     /// placed into native state (occupancy, bitsets, ray index). Returns true on success.
     /// </summary>
-    [BurstCompile]
     public static bool TryGenerateArrow(
         ref NativeGenerationState state,
         int maxLength,
-        ref Random rng
+        ref PortableRandom rng
     )
     {
         int targetLength = rng.NextInt(MinArrowLength, maxLength + 1);
-        int w = state.boardWidth,
-            h = state.boardHeight;
+        int w = state.boardWidth;
 
-        while (state.candidates.Length > 0)
+        while (state.candidateCount > 0)
         {
-            int headIndex = rng.NextInt(0, state.candidates.Length);
+            int headIndex = rng.NextInt(state.candidateCount);
             NativeArrowHeadData candidate = state.candidates[headIndex];
 
             // Reject if head or next occupied
@@ -51,8 +130,7 @@ public static class NativeGeneration
                 ref state,
                 candidate.headX,
                 candidate.headY,
-                candidate.direction,
-                activeWords
+                candidate.direction
             );
 
             bool hasReachable = depCount > 0;
@@ -65,7 +143,7 @@ public static class NativeGeneration
                     ulong bits = state.ctxForwardDeps[iw];
                     while (bits != 0)
                     {
-                        int bit = math.tzcnt(bits);
+                        int bit = Ctz64(bits);
                         if (state.hasAnyDeps[(iw << 6) | bit])
                         {
                             needBFS = true;
@@ -97,15 +175,13 @@ public static class NativeGeneration
                             ref state,
                             candidate.headX,
                             candidate.headY,
-                            state.ctxReachable,
-                            activeWords
+                            state.ctxReachable
                         )
                         || AnyArrowWithRayThroughBitset(
                             ref state,
                             candidate.nextX,
                             candidate.nextY,
-                            state.ctxReachable,
-                            activeWords
+                            state.ctxReachable
                         );
                 }
 
@@ -116,14 +192,7 @@ public static class NativeGeneration
                 }
             }
 
-            int cellCount = GreedyWalk(
-                ref state,
-                targetLength,
-                candidate,
-                ref rng,
-                hasReachable,
-                activeWords
-            );
+            int cellCount = GreedyWalk(ref state, targetLength, candidate, ref rng, hasReachable);
             if (cellCount < MinArrowLength)
             {
                 SwapRemoveCandidates(ref state, headIndex);
@@ -146,9 +215,8 @@ public static class NativeGeneration
         ref NativeGenerationState state,
         int targetLength,
         NativeArrowHeadData headData,
-        ref Random rng,
-        bool hasReachable,
-        int activeWords
+        ref PortableRandom rng,
+        bool hasReachable
     )
     {
         int w = state.boardWidth,
@@ -227,13 +295,7 @@ public static class NativeGeneration
                     continue;
                 if (
                     hasReachable
-                    && AnyArrowWithRayThroughBitset(
-                        ref state,
-                        nx,
-                        ny,
-                        state.ctxReachable,
-                        activeWords
-                    )
+                    && AnyArrowWithRayThroughBitset(ref state, nx, ny, state.ctxReachable)
                 )
                     continue;
 
@@ -275,8 +337,7 @@ public static class NativeGeneration
         ref NativeGenerationState state,
         int headX,
         int headY,
-        int direction,
-        int activeWords
+        int direction
     )
     {
         int count = 0;
@@ -328,14 +389,8 @@ public static class NativeGeneration
 
         // Check level 0 (forward deps themselves)
         if (
-            AnyArrowWithRayThroughBitset(ref state, headX, headY, state.ctxReachable, activeWords)
-            || AnyArrowWithRayThroughBitset(
-                ref state,
-                nextX,
-                nextY,
-                state.ctxReachable,
-                activeWords
-            )
+            AnyArrowWithRayThroughBitset(ref state, headX, headY, state.ctxReachable)
+            || AnyArrowWithRayThroughBitset(ref state, nextX, nextY, state.ctxReachable)
         )
             return true;
 
@@ -351,7 +406,7 @@ public static class NativeGeneration
 
                 while (bits != 0)
                 {
-                    int bit = math.tzcnt(bits);
+                    int bit = Ctz64(bits);
                     int idx = (iw << 6) | bit;
                     int offset = idx * stride;
                     int nzCount = state.depsNonZeroCount[idx];
@@ -425,6 +480,7 @@ public static class NativeGeneration
     /// Checks each newly discovered arrow in the BFS for a cycle
     /// (its ray crosses head or next).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool CheckNewBitsForCycle(
         ref NativeGenerationState state,
         ulong newBits,
@@ -437,7 +493,7 @@ public static class NativeGeneration
     {
         while (newBits != 0)
         {
-            int b = math.tzcnt(newBits);
+            int b = Ctz64(newBits);
             int newIdx = (word << 6) | b;
             if (
                 IsInRayOf(
@@ -469,8 +525,7 @@ public static class NativeGeneration
         ref NativeGenerationState state,
         int cx,
         int cy,
-        NativeArray<ulong> bitset,
-        int activeWords
+        ulong[] bitset
     )
     {
         int w = state.boardWidth;
@@ -524,7 +579,7 @@ public static class NativeGeneration
     {
         int nIdx = state.nextGenIndex++;
         if (nIdx >= state.bitsetWords * 64)
-            state.GrowBitsetCapacity(Allocator.Persistent);
+            state.GrowBitsetCapacity();
 
         int w = state.boardWidth,
             h = state.boardHeight;
@@ -607,6 +662,7 @@ public static class NativeGeneration
         state.lastArrowCellCount = cellCount;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SetDepBit(
         ref NativeGenerationState state,
         int arrowIdx,
@@ -634,6 +690,7 @@ public static class NativeGeneration
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void AddToRayIndex(
         ref NativeGenerationState state,
         int genIdx,
@@ -681,6 +738,7 @@ public static class NativeGeneration
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsInRayOf(int ax, int ay, int dir, int cx, int cy)
     {
         switch (dir)
@@ -698,6 +756,7 @@ public static class NativeGeneration
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GetDirectionStep(int direction, out int dx, out int dy)
     {
         switch (direction)
@@ -725,12 +784,16 @@ public static class NativeGeneration
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SwapRemoveCandidates(ref NativeGenerationState state, int index)
     {
-        state.candidates.RemoveAtSwapBack(index);
+        int last = --state.candidateCount;
+        if (index != last)
+            state.candidates[index] = state.candidates[last];
     }
 
-    private static void ClearWords(NativeArray<ulong> arr, int count)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ClearWords(ulong[] arr, int count)
     {
         for (int i = 0; i < count; i++)
             arr[i] = 0;

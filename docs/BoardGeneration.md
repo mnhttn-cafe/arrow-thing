@@ -90,23 +90,21 @@ Y-up coordinate convention: `Direction.Up → dy = +1`, `Direction.Down → dy =
 ### `FillBoardIncremental(Board board, int maxLength, Random random)`
 
 - Coroutine (returns `IEnumerator`). Yields once per arrow placed, allowing the caller to drive frame budgeting.
-- Uses the **Burst-compiled path**: allocates a `NativeGenerationState`, calls `NativeGeneration.TryGenerateArrow` per candidate, extracts cells from scratch buffers to create managed `Arrow` objects.
-- After the generation loop, `Board.InitializeFromNativeGeneration` copies native bitset/occupancy/ray-index data back into Board's managed arrays for compaction. The `NativeGenerationState` is disposed in a `finally` block (safe against cancellation).
-- Yields `CompactionMarker`, then runs post-process compaction (see below), yielding per merge.
-- Yields `FinalizationMarker`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
-- Used by `GameController.GenerateBoard` for incremental board display during generation.
-- RNG: `Unity.Mathematics.Random` (seeded from the `System.Random` parameter). Seed-to-board mapping differs from the pre-Burst managed path.
+- Allocates a `NativeGenerationState` (plain managed arrays — see "Portability" below), calls `NativeGeneration.TryGenerateArrow` per candidate, and extracts cells from the scratch buffers to create managed `Arrow` objects.
+- After the generation loop, `Board.InitializeFromNativeGeneration` copies the state's bitset/occupancy/ray-index data back into Board's own managed arrays for compaction.
+- Yields `GenerationPhase.Compacting`, then runs post-process compaction (see below), yielding per merge.
+- Yields `GenerationPhase.Finalizing`, then yields during `FinalizeGenerationIncremental` (builds HashSet dependency graph incrementally).
+- Used by `GameController.GenerateBoard` for incremental board display during generation, and by `ReplayVerifier.Verify` for server-side replay verification.
+- RNG: `PortableRandom` (xorshift32) seeded from the `System.Random` parameter. Same algorithm on Unity and server so seeds produce identical boards across platforms.
 
-### `GenerateArrows(Board board, int maxLength, int amount, Random random, out int createdArrows)`
+### Portability (Unity + .NET server)
 
-Flow:
+`NativeGenerationState` and `NativeGeneration` are portable C# with no Unity dependencies. They compile both in the Unity project (`ArrowThing` asmdef) and in the server's `ArrowThing.Domain` project (`netstandard2.1`), which compiles Unity's domain sources via a wildcard `<Compile Include>`. Notable choices:
 
-1. Ensure candidate pool is initialized.
-2. Repeatedly call `TryGenerateArrow(...)` until `createdArrows == amount` or candidates are exhausted.
-3. On each successful arrow, call `board.AddArrow(arrow)` which atomically updates occupancy, dependency graph, and candidate pool.
-4. Return `createdArrows == amount`.
-
-Note: `GenerateArrows` uses the **managed path** (not Burst): `AddArrow` (full path with HashSet deps), not `AddArrowForGeneration`. Used by tests and for adding arrows to an existing board.
+- All state is plain managed arrays (`ulong[]`, `int[]`, `bool[]`) rather than `NativeArray<T>` — `NativeArray` is Unity-specific.
+- No `Unity.Mathematics.Random` — `PortableRandom` is a value-type xorshift32 with the same seed→sequence mapping.
+- No `System.Numerics.BitOperations.TrailingZeroCount` (requires net5.0+) — a De Bruijn CTZ table is inlined in `NativeGeneration`.
+- No `[BurstCompile]`. Earlier versions of this project used Burst to accelerate the hot loop on Unity WebGL, but Burst packages are not available on .NET Core / .NET Standard 2.1 and can't be shared with the server. The portable code is optimized for the .NET 8 JIT and Unity IL2CPP via `[MethodImpl(AggressiveInlining)]` hints.
 
 ## Single Arrow Construction
 
