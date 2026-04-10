@@ -98,7 +98,12 @@ public sealed class ReplayData
             // Include time from an unterminated session (autosave or force-quit
             // without session_leave). Without this, resuming from an autosave
             // would lose all solve time from the current session.
-            if (!paused && !finished && checkpoint != DateTime.MinValue && lastEventTime != DateTime.MinValue)
+            if (
+                !paused
+                && !finished
+                && checkpoint != DateTime.MinValue
+                && lastEventTime != DateTime.MinValue
+            )
                 elapsed += (lastEventTime - checkpoint).TotalSeconds;
 
             return elapsed;
