@@ -49,7 +49,8 @@ public sealed class ReplayData
     /// Sets a checkpoint at start_solve, accumulates elapsed on session_leave / end_solve,
     /// resets checkpoint on session_rejoin. Time between session_leave and session_rejoin
     /// is excluded. Returns 0 if no start_solve event is found.
-    /// Only counts completed intervals — the live timer adds (now − checkpoint) on top.
+    /// If the event stream ends without a closing event (session_leave / end_solve),
+    /// includes time up to the last recorded event (handles autosaves and force-quits).
     /// </summary>
     [JsonIgnore]
     public double ComputedSolveElapsed
@@ -60,6 +61,7 @@ public sealed class ReplayData
             DateTime checkpoint = DateTime.MinValue;
             DateTime lastEventTime = DateTime.MinValue;
             bool paused = false;
+            bool finished = false;
 
             foreach (var evt in events)
             {
@@ -87,10 +89,17 @@ public sealed class ReplayData
                     case ReplayEventType.EndSolve:
                         if (!paused)
                             elapsed += (ts - checkpoint).TotalSeconds;
+                        finished = true;
                         break;
                 }
                 lastEventTime = ts;
             }
+
+            // Include time from an unterminated session (autosave or force-quit
+            // without session_leave). Without this, resuming from an autosave
+            // would lose all solve time from the current session.
+            if (!paused && !finished && checkpoint != DateTime.MinValue && lastEventTime != DateTime.MinValue)
+                elapsed += (lastEventTime - checkpoint).TotalSeconds;
 
             return elapsed;
         }

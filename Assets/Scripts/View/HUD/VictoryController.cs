@@ -446,6 +446,9 @@ public sealed class VictoryController : MonoBehaviour
 
     private void OnPlayAgain()
     {
+        // Clear stale resume state so the new game generates a fresh board
+        // instead of trying to resume the just-completed save data.
+        GameSettings.Apply(_boardWidth, _boardHeight);
         SceneNav.Replace("Game");
     }
 
