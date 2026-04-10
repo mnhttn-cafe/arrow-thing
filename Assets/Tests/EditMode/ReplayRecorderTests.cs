@@ -418,9 +418,11 @@ public class ReplayRecorderTests
     }
 
     [Test]
-    public void ComputedSolveElapsed_OnlyCountsCompletedIntervals()
+    public void ComputedSolveElapsed_UnterminatedSession_IncludesTimeToLastEvent()
     {
-        // No session_leave or end_solve — still actively solving, so no completed intervals
+        // Autosave or force-quit: no session_leave or end_solve.
+        // Should include time up to the last recorded event so resume
+        // doesn't lose the current session's solve time.
         var data = new ReplayData
         {
             events = new List<ReplayEvent>
@@ -444,8 +446,7 @@ public class ReplayRecorderTests
                 },
             },
         };
-        // Live timer would add (now - checkpoint) on top; ComputedSolveElapsed only has completed intervals
-        Assert.AreEqual(0.0, data.ComputedSolveElapsed, 0.001);
+        Assert.AreEqual(7.5, data.ComputedSolveElapsed, 0.001);
     }
 
     [Test]
@@ -481,6 +482,52 @@ public class ReplayRecorderTests
             },
         };
         Assert.AreEqual(7.5, data.ComputedSolveElapsed, 0.001);
+    }
+
+    [Test]
+    public void ComputedSolveElapsed_MultiSession_UnterminatedTail()
+    {
+        // First session saved gracefully, second session autosaved (no session_leave).
+        // Should include time from both sessions.
+        var data = new ReplayData
+        {
+            events = new List<ReplayEvent>
+            {
+                new ReplayEvent
+                {
+                    type = ReplayEventType.StartSolve,
+                    timestamp = "2026-01-01T00:00:00.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 1f,
+                    posY = 1f,
+                    timestamp = "2026-01-01T00:00:03.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionLeave,
+                    timestamp = "2026-01-01T00:00:03.000Z",
+                },
+                // Gap: 100 seconds paused
+                new ReplayEvent
+                {
+                    type = ReplayEventType.SessionRejoin,
+                    timestamp = "2026-01-01T00:01:43.000Z",
+                },
+                new ReplayEvent
+                {
+                    type = ReplayEventType.Clear,
+                    posX = 2f,
+                    posY = 2f,
+                    timestamp = "2026-01-01T00:01:45.000Z",
+                },
+                // No session_leave — autosave or force-quit
+            },
+        };
+        // 3s (first session) + 2s (second session unterminated tail) = 5s
+        Assert.AreEqual(5.0, data.ComputedSolveElapsed, 0.001);
     }
 
     [Test]
