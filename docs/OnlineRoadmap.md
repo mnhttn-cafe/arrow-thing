@@ -144,6 +144,10 @@ Online flow: generate board locally (client always owns generation) → play, re
 - **Bots/automation**: a bot could solve boards optimally. Mitigation deferred — statistical outlier detection is a future concern. The leaderboard is friendly competition, not a ranked ladder.
 - **Timing manipulation**: client reports input timestamps. A modified client could lie. Server can reject implausibly fast inter-event gaps as a basic sanity check. Full solution requires server-witnessed timing (future WebSocket path).
 
+### Co-op boards
+
+Persistent shared puzzles that any number of registered players can chip away at, in real time when they overlap and asynchronously when they don't. Per-player timer and clear count, live sidebar, per-lobby results screen (no global co-op leaderboard). Built on a new WebSocket session layer on top of the existing REST server. Design and phased implementation plan: [`docs/CoopRoadmap.md`](CoopRoadmap.md).
+
 ### PvP
 
 Real-time garbage mechanics, matchmaking. The replay viewer is essentially a live opponent board — the framework from the replay and server work carries over directly.
